@@ -841,14 +841,86 @@ conn.close()
 
 → **Incitation forte à upgrader** : valeur claire (hors ligne)
 
+### 🎉 Prototype Flet fonctionnel (2026-02-06)
+
+**Application desktop créée et testée avec succès !**
+
+**Fichier créé** : `daynimal/app.py` (310 lignes)
+
+**Fonctionnalités implémentées** :
+- ✅ Interface graphique Flet (Flutter pour Python)
+- ✅ Vue "Animal du jour" avec chargement automatique au démarrage
+- ✅ Bouton "Animal aléatoire" pour découvrir d'autres espèces
+- ✅ Affichage complet des informations :
+  - Nom d'affichage et nom scientifique
+  - Classification taxonomique (règne, embranchement, classe, ordre, famille)
+  - Noms vernaculaires multilingues (5 premières langues)
+  - Données enrichies Wikidata (statut IUCN, masse, longueur, durée de vie)
+  - Description Wikipedia (tronquée à 500 caractères)
+  - Première image disponible avec crédit artiste
+  - Attribution légale (GBIF)
+- ✅ Indicateur de chargement pendant fetch
+- ✅ Gestion d'erreurs avec messages clairs
+- ✅ Intégration complète avec `AnimalRepository`
+- ✅ Historique automatique (enregistrement des consultations)
+- ✅ Scroll automatique pour contenu long
+
+**Commande de lancement** :
+```bash
+uv run daynimal-app
+```
+
+**Dépendance ajoutée** :
+- `flet>=0.25.0` dans `pyproject.toml`
+- Auto-installation de `flet-desktop` au premier lancement
+
+**Corrections techniques appliquées** :
+- Capitalisation API Flet : `ft.colors` → `ft.Colors`
+- Icônes : `ft.icons.TODAY` → `ft.Icons.CALENDAR_TODAY`
+- Attribut Wikipedia : `extract` → `summary`
+
+**Architecture** :
+- Classe `DaynimalApp` qui gère l'état et la logique
+- Méthode `build()` pour construire l'UI
+- Méthodes `show_today()` et `show_random()` pour charger les animaux
+- Méthode `display_animal()` pour afficher les informations
+- Context manager `with AnimalRepository()` pour accès DB
+
 ### 📋 Prochaines étapes immédiates
 
 1. ✅ ~~Valider l'approche~~ → **FAIT**
 2. ✅ ~~Créer script DB minimale~~ → **FAIT** (`import-gbif-fast --mode minimal`)
 3. ✅ ~~Tester génération DB minimale~~ → **FAIT** (127k espèces, 93 MB compressé, FTS5 OK)
-4. ⏭️ **Créer prototype minimal Flet** (1 vue "Animal du jour")
-5. ⏭️ Tester sur desktop
-6. ⏭️ Si validé → continuer avec Phase 1 complète
+4. ✅ ~~Créer prototype minimal Flet~~ → **FAIT** (1 vue "Animal du jour" fonctionnelle)
+5. ✅ ~~Tester sur desktop~~ → **FAIT** (Windows validé)
+6. ⏭️ **Continuer avec Phase 1 complète** (ajouter plus de vues et features)
+
+### 🔜 Phase 1 complète - Fonctionnalités à ajouter
+
+**Vues supplémentaires** :
+- [ ] Vue Historique (liste paginée des animaux consultés)
+- [ ] Vue Recherche (intégration FTS5, résultats en temps réel)
+- [ ] Vue Statistiques (graphiques de la DB)
+- [ ] Vue À propos / Crédits complets
+
+**Améliorations UI/UX** :
+- [ ] Navigation par onglets ou drawer menu
+- [ ] Thème sombre/clair
+- [ ] Animations de transition
+- [ ] Images en carousel (toutes les images, pas juste la première)
+- [ ] Chargement asynchrone des images (éviter freeze)
+- [ ] Placeholder pendant chargement des images
+
+**Features additionnelles** :
+- [ ] Favoris / "J'aime"
+- [ ] Partage (export info en texte/image)
+- [ ] Paramètres (langue préférée, taille police, etc.)
+- [ ] Option `--db` pour tester avec DB minimale
+
+**Optimisations** :
+- [ ] Cache des images téléchargées
+- [ ] Préchargement des données au démarrage
+- [ ] Gestion des erreurs réseau (mode dégradé sans enrichissement)
 
 ### 💪 Avantages de l'approche
 
@@ -895,4 +967,4 @@ conn.close()
 
 *Document maintenu par Claude Code*
 *Dernière mise à jour : 2026-02-06*
-*Statut : ✅ DB minimale validée (127k espèces, 93 MB compressé, FTS5 OK) - Prêt pour prototype Flet*
+*Statut : ✅ Prototype Flet fonctionnel - Application desktop testée et validée - Prêt pour Phase 1 complète*

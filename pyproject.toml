@@ -9,6 +9,7 @@ dependencies = [
     "sqlalchemy>=2.0.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
+    "flet>=0.25.0",
 ]
 
 [dependency-groups]
@@ -19,6 +20,7 @@ dev = [
 
 [project.scripts]
 daynimal = "daynimal.main:main"
+daynimal-app = "daynimal.app:main"
 import-gbif = "daynimal.db.import_gbif:main"
 import-gbif-fast = "daynimal.db.import_gbif_fast:main"
 init-fts = "daynimal.db.init_fts:main"
