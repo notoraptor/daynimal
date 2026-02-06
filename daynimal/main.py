@@ -1,21 +1,10 @@
 """
 Daynimal CLI - Daily Animal Discovery
 
-Usage:
-    daynimal [--db PATH]      Show today's animal
-    daynimal random           Show a random animal
-    daynimal search <query>   Search for animals
-    daynimal info <id|name>   Get info about a specific animal by ID or name
-    daynimal history          Show history of viewed animals (last 10)
-    daynimal history --page <n> [--per-page <m>]
-                              Show history page n (default: 10 per page)
-    daynimal stats            Show database statistics
-    daynimal credits          Show full legal credits and licenses
-
-Global options:
-    --db PATH                 Use alternative database file
+A command-line tool to discover and learn about animals every day.
 """
 
+import argparse
 import sys
 
 from daynimal import AnimalInfo
@@ -299,42 +288,130 @@ def cmd_history(args: list[str]):
                 )
 
 
+def create_parser():
+    """Create and configure the argument parser."""
+    parser = argparse.ArgumentParser(
+        prog="daynimal",
+        description="Daily Animal Discovery - Learn about one animal per day",
+        epilog="For more information, visit: https://github.com/yourusername/daynimal",
+    )
+
+    # Global options
+    parser.add_argument(
+        "--db",
+        type=str,
+        metavar="PATH",
+        help="Use alternative database file",
+    )
+
+    # Subcommands
+    subparsers = parser.add_subparsers(
+        dest="command",
+        help="Available commands",
+    )
+
+    # today command (default if no command specified)
+    parser_today = subparsers.add_parser(
+        "today",
+        help="Show today's animal (default)",
+    )
+
+    # random command
+    parser_random = subparsers.add_parser(
+        "random",
+        help="Show a random animal",
+    )
+
+    # search command
+    parser_search = subparsers.add_parser(
+        "search",
+        help="Search for animals by name",
+    )
+    parser_search.add_argument(
+        "query",
+        nargs="+",
+        help="Search query (scientific or common name)",
+    )
+
+    # info command
+    parser_info = subparsers.add_parser(
+        "info",
+        help="Get detailed information about a specific animal",
+    )
+    parser_info.add_argument(
+        "identifier",
+        nargs="+",
+        help="Animal ID or scientific name",
+    )
+
+    # stats command
+    parser_stats = subparsers.add_parser(
+        "stats",
+        help="Show database statistics",
+    )
+
+    # credits command
+    parser_credits = subparsers.add_parser(
+        "credits",
+        help="Show full legal credits and licenses",
+    )
+
+    # history command
+    parser_history = subparsers.add_parser(
+        "history",
+        help="Show history of viewed animals",
+    )
+    parser_history.add_argument(
+        "--page",
+        type=int,
+        default=1,
+        help="Page number (default: 1)",
+    )
+    parser_history.add_argument(
+        "--per-page",
+        type=int,
+        default=10,
+        help="Number of items per page (default: 10)",
+    )
+
+    return parser
+
+
 def main():
     """Main entry point."""
-    args = sys.argv[1:]
-
-    # Parse global --db option
-    db_path = None
-    if args and args[0] == "--db":
-        if len(args) < 2:
-            print("Error: --db requires a path argument")
-            print(__doc__)
-            return
-        db_path = args[1]
-        args = args[2:]  # Remove --db and its argument
+    parser = create_parser()
+    args = parser.parse_args()
 
     # Set database path if provided
-    if db_path:
-        # Temporarily override database URL
-        settings.database_url = f"sqlite:///{db_path}"
+    if args.db:
+        settings.database_url = f"sqlite:///{args.db}"
 
-    # Process commands
-    if not args:
+    # Route to appropriate command
+    # Default to 'today' if no command specified
+    command = args.command or "today"
+
+    if command == "today":
         cmd_today()
-    elif args[0] == "random":
+    elif command == "random":
         cmd_random()
-    elif args[0] == "search" and len(args) > 1:
-        cmd_search(" ".join(args[1:]))
-    elif args[0] == "info" and len(args) > 1:
-        cmd_info(" ".join(args[1:]))
-    elif args[0] == "history":
-        cmd_history(args[1:])
-    elif args[0] == "stats":
+    elif command == "search":
+        query = " ".join(args.query)
+        cmd_search(query)
+    elif command == "info":
+        identifier = " ".join(args.identifier)
+        cmd_info(identifier)
+    elif command == "stats":
         cmd_stats()
-    elif args[0] == "credits":
+    elif command == "credits":
         cmd_credits()
-    else:
-        print(__doc__)
+    elif command == "history":
+        # Convert argparse args to list format expected by cmd_history
+        history_args = []
+        if args.page != 1:
+            history_args.extend(["--page", str(args.page)])
+        if args.per_page != 10:
+            history_args.extend(["--per-page", str(args.per_page)])
+        cmd_history(history_args)
 
 
 if __name__ == "__main__":
