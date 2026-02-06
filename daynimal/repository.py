@@ -11,7 +11,7 @@ It handles:
 import json
 from datetime import datetime
 
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session
 
 from daynimal.db.models import TaxonModel, VernacularNameModel, EnrichmentCacheModel
@@ -133,12 +133,54 @@ class AnimalRepository:
 
     def search(self, query: str, limit: int = 20) -> list[AnimalInfo]:
         """
-        Search for animals by name (scientific or vernacular).
+        Search for animals by name (scientific or vernacular) using FTS5.
+
+        Uses SQLite FTS5 for fast full-text search. Falls back to LIKE queries
+        if the FTS table hasn't been initialized yet.
 
         Args:
             query: Search query
             limit: Maximum number of results
         """
+        # Try FTS5 first (fast full-text search)
+        try:
+            # FTS5 MATCH query - supports prefixes and relevance ranking
+            fts_results = self.session.execute(
+                text("""
+                    SELECT taxon_id
+                    FROM taxa_fts
+                    WHERE taxa_fts MATCH :query
+                    ORDER BY rank
+                    LIMIT :limit
+                """),
+                {"query": query, "limit": limit},
+            ).fetchall()
+
+            if fts_results:
+                # Get taxa by IDs preserving FTS5 ranking order
+                taxon_ids = [row[0] for row in fts_results]
+                taxon_models = (
+                    self.session.query(TaxonModel)
+                    .filter(TaxonModel.taxon_id.in_(taxon_ids))
+                    .all()
+                )
+
+                # Preserve FTS5 ranking order
+                id_to_model = {m.taxon_id: m for m in taxon_models}
+                results = []
+                for taxon_id in taxon_ids:
+                    if taxon_id in id_to_model:
+                        taxon = self._model_to_taxon(id_to_model[taxon_id])
+                        results.append(AnimalInfo(taxon=taxon))
+
+                return results
+
+        except Exception:
+            # FTS table doesn't exist - fall back to old method
+            # Silently fallback (avoid spamming user on every search)
+            pass
+
+        # Fallback: slower LIKE-based search
         query_lower = query.lower()
 
         # Search in canonical names
