@@ -3,14 +3,25 @@ GBIF Backbone Taxonomy Fast Importer.
 
 This is a high-performance version of the GBIF importer that uses:
 1. Pre-filtering to create clean TSV files
-2. Native SQLite .import commands (via Python)
+2. Mode-based filtering (full or minimal)
 3. Optimized PRAGMA settings
 4. Single large transaction
 
 This approach is 10-100x faster than the incremental import.
 
+Modes:
+  - full: All Animalia kingdom taxa (~4.4M taxa, ~1.7 GB database)
+  - minimal: Species with vernacular names only (~500k taxa, ~150 MB database)
+
 Usage:
-    python -m daynimal.db.import_gbif_fast
+    # Full database (for development/desktop)
+    uv run import-gbif-fast --mode full
+
+    # Minimal database (for mobile apps)
+    uv run import-gbif-fast --mode minimal
+
+    # Save TSV files for distribution
+    uv run import-gbif-fast --mode minimal --save-tsv
 """
 
 import csv
@@ -50,14 +61,22 @@ def restore_database_settings(engine):
     print("Settings restored.")
 
 
-def extract_and_filter_taxa(zip_path: Path, output_path: Path) -> int:
+def extract_and_filter_taxa(zip_path: Path, output_path: Path, mode: str = "full") -> int:
     """
     Extract taxa from GBIF ZIP and create a filtered TSV file.
-    Only includes Animalia kingdom, with columns in the correct order for import.
+
+    Filtering strategy:
+    - full: All Animalia kingdom taxa
+    - minimal: Only species (rank='species')
+
+    Args:
+        zip_path: Path to GBIF backbone ZIP file
+        output_path: Path for output TSV file
+        mode: Extraction mode ('full' or 'minimal')
 
     Returns the number of taxa extracted.
     """
-    print(f"Extracting and filtering taxa to {output_path}...")
+    print(f"Extracting and filtering taxa to {output_path} (mode: {mode})...")
 
     count = 0
 
@@ -98,11 +117,19 @@ def extract_and_filter_taxa(zip_path: Path, output_path: Path) -> int:
                 if kingdom != "Animalia":
                     continue
 
+                # Extract columns needed for filtering
+                rank = row[TAXON_COLUMNS["taxonRank"]].lower() or ""
+
+                # Mode-specific filtering
+                if mode == "minimal":
+                    # Minimal mode: only species
+                    if rank != "species":
+                        continue
+
                 # Extract only the columns we need, in the right order
                 taxon_id = row[TAXON_COLUMNS["taxonID"]]
                 scientific_name = row[TAXON_COLUMNS["scientificName"]]
                 canonical_name = row[TAXON_COLUMNS["canonicalName"]] or ""
-                rank = row[TAXON_COLUMNS["taxonRank"]].lower() or ""
                 kingdom_val = kingdom
                 phylum = row[TAXON_COLUMNS["phylum"]] or ""
                 class_ = row[TAXON_COLUMNS["class"]] or ""
@@ -331,10 +358,65 @@ def bulk_import_vernacular(engine, tsv_path: Path) -> int:
     return count
 
 
+def cleanup_taxa_without_vernacular(engine) -> int:
+    """
+    Remove taxa that don't have any vernacular names.
+    Used in minimal mode (Option D) to keep only species with common names.
+
+    Returns the number of taxa removed.
+    """
+    print("Removing taxa without vernacular names...")
+
+    with engine.begin() as conn:
+        # Count before
+        before_count = conn.execute(text("SELECT COUNT(*) FROM taxa")).scalar()
+
+        # Delete taxa without vernacular names
+        conn.execute(
+            text("""
+                DELETE FROM taxa
+                WHERE taxon_id NOT IN (
+                    SELECT DISTINCT taxon_id FROM vernacular_names
+                )
+            """)
+        )
+
+        # Count after
+        after_count = conn.execute(text("SELECT COUNT(*) FROM taxa")).scalar()
+
+    removed = before_count - after_count
+    print(f"Removed {removed:,} taxa without vernacular names")
+    print(f"Remaining: {after_count:,} taxa")
+
+    return removed
+
+
 def main():
     """Main entry point for fast GBIF import."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Fast GBIF Backbone Taxonomy importer"
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["full", "minimal"],
+        default="full",
+        help="Import mode: 'full' (all Animalia) or 'minimal' (species with vernacular names only)",
+    )
+    parser.add_argument(
+        "--save-tsv",
+        action="store_true",
+        help="Save filtered TSV files (useful for distribution)",
+    )
+
+    args = parser.parse_args()
+
     print("=" * 60)
     print("GBIF Backbone Taxonomy Fast Importer")
+    print(f"Mode: {args.mode.upper()}")
+    if args.mode == "minimal":
+        print("(Species with vernacular names only)")
     print("License: CC-BY 4.0 (commercial use allowed with attribution)")
     print("=" * 60)
 
@@ -342,14 +424,28 @@ def main():
     data_dir.mkdir(parents=True, exist_ok=True)
 
     zip_path = data_dir / "backbone.zip"
-    taxa_tsv = data_dir / "animalia_taxa.tsv"
-    vernacular_tsv = data_dir / "animalia_vernacular.tsv"
+
+    # Use different filenames for minimal mode
+    if args.mode == "minimal":
+        taxa_tsv = data_dir / "animalia_taxa_minimal.tsv"
+        vernacular_tsv = data_dir / "animalia_vernacular_minimal.tsv"
+        db_filename = "daynimal_minimal.db"
+    else:
+        taxa_tsv = data_dir / "animalia_taxa.tsv"
+        vernacular_tsv = data_dir / "animalia_vernacular.tsv"
+        db_filename = "daynimal.db"
+
+    # Temporarily override database URL for this import
+    original_db_url = settings.database_url
+    settings.database_url = f"sqlite:///{db_filename}"
 
     # Download if not exists
     if not zip_path.exists():
         download_backbone(zip_path)
     else:
         print(f"Using existing download: {zip_path}")
+
+    print(f"Target database: {db_filename}")
 
     # Create database and tables
     engine = get_engine()
@@ -370,7 +466,7 @@ def main():
     try:
         # Step 1: Extract and filter taxa
         if not taxa_tsv.exists():
-            extract_and_filter_taxa(zip_path, taxa_tsv)
+            extract_and_filter_taxa(zip_path, taxa_tsv, mode=args.mode)
         else:
             print(f"Using existing filtered taxa file: {taxa_tsv}")
 
@@ -393,9 +489,22 @@ def main():
         # Step 5: Import vernacular names
         bulk_import_vernacular(engine, vernacular_tsv)
 
+        # Step 6: Cleanup (minimal mode only)
+        if args.mode == "minimal":
+            cleanup_taxa_without_vernacular(engine)
+
+        # Step 7: Optional - save TSV files for distribution
+        if args.save_tsv:
+            print("\nTSV files saved for distribution:")
+            print(f"  Taxa:        {taxa_tsv}")
+            print(f"  Vernacular:  {vernacular_tsv}")
+            print("\nThese files can be compressed and distributed for mobile apps.")
+
     finally:
         # Restore normal database settings
         restore_database_settings(engine)
+        # Restore original database URL
+        settings.database_url = original_db_url
 
     # Show stats
     with engine.connect() as conn:
@@ -407,14 +516,44 @@ def main():
             text("SELECT COUNT(*) FROM vernacular_names")
         ).scalar()
 
-    print("\n--- Database Statistics ---")
-    print(f"Total taxa: {total_taxa:,}")
-    print(f"Species: {species_count:,}")
+    print("\n" + "=" * 60)
+    print("DATABASE STATISTICS")
+    print("=" * 60)
+    print(f"Mode:             {args.mode.upper()}")
+    print(f"Total taxa:       {total_taxa:,}")
+    print(f"Species:          {species_count:,}")
     print(f"Vernacular names: {vernacular_count:,}")
 
-    print("\nImport complete!")
+    if args.mode == "minimal":
+        print(f"\nNote: Minimal mode includes only species with common names.")
+        print(f"This is optimized for mobile apps (~{total_taxa:,} taxa).")
+
+    # Compact database to reclaim unused space
+    print("\n" + "=" * 60)
+    print("COMPACTING DATABASE...")
+    print("=" * 60)
+    print("Running VACUUM to reclaim unused space...")
+    with engine.connect() as conn:
+        conn.execute(text("VACUUM"))
+        conn.commit()
+    print("[OK] Database compacted")
+
+    print("\n" + "=" * 60)
+    print("IMPORT COMPLETE!")
+    print("=" * 60)
     print("Attribution: GBIF Backbone Taxonomy. GBIF Secretariat (2024).")
     print("License: https://creativecommons.org/licenses/by/4.0/")
+    print("\nNext steps:")
+    if args.mode == "full":
+        print("  - Run 'uv run init-fts' to create search index")
+        print("  - Or create minimal DB: 'uv run import-gbif-fast --mode minimal'")
+    else:
+        print("  - Run 'uv run init-fts' to create search index")
+        print("  - Database is ready for mobile deployment!")
+        if args.save_tsv:
+            print(f"  - Compress TSV files for distribution:")
+            print(f"    gzip {taxa_tsv}")
+            print(f"    gzip {vernacular_tsv}")
 
 
 if __name__ == "__main__":

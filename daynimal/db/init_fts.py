@@ -5,8 +5,11 @@ FTS5 is a SQLite virtual table that provides efficient full-text search
 capabilities. This module creates and populates the taxa_fts table.
 """
 
+import argparse
+
 from sqlalchemy import text
 
+from daynimal.config import settings
 from daynimal.db.session import get_session
 
 
@@ -72,8 +75,17 @@ def populate_fts_table(session):
     print(f"[OK] Populated FTS5 table with {count:,} taxa")
 
 
-def init_fts():
-    """Initialize FTS5 search: create and populate the table."""
+def init_fts(db_path=None):
+    """Initialize FTS5 search: create and populate the table.
+
+    Args:
+        db_path: Optional path to database file. If provided, overrides config.
+    """
+    # Override database URL if custom path provided
+    if db_path:
+        settings.database_url = f"sqlite:///{db_path}"
+        print(f"Using database: {db_path}")
+
     print("\n[Initializing FTS5 Full-Text Search]")
     print("-" * 50)
 
@@ -102,5 +114,20 @@ def rebuild_fts():
     print("[OK] FTS5 rebuild complete!")
 
 
+def main():
+    """Main entry point for CLI command."""
+    parser = argparse.ArgumentParser(
+        description="Initialize FTS5 full-text search index"
+    )
+    parser.add_argument(
+        "--db",
+        type=str,
+        help="Path to database file (default: uses config setting)",
+    )
+    args = parser.parse_args()
+
+    init_fts(db_path=args.db)
+
+
 if __name__ == "__main__":
-    init_fts()
+    main()

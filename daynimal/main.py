@@ -2,7 +2,7 @@
 Daynimal CLI - Daily Animal Discovery
 
 Usage:
-    daynimal                  Show today's animal
+    daynimal [--db PATH]      Show today's animal
     daynimal random           Show a random animal
     daynimal search <query>   Search for animals
     daynimal info <id|name>   Get info about a specific animal by ID or name
@@ -11,6 +11,9 @@ Usage:
                               Show history page n (default: 10 per page)
     daynimal stats            Show database statistics
     daynimal credits          Show full legal credits and licenses
+
+Global options:
+    --db PATH                 Use alternative database file
 """
 
 import sys
@@ -18,6 +21,7 @@ import sys
 from daynimal import AnimalInfo
 from daynimal.attribution import get_app_legal_notice
 from daynimal.repository import AnimalRepository
+from daynimal.config import settings
 
 
 def print_animal(animal: AnimalInfo):
@@ -299,6 +303,22 @@ def main():
     """Main entry point."""
     args = sys.argv[1:]
 
+    # Parse global --db option
+    db_path = None
+    if args and args[0] == "--db":
+        if len(args) < 2:
+            print("Error: --db requires a path argument")
+            print(__doc__)
+            return
+        db_path = args[1]
+        args = args[2:]  # Remove --db and its argument
+
+    # Set database path if provided
+    if db_path:
+        # Temporarily override database URL
+        settings.database_url = f"sqlite:///{db_path}"
+
+    # Process commands
     if not args:
         cmd_today()
     elif args[0] == "random":

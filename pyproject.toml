@@ -21,7 +21,7 @@ dev = [
 daynimal = "daynimal.main:main"
 import-gbif = "daynimal.db.import_gbif:main"
 import-gbif-fast = "daynimal.db.import_gbif_fast:main"
-init-fts = "daynimal.db.init_fts:init_fts"
+init-fts = "daynimal.db.init_fts:main"
 migrate-history = "daynimal.db.migrate_add_history:migrate"
 
 [build-system]

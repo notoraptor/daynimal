@@ -11,5 +11,5 @@ wheels/
 .idea
 data
 
-daynimal.db
+daynimal*.db
 CLAUDE.md
