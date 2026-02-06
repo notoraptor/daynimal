@@ -3,6 +3,7 @@ Daynimal CLI - Daily Animal Discovery
 
 Usage:
     daynimal                  Show today's animal
+    daynimal random           Show a random animal
     daynimal search <query>   Search for animals
     daynimal info <name>      Get info about a specific animal
     daynimal stats            Show database statistics
@@ -11,11 +12,12 @@ Usage:
 
 import sys
 
+from daynimal import AnimalInfo
 from daynimal.attribution import get_app_legal_notice
 from daynimal.repository import AnimalRepository
 
 
-def print_animal(animal):
+def print_animal(animal: AnimalInfo):
     """
     Pretty print animal information with REQUIRED attributions.
 
@@ -106,6 +108,16 @@ def cmd_today():
             print("No animals in database. Run 'import-gbif' first.")
 
 
+def cmd_random():
+    """Show a random animal."""
+    with AnimalRepository() as repo:
+        animal = repo.get_random()
+        if animal:
+            print_animal(animal)
+        else:
+            print("No animals in database. Run 'import-gbif' first.")
+
+
 def cmd_search(query: str):
     """Search for animals."""
     with AnimalRepository() as repo:
@@ -180,6 +192,8 @@ def main():
 
     if not args:
         cmd_today()
+    elif args[0] == "random":
+        cmd_random()
     elif args[0] == "search" and len(args) > 1:
         cmd_search(" ".join(args[1:]))
     elif args[0] == "info" and len(args) > 1:

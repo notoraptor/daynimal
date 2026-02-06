@@ -20,6 +20,7 @@ dev = [
 [project.scripts]
 daynimal = "daynimal.main:main"
 import-gbif = "daynimal.db.import_gbif:main"
+import-gbif-fast = "daynimal.db.import_gbif_fast:main"
 
 [build-system]
 requires = ["hatchling"]

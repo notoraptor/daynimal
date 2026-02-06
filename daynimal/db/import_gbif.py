@@ -50,21 +50,31 @@ GBIF_SIMPLE_URL = (
 )
 
 # Column indices in Taxon.tsv (Darwin Core Archive format)
-# Based on GBIF Backbone structure
+# Based on GBIF Backbone structure (checked 2026-02-05)
 TAXON_COLUMNS = {
     "taxonID": 0,
-    "parentNameUsageID": 1,
-    "acceptedNameUsageID": 2,
-    "scientificName": 3,
-    "canonicalName": 4,
-    "taxonRank": 5,
-    "taxonomicStatus": 6,
-    "kingdom": 7,
-    "phylum": 8,
-    "class": 9,
-    "order": 10,
-    "family": 11,
-    "genus": 12,
+    "datasetID": 1,
+    "parentNameUsageID": 2,
+    "acceptedNameUsageID": 3,
+    "originalNameUsageID": 4,
+    "scientificName": 5,
+    "scientificNameAuthorship": 6,
+    "canonicalName": 7,
+    "genericName": 8,
+    "specificEpithet": 9,
+    "infraspecificEpithet": 10,
+    "taxonRank": 11,
+    "nameAccordingTo": 12,
+    "namePublishedIn": 13,
+    "taxonomicStatus": 14,
+    "nomenclaturalStatus": 15,
+    "taxonRemarks": 16,
+    "kingdom": 17,
+    "phylum": 18,
+    "class": 19,
+    "order": 20,
+    "family": 21,
+    "genus": 22,
 }
 
 VERNACULAR_COLUMNS = {"taxonID": 0, "vernacularName": 1, "language": 2}
@@ -155,7 +165,7 @@ def save_progress(session, task: str, line: int):
     session.commit()
 
 
-def import_taxa_from_zip(zip_path: Path, batch_size: int = 10000) -> int:
+def import_taxa_from_zip(zip_path: Path, batch_size: int = 2000) -> int:
     """
     Import taxa from the GBIF Backbone ZIP file with resume support.
     Only imports Animalia kingdom.
@@ -220,7 +230,7 @@ def import_taxa_from_zip(zip_path: Path, batch_size: int = 10000) -> int:
                         )
                     continue
 
-                if len(row) < 13:
+                if len(row) < 23:
                     continue
 
                 kingdom = row[TAXON_COLUMNS["kingdom"]]
@@ -275,7 +285,7 @@ def import_taxa_from_zip(zip_path: Path, batch_size: int = 10000) -> int:
     return imported
 
 
-def import_vernacular_names(zip_path: Path, batch_size: int = 10000) -> int:
+def import_vernacular_names(zip_path: Path, batch_size: int = 5000) -> int:
     """
     Import vernacular names from VernacularName.tsv with resume support.
     Only imports names for taxa that exist in the database (Animalia).
