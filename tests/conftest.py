@@ -8,6 +8,10 @@ to enable testing without network access.
 import pytest
 from unittest.mock import MagicMock
 import httpx
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from daynimal.db.models import Base
 
 
 class MockResponse:
@@ -126,3 +130,27 @@ def mock_commons_client(mock_http_client):
     mock_http_client.add_response("commons.wikimedia.org", COMMONS_CATEGORY_CANIS_LUPUS)
 
     return mock_http_client
+
+
+@pytest.fixture
+def session():
+    """
+    Provide a clean in-memory SQLite database session for each test.
+
+    Creates all tables, yields the session for testing, then tears down.
+    """
+    # Create in-memory SQLite database
+    engine = create_engine("sqlite:///:memory:", echo=False)
+
+    # Create all tables
+    Base.metadata.create_all(engine)
+
+    # Create session
+    SessionLocal = sessionmaker(bind=engine)
+    session = SessionLocal()
+
+    yield session
+
+    # Cleanup
+    session.close()
+    Base.metadata.drop_all(engine)

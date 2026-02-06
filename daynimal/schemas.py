@@ -197,7 +197,10 @@ class CommonsImage:
         MUST be displayed when showing this image in a commercial app.
         """
         author_str = self.author or "Unknown author"
-        license_str = self.license.value if self.license else "CC-BY-SA"
+        # Handle both enum and string (from cache)
+        license_str = (
+            self.license.value if hasattr(self.license, "value") else self.license
+        ) if self.license else "CC-BY-SA"
         return (
             f'"{self.filename}" by {author_str}, via Wikimedia Commons ({license_str})'
         )
@@ -205,7 +208,10 @@ class CommonsImage:
     def get_attribution_html(self) -> str:
         """Generate HTML attribution with proper links."""
         author_str = self.author or "Unknown author"
-        license_str = self.license.value if self.license else "CC-BY-SA"
+        # Handle both enum and string (from cache)
+        license_str = (
+            self.license.value if hasattr(self.license, "value") else self.license
+        ) if self.license else "CC-BY-SA"
         return (
             f'<a href="{self.commons_page_url}">{self.filename}</a> '
             f"by {author_str}, via "
@@ -250,6 +256,10 @@ class AnimalInfo:
 
     # Enrichment status
     is_enriched: bool = False
+
+    # History metadata (populated when retrieved from history)
+    viewed_at: datetime | None = None
+    command: str | None = None
 
     @property
     def display_name(self) -> str:

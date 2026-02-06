@@ -112,3 +112,37 @@ class EnrichmentCacheModel(Base):
     __table_args__ = (
         Index("ix_cache_taxon_source", "taxon_id", "source", unique=True),
     )
+
+
+class AnimalHistoryModel(Base):
+    """
+    History of viewed animals.
+
+    Tracks each time an animal is displayed, with metadata about
+    how it was viewed (command used).
+    """
+
+    __tablename__ = "animal_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    taxon_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("taxa.taxon_id", ondelete="CASCADE"), nullable=False
+    )
+
+    # When the animal was viewed
+    viewed_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    # Which command was used to view it
+    command: Mapped[str | None] = mapped_column(
+        String(50)
+    )  # 'today', 'random', 'info', 'search'
+
+    # Relationship to taxon
+    taxon: Mapped["TaxonModel"] = relationship()
+
+    __table_args__ = (
+        Index("ix_history_viewed_at", "viewed_at"),
+        Index("ix_history_taxon_id", "taxon_id"),
+    )

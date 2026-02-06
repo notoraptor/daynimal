@@ -14,7 +14,12 @@ from datetime import datetime
 from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session
 
-from daynimal.db.models import TaxonModel, VernacularNameModel, EnrichmentCacheModel
+from daynimal.db.models import (
+    TaxonModel,
+    VernacularNameModel,
+    EnrichmentCacheModel,
+    AnimalHistoryModel,
+)
 from daynimal.db.session import get_session
 from daynimal.schemas import (
     AnimalInfo,
@@ -528,3 +533,79 @@ class AnimalRepository:
             if species
             else "N/A",
         }
+
+    # --- History ---
+
+    def add_to_history(
+        self, taxon_id: int, command: str | None = None
+    ) -> AnimalHistoryModel:
+        """
+        Add an animal view to the history.
+
+        Args:
+            taxon_id: GBIF taxon key
+            command: Command used to view the animal ('today', 'random', 'info', 'search')
+
+        Returns:
+            The created history entry
+        """
+        entry = AnimalHistoryModel(
+            taxon_id=taxon_id, viewed_at=datetime.utcnow(), command=command
+        )
+        self.session.add(entry)
+        self.session.commit()
+        return entry
+
+    def get_history(
+        self, page: int = 1, per_page: int = 10
+    ) -> tuple[list[AnimalInfo], int]:
+        """
+        Get history of viewed animals with pagination.
+
+        Args:
+            page: Page number (1-indexed)
+            per_page: Number of entries per page
+
+        Returns:
+            Tuple of (list of AnimalInfo objects, total count)
+        """
+        # Get total count
+        total = self.session.query(AnimalHistoryModel).count()
+
+        # Get paginated results
+        offset = (page - 1) * per_page
+        history_entries = (
+            self.session.query(AnimalHistoryModel)
+            .order_by(AnimalHistoryModel.viewed_at.desc())
+            .offset(offset)
+            .limit(per_page)
+            .all()
+        )
+
+        # Convert to AnimalInfo objects
+        results = []
+        for entry in history_entries:
+            taxon = self._model_to_taxon(entry.taxon)
+            animal = AnimalInfo(taxon=taxon)
+            # Attach history metadata
+            animal.viewed_at = entry.viewed_at
+            animal.command = entry.command
+            results.append(animal)
+
+        return results, total
+
+    def get_history_count(self) -> int:
+        """Get total number of history entries."""
+        return self.session.query(AnimalHistoryModel).count()
+
+    def clear_history(self) -> int:
+        """
+        Clear all history entries.
+
+        Returns:
+            Number of entries deleted
+        """
+        count = self.session.query(AnimalHistoryModel).count()
+        self.session.query(AnimalHistoryModel).delete()
+        self.session.commit()
+        return count
