@@ -5,7 +5,7 @@ Usage:
     daynimal                  Show today's animal
     daynimal random           Show a random animal
     daynimal search <query>   Search for animals
-    daynimal info <name>      Get info about a specific animal
+    daynimal info <id|name>   Get info about a specific animal by ID or name
     daynimal stats            Show database statistics
     daynimal credits          Show full legal credits and licenses
 """
@@ -27,6 +27,7 @@ def print_animal(animal: AnimalInfo):
     print("\n" + "=" * 60)
     print(f"  {animal.display_name.upper()}")
     print(f"  {animal.taxon.scientific_name}")
+    print(f"  ID: {animal.taxon.taxon_id}")
     print("=" * 60)
 
     # Classification
