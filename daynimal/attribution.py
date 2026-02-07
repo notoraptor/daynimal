@@ -5,6 +5,7 @@ This module ensures proper attribution for all data sources
 as required by their respective licenses:
 
 - GBIF Backbone: CC-BY 4.0 (attribution required)
+- TAXREF: Etalab Open License 2.0 (attribution required, compatible with CC-BY)
 - Wikidata: CC0 (no attribution required, but recommended)
 - Wikipedia: CC-BY-SA 4.0 (attribution required, share-alike)
 - Wikimedia Commons: varies (CC-BY, CC-BY-SA, CC0, Public Domain)
@@ -160,6 +161,15 @@ GBIF_ATTRIBUTION = AttributionInfo(
     source_url="https://doi.org/10.15468/39omei",
 )
 
+TAXREF_ATTRIBUTION = AttributionInfo(
+    source_name="TAXREF",
+    license=License.CC_BY,  # Etalab Open License 2.0 is compatible with CC-BY
+    license_url="https://github.com/etalab/licence-ouverte/blob/master/LO.md",
+    author="Muséum national d'Histoire naturelle",
+    title="TAXREF v17",
+    source_url="https://inpn.mnhn.fr/",
+)
+
 WIKIDATA_ATTRIBUTION = AttributionInfo(
     source_name="Wikidata",
     license=License.CC0,
@@ -247,19 +257,25 @@ This application uses data from the following sources:
    https://doi.org/10.15468/39omei
    https://creativecommons.org/licenses/by/4.0/
 
-2. WIKIDATA
+2. TAXREF (French Vernacular Names)
+   "TAXREF v17" by Muséum national d'Histoire naturelle
+   Licensed under Etalab Open License 2.0 (compatible with CC-BY 4.0)
+   https://inpn.mnhn.fr/
+   https://github.com/etalab/licence-ouverte/blob/master/LO.md
+
+3. WIKIDATA
    Data from Wikidata, the free knowledge base
    Licensed under CC0 (Public Domain)
    https://www.wikidata.org/
    https://creativecommons.org/publicdomain/zero/1.0/
 
-3. WIKIPEDIA
+4. WIKIPEDIA
    Text content from Wikipedia, the free encyclopedia
    Licensed under CC-BY-SA 4.0
    Individual article URLs provided with each entry
    https://creativecommons.org/licenses/by-sa/4.0/
 
-4. WIKIMEDIA COMMONS
+5. WIKIMEDIA COMMONS
    Images from Wikimedia Commons
    Various licenses (CC-BY, CC-BY-SA, CC0, Public Domain)
    Individual image credits and licenses provided with each image

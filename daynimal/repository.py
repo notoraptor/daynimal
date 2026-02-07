@@ -10,6 +10,7 @@ It handles:
 
 import json
 import logging
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, UTC
 
@@ -21,6 +22,7 @@ from daynimal.db.models import (
     VernacularNameModel,
     EnrichmentCacheModel,
     AnimalHistoryModel,
+    FavoriteModel,
 )
 from daynimal.db.session import get_session
 from daynimal.schemas import (
@@ -37,6 +39,18 @@ from daynimal.sources.commons import CommonsAPI
 
 # Logger for this module
 logger = logging.getLogger(__name__)
+
+
+def remove_accents(text: str) -> str:
+    """
+    Remove accents from text for better search matching.
+
+    Examples:
+        guépard -> guepard
+        café -> cafe
+    """
+    nfd = unicodedata.normalize('NFD', text)
+    return ''.join(char for char in nfd if unicodedata.category(char) != 'Mn')
 
 
 class AnimalRepository:
@@ -154,36 +168,100 @@ class AnimalRepository:
         """
         # Try FTS5 first (fast full-text search)
         try:
-            # FTS5 MATCH query - supports prefixes and relevance ranking
-            fts_results = self.session.execute(
-                text("""
-                    SELECT taxon_id
-                    FROM taxa_fts
-                    WHERE taxa_fts MATCH :query
-                    ORDER BY rank
-                    LIMIT :limit
-                """),
-                {"query": query, "limit": limit},
-            ).fetchall()
+            # Try with original query first, then with normalized (no accents) version
+            queries_to_try = [query]
+            normalized = remove_accents(query)
+            if normalized != query:
+                queries_to_try.append(normalized)
 
-            if fts_results:
-                # Get taxa by IDs preserving FTS5 ranking order
-                taxon_ids = [row[0] for row in fts_results]
-                taxon_models = (
-                    self.session.query(TaxonModel)
-                    .filter(TaxonModel.taxon_id.in_(taxon_ids))
-                    .all()
-                )
+            all_results = []
+            seen_ids = set()
 
-                # Preserve FTS5 ranking order
-                id_to_model = {m.taxon_id: m for m in taxon_models}
-                results = []
-                for taxon_id in taxon_ids:
-                    if taxon_id in id_to_model:
-                        taxon = self._model_to_taxon(id_to_model[taxon_id])
-                        results.append(AnimalInfo(taxon=taxon))
+            for search_query in queries_to_try:
+                # Try exact match first, then with wildcard
+                for use_wildcard in [False, True]:
+                    if use_wildcard:
+                        fts_query = f"{search_query}*"
+                    else:
+                        fts_query = search_query
 
-                return results
+                    fts_results = self.session.execute(
+                        text("""
+                            SELECT taxon_id
+                            FROM taxa_fts
+                            WHERE taxa_fts MATCH :query
+                            ORDER BY rank
+                            LIMIT :limit
+                        """),
+                        {"query": fts_query, "limit": limit},
+                    ).fetchall()
+
+                    if fts_results:
+                        # Get taxa by IDs preserving FTS5 ranking order
+                        taxon_ids = [row[0] for row in fts_results if row[0] not in seen_ids]
+                        if not taxon_ids:
+                            continue
+
+                        seen_ids.update(taxon_ids)
+
+                        taxon_models = (
+                            self.session.query(TaxonModel)
+                            .filter(TaxonModel.taxon_id.in_(taxon_ids))
+                            .all()
+                        )
+
+                        # Preserve FTS5 ranking order
+                        id_to_model = {m.taxon_id: m for m in taxon_models}
+                        for taxon_id in taxon_ids:
+                            if taxon_id in id_to_model:
+                                model = id_to_model[taxon_id]
+                                # Filter: name must actually contain the search term
+                                search_lower = search_query.lower()
+                                name_matches = (
+                                    search_lower in model.scientific_name.lower()
+                                    or (model.canonical_name and search_lower in model.canonical_name.lower())
+                                )
+
+                                # Check vernacular names
+                                if not name_matches and model.vernacular_names:
+                                    for vn in model.vernacular_names:
+                                        if vn.name and search_lower in vn.name.lower():
+                                            name_matches = True
+                                            break
+
+                                if name_matches:
+                                    taxon = self._model_to_taxon(model)
+                                    all_results.append(AnimalInfo(taxon=taxon))
+
+                        # If exact match found results, don't try wildcard
+                        if all_results and not use_wildcard:
+                            break
+
+                # If we found results, don't try the next query variant
+                if all_results:
+                    break
+
+            if all_results:
+                # Prioritize results based on:
+                # 1. Species rank over other ranks
+                # 2. Vernacular name matches over scientific name matches
+                species_results = [r for r in all_results if r.taxon.rank == TaxonomicRank.SPECIES]
+
+                # If we have species, prefer them
+                if species_results:
+                    # If the original query is very short (< 7 chars), it's likely an incomplete common name
+                    # Return only species to avoid genus/family names (e.g., "guepar" should find guepard species, not Guepar genus)
+                    if len(query) < 7:
+                        return species_results[:limit]
+                    # Otherwise return species first, then others
+                    other_results = [r for r in all_results if r.taxon.rank != TaxonomicRank.SPECIES]
+                    return (species_results + other_results)[:limit]
+
+                # If no species found but query is short, it's probably wrong - return empty
+                if len(query) < 7:
+                    return []
+
+                return all_results[:limit]
 
         except Exception:
             # FTS table doesn't exist - fall back to old method
@@ -604,11 +682,21 @@ class AnimalRepository:
                 vernacular_names[lang] = []
             vernacular_names[lang].append(vn.name)
 
+        # Try to convert rank to enum, fallback to None for invalid ranks
+        rank = None
+        if model.rank:
+            try:
+                rank = TaxonomicRank(model.rank)
+            except ValueError:
+                # Rank not in enum (e.g., "unranked", "variety", "form")
+                # Keep as None
+                pass
+
         return Taxon(
             taxon_id=model.taxon_id,
             scientific_name=model.scientific_name,
             canonical_name=model.canonical_name,
-            rank=TaxonomicRank(model.rank) if model.rank else None,
+            rank=rank,
             kingdom=model.kingdom,
             phylum=model.phylum,
             class_=model.class_,
@@ -683,10 +771,13 @@ class AnimalRepository:
         # Get total count
         total = self.session.query(AnimalHistoryModel).count()
 
-        # Get paginated results
+        # Get paginated results with eager loading of taxon
+        from sqlalchemy.orm import joinedload
+
         offset = (page - 1) * per_page
         history_entries = (
             self.session.query(AnimalHistoryModel)
+            .options(joinedload(AnimalHistoryModel.taxon))
             .order_by(AnimalHistoryModel.viewed_at.desc())
             .offset(offset)
             .limit(per_page)
@@ -696,12 +787,21 @@ class AnimalRepository:
         # Convert to AnimalInfo objects
         results = []
         for entry in history_entries:
-            taxon = self._model_to_taxon(entry.taxon)
-            animal = AnimalInfo(taxon=taxon)
-            # Attach history metadata
-            animal.viewed_at = entry.viewed_at
-            animal.command = entry.command
-            results.append(animal)
+            # Skip entries with missing taxon (deleted from database)
+            if not entry.taxon:
+                continue
+
+            try:
+                taxon = self._model_to_taxon(entry.taxon)
+                animal = AnimalInfo(taxon=taxon)
+                # Attach history metadata
+                animal.viewed_at = entry.viewed_at
+                animal.command = entry.command
+                results.append(animal)
+            except Exception as e:
+                # Log and skip corrupted entries
+                logger.warning(f"Skipping corrupted history entry {entry.id}: {e}")
+                continue
 
         return results, total
 
@@ -767,3 +867,118 @@ class AnimalRepository:
             self.session.add(setting)
 
         self.session.commit()
+
+    # --- Favorites methods ---
+
+    def add_favorite(self, taxon_id: int) -> bool:
+        """
+        Add an animal to favorites.
+
+        Args:
+            taxon_id: GBIF taxon ID
+
+        Returns:
+            True if added, False if already in favorites
+        """
+        # Check if already in favorites
+        existing = (
+            self.session.query(FavoriteModel)
+            .filter(FavoriteModel.taxon_id == taxon_id)
+            .first()
+        )
+
+        if existing:
+            return False
+
+        # Add to favorites
+        favorite = FavoriteModel(taxon_id=taxon_id)
+        self.session.add(favorite)
+        self.session.commit()
+        return True
+
+    def remove_favorite(self, taxon_id: int) -> bool:
+        """
+        Remove an animal from favorites.
+
+        Args:
+            taxon_id: GBIF taxon ID
+
+        Returns:
+            True if removed, False if not in favorites
+        """
+        favorite = (
+            self.session.query(FavoriteModel)
+            .filter(FavoriteModel.taxon_id == taxon_id)
+            .first()
+        )
+
+        if not favorite:
+            return False
+
+        self.session.delete(favorite)
+        self.session.commit()
+        return True
+
+    def is_favorite(self, taxon_id: int) -> bool:
+        """
+        Check if an animal is in favorites.
+
+        Args:
+            taxon_id: GBIF taxon ID
+
+        Returns:
+            True if in favorites, False otherwise
+        """
+        return (
+            self.session.query(FavoriteModel)
+            .filter(FavoriteModel.taxon_id == taxon_id)
+            .first()
+        ) is not None
+
+    def get_favorites(
+        self, page: int = 1, per_page: int = 50
+    ) -> tuple[list[AnimalInfo], int]:
+        """
+        Get paginated list of favorite animals.
+
+        Args:
+            page: Page number (1-indexed)
+            per_page: Number of results per page
+
+        Returns:
+            Tuple of (list of AnimalInfo, total count)
+        """
+        # Get total count
+        total = self.session.query(FavoriteModel).count()
+
+        if total == 0:
+            return ([], 0)
+
+        # Get paginated favorites (ordered by most recently added)
+        offset = (page - 1) * per_page
+        favorites = (
+            self.session.query(FavoriteModel)
+            .order_by(FavoriteModel.added_at.desc())
+            .offset(offset)
+            .limit(per_page)
+            .all()
+        )
+
+        # Convert to AnimalInfo
+        animals = []
+        for fav in favorites:
+            taxon_model = fav.taxon
+            taxon = self._model_to_taxon(taxon_model)
+            animal = AnimalInfo(taxon=taxon)
+            animals.append(animal)
+
+        return (animals, total)
+
+    def get_favorites_count(self) -> int:
+        """
+        Get total number of favorites.
+
+        Returns:
+            Total count of favorites
+        """
+        return self.session.query(FavoriteModel).count()

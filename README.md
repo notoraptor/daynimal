@@ -7,10 +7,11 @@
 - **Daily Animal**: Get a deterministic animal of the day (changes daily based on date seed)
 - **Random Discovery**: Explore random animals from the database
 - **Rich Information**: Combines GBIF taxonomy with real-time data from Wikidata, Wikipedia, and Wikimedia Commons
+- **French Names**: Optional import of ~49,000 French vernacular names from TAXREF (official French reference)
 - **Smart Search**: Full-text search (FTS5) across scientific and vernacular names in multiple languages
 - **Offline-First**: Local SQLite database with ~1.5M animal taxa (or minimal 127K species)
-- **Legal Compliance**: Proper attribution for all data sources (GBIF CC-BY 4.0, Wikipedia/Commons CC-BY-SA)
-- **History Tracking**: Keep track of all animals you've viewed with timestamps and pagination support
+- **Legal Compliance**: Proper attribution for all data sources (GBIF CC-BY 4.0, TAXREF Etalab 2.0, Wikipedia/Commons CC-BY-SA)
+- **History & Favorites**: Track viewed animals and mark favorites with full pagination support
 - **GUI Application**: Cross-platform desktop/mobile app built with Flet (Flutter for Python)
 
 ## Installation
@@ -39,6 +40,17 @@ uv run import-gbif-fast
 ```bash
 uv run init-fts
 ```
+
+5. (Optional) Import French vernacular names from TAXREF:
+```bash
+# Download TAXREF v18 from https://www.patrinat.fr/ and place in data/ folder
+uv run import-taxref-french-fast --file data/TAXREFv18.txt
+
+# Rebuild FTS5 index to include French names
+uv run init-fts
+```
+
+See [`docs/TAXREF.md`](docs/TAXREF.md) for complete TAXREF documentation.
 
 ## Running the Application
 
@@ -153,7 +165,10 @@ The application follows a three-layer architecture:
 
 This project uses data from multiple sources:
 
-- **GBIF Backbone Taxonomy** (CC-BY 4.0) - Base taxonomic data
+- **GBIF Backbone Taxonomy** (CC-BY 4.0) - Base taxonomic data (~1.5M animal taxa)
+- **TAXREF** (Etalab Open License 2.0) - French vernacular names (~49,000 names, optional)
+  - Official French taxonomic reference by Muséum national d'Histoire naturelle
+  - See [`docs/TAXREF.md`](docs/TAXREF.md) for import instructions
 - **Wikidata** (CC0) - Species properties (IUCN status, mass, lifespan)
 - **Wikipedia** (CC-BY-SA) - Article extracts and descriptions
 - **Wikimedia Commons** (CC-BY-SA) - Images with licensing metadata
@@ -172,11 +187,16 @@ daynimal/
 │   ├── main.py        # CLI entry point
 │   ├── repository.py  # Data access layer
 │   └── schemas.py     # Data models
+├── data/              # Raw data files (GBIF, TAXREF) - gitignored
+├── tmp/               # Temporary/decompressed files - gitignored
 ├── debug/             # Debugging tools
 │   ├── run_app_debug.py    # Debug launcher
 │   ├── debug_filter.py     # Log filtering
 │   ├── view_logs.py        # Log viewer
 │   └── README.md           # Debug documentation
+├── docs/              # Documentation
+│   ├── TAXREF.md      # TAXREF import guide
+│   └── ...            # Other guides
 ├── tests/             # Test suite
 ├── logs/              # Application logs (created at runtime)
 ├── CLAUDE.md          # Claude Code project instructions

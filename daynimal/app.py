@@ -67,6 +67,7 @@ class DaynimalApp:
                     icon=ft.Icons.CALENDAR_TODAY, label="Aujourd'hui"
                 ),
                 ft.NavigationBarDestination(icon=ft.Icons.HISTORY, label="Historique"),
+                ft.NavigationBarDestination(icon=ft.Icons.FAVORITE, label="Favoris"),
                 ft.NavigationBarDestination(icon=ft.Icons.SEARCH, label="Recherche"),
                 ft.NavigationBarDestination(
                     icon=ft.Icons.BAR_CHART, label="Statistiques"
@@ -297,7 +298,7 @@ class DaynimalApp:
         """Handle navigation bar changes."""
         selected_index = e.control.selected_index
 
-        view_names = ["Today", "History", "Search", "Stats", "Settings"]
+        view_names = ["Today", "History", "Favorites", "Search", "Stats", "Settings"]
         if self.debugger and selected_index < len(view_names):
             self.debugger.log_view_change(view_names[selected_index])
 
@@ -306,10 +307,12 @@ class DaynimalApp:
         elif selected_index == 1:
             self.show_history_view()
         elif selected_index == 2:
-            self.show_search_view()
+            self.show_favorites_view()
         elif selected_index == 3:
-            self.show_stats_view()
+            self.show_search_view()
         elif selected_index == 4:
+            self.show_stats_view()
+        elif selected_index == 5:
             self.show_settings_view()
 
     # ============================================
@@ -546,6 +549,36 @@ class DaynimalApp:
             ft.Text(f"ID: {animal.taxon.taxon_id}", size=14, color=ft.Colors.GREY_500)
         )
 
+        # Favorite button
+        is_favorite = False
+        if self.repository:
+            is_favorite = self.repository.is_favorite(animal.taxon.taxon_id)
+
+        favorite_button = ft.IconButton(
+            icon=ft.Icons.FAVORITE if is_favorite else ft.Icons.FAVORITE_BORDER,
+            icon_color=ft.Colors.RED if is_favorite else ft.Colors.GREY_500,
+            icon_size=32,
+            tooltip="Ajouter aux favoris" if not is_favorite else "Retirer des favoris",
+            data=animal.taxon.taxon_id,
+            on_click=self.on_favorite_toggle,
+        )
+
+        controls.append(
+            ft.Container(
+                content=ft.Row(
+                    controls=[
+                        favorite_button,
+                        ft.Text(
+                            "Ajouter aux favoris" if not is_favorite else "Retirer des favoris",
+                            size=14,
+                        ),
+                    ],
+                    spacing=5,
+                ),
+                padding=ft.Padding(top=10, bottom=10, left=0, right=0),
+            )
+        )
+
         controls.append(ft.Divider())
 
         # Classification
@@ -630,10 +663,8 @@ class DaynimalApp:
                 ft.Text("Description Wikipedia", size=20, weight=ft.FontWeight.BOLD)
             )
 
-            # Truncate long descriptions
+            # Display full introduction (exintro from Wikipedia API)
             description = animal.wikipedia.summary
-            if len(description) > 500:
-                description = description[:500] + "..."
 
             controls.append(ft.Text(description, size=14))
 
@@ -982,6 +1013,354 @@ class DaynimalApp:
             self.page.update()
 
     # ============================================
+    # FAVORITES VIEW
+    # ============================================
+
+    def show_favorites_view(self):
+        """Show the Favorites view."""
+        self.current_view = "favorites"
+
+        # Header
+        header = ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Text(
+                        "⭐ Favoris",
+                        size=28,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.PRIMARY,
+                    )
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            padding=20,
+        )
+
+        # Favorites list container
+        self.favorites_list = ft.Column(controls=[], spacing=10)
+
+        # Update content
+        self.content_container.controls = [
+            header,
+            ft.Divider(),
+            ft.Container(content=self.favorites_list, padding=20, expand=True),
+        ]
+        self.page.update()
+
+        # Load favorites asynchronously
+        asyncio.create_task(self.load_favorites())
+
+    async def load_favorites(self):
+        """Load favorites from repository."""
+        # Show loading
+        self.favorites_list.controls = [
+            ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.ProgressRing(width=60, height=60),
+                        ft.Text("Chargement des favoris...", size=18),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20,
+                ),
+                padding=40,
+            )
+        ]
+        self.page.update()
+        await asyncio.sleep(0.1)
+
+        try:
+            # Fetch favorites
+            def fetch_favorites():
+                # Create repository if needed
+                if self.repository is None:
+                    self.repository = AnimalRepository()
+                return self.repository.get_favorites(page=1, per_page=50)
+
+            favorites_items, total = await asyncio.to_thread(fetch_favorites)
+
+            if not favorites_items:
+                # Empty favorites
+                self.favorites_list.controls = [
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Icon(
+                                    ft.Icons.FAVORITE, size=80, color=ft.Colors.GREY_500
+                                ),
+                                ft.Text(
+                                    "Aucun favori",
+                                    size=20,
+                                    weight=ft.FontWeight.BOLD,
+                                ),
+                                ft.Text(
+                                    "Ajoutez des animaux à vos favoris",
+                                    size=14,
+                                    color=ft.Colors.GREY_500,
+                                ),
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=10,
+                        ),
+                        padding=40,
+                    )
+                ]
+            else:
+                # Display favorites items
+                controls = [
+                    ft.Text(
+                        f"{total} favori(s)",
+                        size=16,
+                        color=ft.Colors.GREY_500,
+                    )
+                ]
+
+                for item in favorites_items:
+                    card = ft.Card(
+                        content=ft.Container(
+                            content=ft.Column(
+                                controls=[
+                                    ft.Row(
+                                        controls=[
+                                            ft.Text(
+                                                item.taxon.canonical_name
+                                                or item.taxon.scientific_name,
+                                                size=18,
+                                                weight=ft.FontWeight.BOLD,
+                                            )
+                                        ]
+                                    ),
+                                    ft.Text(
+                                        item.taxon.scientific_name,
+                                        size=14,
+                                        italic=True,
+                                        color=ft.Colors.BLUE,
+                                    ),
+                                    ft.Row(
+                                        controls=[
+                                            ft.Icon(
+                                                ft.Icons.FAVORITE,
+                                                size=16,
+                                                color=ft.Colors.RED,
+                                            ),
+                                            ft.Text(
+                                                "Favori",
+                                                size=12,
+                                                color=ft.Colors.GREY_500,
+                                            ),
+                                            ft.Container(expand=True),  # Spacer
+                                            ft.Icon(
+                                                ft.Icons.ARROW_FORWARD,
+                                                size=16,
+                                                color=ft.Colors.GREY_400,
+                                            ),
+                                        ],
+                                        spacing=5,
+                                    ),
+                                ],
+                                spacing=5,
+                            ),
+                            padding=15,
+                            data=item.taxon.taxon_id,  # Store taxon_id for click handler
+                            on_click=self.on_favorite_item_click,
+                            ink=True,  # Add ink ripple effect on click
+                        )
+                    )
+                    controls.append(card)
+
+                self.favorites_list.controls = controls
+
+        except Exception as error:
+            # Log error with full traceback
+            error_msg = f"Error in load_favorites: {error}"
+            error_traceback = traceback.format_exc()
+
+            if self.debugger:
+                self.debugger.log_error("load_favorites", error)
+                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
+            else:
+                # Fallback: print to console if no debugger
+                print(f"ERROR: {error_msg}")
+                print(f"Traceback:\n{error_traceback}")
+
+            # Show error
+            self.favorites_list.controls = [
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
+                            ft.Text(
+                                "Erreur lors du chargement",
+                                size=20,
+                                color=ft.Colors.ERROR,
+                            ),
+                            ft.Text(str(error), size=14),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=40,
+                )
+            ]
+
+        finally:
+            self.page.update()
+
+    async def on_favorite_item_click(self, e):
+        """Handle click on a favorite item."""
+        taxon_id = e.control.data
+        asyncio.create_task(self.load_animal_from_favorite(taxon_id))
+
+    async def load_animal_from_favorite(self, taxon_id: int):
+        """Load and display an animal from favorites."""
+        # Switch to today view
+        self.nav_bar.selected_index = 0
+        self.show_today_view()
+
+        # Show loading in today view
+        self.today_animal_container.controls = [
+            ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.ProgressRing(width=60, height=60),
+                        ft.Text("Chargement de l'animal...", size=18),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20,
+                ),
+                padding=40,
+            )
+        ]
+        self.page.update()
+        await asyncio.sleep(0.1)
+
+        try:
+            # Fetch animal
+            def fetch_animal():
+                if self.repository is None:
+                    self.repository = AnimalRepository()
+                return self.repository.get_by_id(taxon_id, enrich=True)
+
+            animal = await asyncio.to_thread(fetch_animal)
+
+            if animal:
+                self.current_animal = animal
+                self.current_image_index = 0  # Reset carousel
+                self.display_animal_in_today_view(animal)
+            else:
+                self.today_animal_container.controls = [
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
+                                ft.Text(
+                                    "Animal introuvable",
+                                    size=20,
+                                    color=ft.Colors.ERROR,
+                                ),
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=10,
+                        ),
+                        padding=40,
+                    )
+                ]
+
+        except Exception as error:
+            error_msg = f"Error in load_animal_from_favorite: {error}"
+            error_traceback = traceback.format_exc()
+
+            if self.debugger:
+                self.debugger.log_error("load_animal_from_favorite", error)
+                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
+            else:
+                print(f"ERROR: {error_msg}")
+                print(f"Traceback:\n{error_traceback}")
+
+            self.today_animal_container.controls = [
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
+                            ft.Text(
+                                "Erreur lors du chargement",
+                                size=20,
+                                color=ft.Colors.ERROR,
+                            ),
+                            ft.Text(str(error), size=14),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=40,
+                )
+            ]
+
+        finally:
+            self.page.update()
+
+    def on_favorite_toggle(self, e):
+        """Toggle favorite status for an animal."""
+        taxon_id = e.control.data
+
+        if self.repository is None:
+            self.repository = AnimalRepository()
+
+        is_favorite = self.repository.is_favorite(taxon_id)
+
+        try:
+            if is_favorite:
+                # Remove from favorites
+                success = self.repository.remove_favorite(taxon_id)
+                if success:
+                    # Show snackbar
+                    snack_bar = ft.SnackBar(
+                        content=ft.Text("Retiré des favoris"),
+                    )
+                    self.page.snack_bar = snack_bar
+                    snack_bar.open = True
+                    self.page.update()
+
+                    # Refresh display if in today view
+                    if self.current_view == "today" and self.current_animal:
+                        self.display_animal_in_today_view(self.current_animal)
+            else:
+                # Add to favorites
+                success = self.repository.add_favorite(taxon_id)
+                if success:
+                    # Show snackbar
+                    snack_bar = ft.SnackBar(
+                        content=ft.Text("Ajouté aux favoris"),
+                    )
+                    self.page.snack_bar = snack_bar
+                    snack_bar.open = True
+                    self.page.update()
+
+                    # Refresh display if in today view
+                    if self.current_view == "today" and self.current_animal:
+                        self.display_animal_in_today_view(self.current_animal)
+
+        except Exception as error:
+            error_msg = f"Error in on_favorite_toggle: {error}"
+            error_traceback = traceback.format_exc()
+
+            if self.debugger:
+                self.debugger.log_error("on_favorite_toggle", error)
+                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
+            else:
+                print(f"ERROR: {error_msg}")
+                print(f"Traceback:\n{error_traceback}")
+
+            # Show error snackbar
+            snack_bar = ft.SnackBar(
+                content=ft.Text(f"Erreur: {str(error)}"),
+                bgcolor=ft.Colors.ERROR,
+            )
+            self.page.snack_bar = snack_bar
+            snack_bar.open = True
+            self.page.update()
+
+    # ============================================
     # SEARCH VIEW
     # ============================================
 
@@ -1047,7 +1426,7 @@ class DaynimalApp:
             ft.Divider(),
             ft.Container(
                 content=self.search_field,
-                padding=ft.padding.only(left=20, right=20, top=10),
+                padding=ft.Padding(left=20, right=20, top=10, bottom=0),
             ),
             ft.Container(content=self.search_results, padding=20, expand=True),
         ]
@@ -1162,19 +1541,26 @@ class DaynimalApp:
                     if animal.taxon.vernacular_names:
                         first_lang = list(animal.taxon.vernacular_names.keys())[0]
                         names = animal.taxon.vernacular_names[first_lang][:2]
-                        vernacular = ", ".join(names)
-                        if len(animal.taxon.vernacular_names[first_lang]) > 2:
-                            vernacular += "..."
+                        # Filter out None values
+                        names = [n for n in names if n is not None]
+                        if names:
+                            vernacular = ", ".join(names)
+                            if len(animal.taxon.vernacular_names[first_lang]) > 2:
+                                vernacular += "..."
 
                     card = ft.Card(
                         content=ft.Container(
                             content=ft.Column(
                                 controls=[
-                                    ft.Text(
-                                        animal.taxon.canonical_name
-                                        or animal.taxon.scientific_name,
-                                        size=18,
-                                        weight=ft.FontWeight.BOLD,
+                                    ft.Row(
+                                        controls=[
+                                            ft.Text(
+                                                animal.taxon.canonical_name
+                                                or animal.taxon.scientific_name,
+                                                size=18,
+                                                weight=ft.FontWeight.BOLD,
+                                            )
+                                        ]
                                     ),
                                     ft.Text(
                                         animal.taxon.scientific_name,
@@ -1182,17 +1568,31 @@ class DaynimalApp:
                                         italic=True,
                                         color=ft.Colors.BLUE,
                                     ),
-                                    ft.Text(
-                                        vernacular
-                                        if vernacular
-                                        else "Pas de nom vernaculaire",
-                                        size=12,
-                                        color=ft.Colors.GREY_500,
+                                    ft.Row(
+                                        controls=[
+                                            ft.Text(
+                                                vernacular
+                                                if vernacular
+                                                else "Pas de nom vernaculaire",
+                                                size=12,
+                                                color=ft.Colors.GREY_500,
+                                            ),
+                                            ft.Container(expand=True),  # Spacer
+                                            ft.Icon(
+                                                ft.Icons.ARROW_FORWARD,
+                                                size=16,
+                                                color=ft.Colors.GREY_400,
+                                            ),
+                                        ],
+                                        spacing=5,
                                     ),
                                 ],
                                 spacing=5,
                             ),
                             padding=15,
+                            data=animal.taxon.taxon_id,  # Store taxon_id for click handler
+                            on_click=self.on_search_result_click,
+                            ink=True,  # Add ink ripple effect on click
                         )
                     )
                     controls.append(card)
@@ -1220,6 +1620,102 @@ class DaynimalApp:
                             ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
                             ft.Text(
                                 "Erreur lors de la recherche",
+                                size=20,
+                                color=ft.Colors.ERROR,
+                            ),
+                            ft.Text(str(error), size=14),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=40,
+                )
+            ]
+
+        finally:
+            self.page.update()
+
+    async def on_search_result_click(self, e):
+        """Handle click on a search result."""
+        taxon_id = e.control.data
+        asyncio.create_task(self.load_animal_from_search(taxon_id))
+
+    async def load_animal_from_search(self, taxon_id: int):
+        """Load and display an animal from search results."""
+        # Switch to today view
+        self.nav_bar.selected_index = 0
+        self.show_today_view()
+
+        # Show loading in today view
+        self.today_animal_container.controls = [
+            ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.ProgressRing(width=60, height=60),
+                        ft.Text("Chargement de l'animal...", size=18),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20,
+                ),
+                padding=40,
+            )
+        ]
+        self.page.update()
+        await asyncio.sleep(0.1)
+
+        try:
+            # Fetch animal
+            def fetch_animal():
+                if self.repository is None:
+                    self.repository = AnimalRepository()
+                return self.repository.get_by_id(taxon_id, enrich=True)
+
+            animal = await asyncio.to_thread(fetch_animal)
+
+            if animal:
+                self.current_animal = animal
+                self.current_image_index = 0  # Reset carousel
+                self.display_animal_in_today_view(animal)
+                # Add to history
+                if self.repository:
+                    self.repository.add_to_history(taxon_id, command="search")
+            else:
+                self.today_animal_container.controls = [
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
+                                ft.Text(
+                                    "Animal introuvable",
+                                    size=20,
+                                    color=ft.Colors.ERROR,
+                                ),
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=10,
+                        ),
+                        padding=40,
+                    )
+                ]
+
+        except Exception as error:
+            error_msg = f"Error in load_animal_from_search: {error}"
+            error_traceback = traceback.format_exc()
+
+            if self.debugger:
+                self.debugger.log_error("load_animal_from_search", error)
+                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
+            else:
+                print(f"ERROR: {error_msg}")
+                print(f"Traceback:\n{error_traceback}")
+
+            self.today_animal_container.controls = [
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
+                            ft.Text(
+                                "Erreur lors du chargement",
                                 size=20,
                                 color=ft.Colors.ERROR,
                             ),

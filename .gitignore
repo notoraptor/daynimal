@@ -9,7 +9,14 @@ wheels/
 # Virtual environments
 .venv
 .idea
-data
+
+# Data organization
+
+# Raw data files (GBIF downloads, TAXREF, etc.)
+data/
+
+# Temporary/decompressed files
+tmp/
 
 daynimal*.db
 CLAUDE.md

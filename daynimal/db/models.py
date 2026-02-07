@@ -161,3 +161,30 @@ class UserSettingsModel(Base):
 
     # Setting value (stored as string, parsed by app)
     value: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class FavoriteModel(Base):
+    """
+    User's favorite animals.
+    Stores references to taxa that the user has marked as favorites.
+    """
+
+    __tablename__ = "favorites"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    taxon_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("taxa.taxon_id", ondelete="CASCADE"), nullable=False
+    )
+
+    # When the favorite was added
+    added_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    # Relationship to taxon
+    taxon: Mapped["TaxonModel"] = relationship()
+
+    __table_args__ = (
+        Index("ix_favorites_taxon_id", "taxon_id", unique=True),  # One favorite per taxon
+        Index("ix_favorites_added_at", "added_at"),
+    )
