@@ -15,7 +15,7 @@ to end users in the application.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 
 from daynimal.schemas import License
 
@@ -187,7 +187,7 @@ def create_wikidata_attribution(qid: str) -> AttributionInfo:
         author="Wikidata contributors",
         title=f"Wikidata item {qid}",
         source_url=f"https://www.wikidata.org/wiki/{qid}",
-        access_date=datetime.utcnow(),
+        access_date=datetime.now(UTC),
     )
 
 
@@ -205,7 +205,7 @@ def create_wikipedia_attribution(
         author="Wikipedia contributors",
         title=title,
         source_url=url,
-        access_date=datetime.utcnow(),
+        access_date=datetime.now(UTC),
         modified=modified,
     )
 
@@ -235,7 +235,7 @@ def create_commons_attribution(
         author=author or "Unknown author",
         title=filename,
         source_url=url,
-        access_date=datetime.utcnow(),
+        access_date=datetime.now(UTC),
     )
 
 

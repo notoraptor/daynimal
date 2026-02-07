@@ -104,13 +104,13 @@ def extract_canonical_name(scientific_name: str) -> str:
         "Acinonyx jubatus" -> "Acinonyx jubatus"
     """
     # Remove parentheses and everything after them
-    name = re.sub(r'\([^)]*\)', '', scientific_name)
+    name = re.sub(r"\([^)]*\)", "", scientific_name)
     # Remove year patterns (4 digits)
-    name = re.sub(r'\b\d{4}\b', '', name)
+    name = re.sub(r"\b\d{4}\b", "", name)
     # Remove common author indicators
-    name = re.sub(r',\s*\d+', '', name)
+    name = re.sub(r",\s*\d+", "", name)
     # Clean up whitespace
-    name = ' '.join(name.split())
+    name = " ".join(name.split())
     # Keep only first two words (genus + species)
     parts = name.split()
     if len(parts) >= 2:
@@ -144,32 +144,34 @@ def load_taxref(file_path: str, dry_run: bool = False):
     # Parse TAXREF file
     taxref_animals = []
     try:
-        with open(taxref_path, 'r', encoding='utf-8') as f:
+        with open(taxref_path, "r", encoding="utf-8") as f:
             # TAXREF uses tab-separated values
-            reader = csv.DictReader(f, delimiter='\t')
+            reader = csv.DictReader(f, delimiter="\t")
 
             for row in reader:
                 # Filter for Animalia kingdom
-                if row.get('REGNE') != 'Animalia':
+                if row.get("REGNE") != "Animalia":
                     continue
 
                 # Must have a French vernacular name
-                french_name = row.get('NOM_VERN', '').strip()
+                french_name = row.get("NOM_VERN", "").strip()
                 if not french_name:
                     continue
 
-                scientific_name = row.get('LB_NOM', '').strip()
+                scientific_name = row.get("LB_NOM", "").strip()
                 if not scientific_name:
                     continue
 
                 # Extract canonical name for matching
                 canonical = extract_canonical_name(scientific_name)
 
-                taxref_animals.append({
-                    'scientific_name': scientific_name,
-                    'canonical_name': canonical,
-                    'french_name': french_name,
-                })
+                taxref_animals.append(
+                    {
+                        "scientific_name": scientific_name,
+                        "canonical_name": canonical,
+                        "french_name": french_name,
+                    }
+                )
 
     except Exception as e:
         print(f"[ERROR] Failed to parse TAXREF file: {e}")
@@ -177,7 +179,9 @@ def load_taxref(file_path: str, dry_run: bool = False):
         print("https://inpn.mnhn.fr/telechargement/referentielEspece/taxref")
         sys.exit(1)
 
-    print(f"[INFO] Found {len(taxref_animals):,} animal taxa with French names in TAXREF")
+    print(
+        f"[INFO] Found {len(taxref_animals):,} animal taxa with French names in TAXREF"
+    )
 
     # Match with GBIF database and import
     added_count = 0
@@ -192,18 +196,18 @@ def load_taxref(file_path: str, dry_run: bool = False):
             if idx > 0 and idx % 1000 == 0:
                 print(f"[INFO] Processed {idx:,}/{len(taxref_animals):,} entries...")
 
-            canonical = taxref_entry['canonical_name']
-            french_name = taxref_entry['french_name']
+            canonical = taxref_entry["canonical_name"]
+            french_name = taxref_entry["french_name"]
 
             # Find matching taxon in GBIF database
             # Try exact match on canonical_name first, then scientific_name
             taxon = (
                 session.query(TaxonModel)
                 .filter(
-                    (TaxonModel.canonical_name == canonical) |
-                    (TaxonModel.scientific_name.like(f"{canonical}%"))
+                    (TaxonModel.canonical_name == canonical)
+                    | (TaxonModel.scientific_name.like(f"{canonical}%"))
                 )
-                .filter(TaxonModel.rank == 'species')
+                .filter(TaxonModel.rank == "species")
                 .first()
             )
 
@@ -217,7 +221,7 @@ def load_taxref(file_path: str, dry_run: bool = False):
                 .filter(
                     VernacularNameModel.taxon_id == taxon.taxon_id,
                     VernacularNameModel.name == french_name,
-                    VernacularNameModel.language == 'fr',
+                    VernacularNameModel.language == "fr",
                 )
                 .first()
             )
@@ -229,9 +233,7 @@ def load_taxref(file_path: str, dry_run: bool = False):
             # Add French vernacular name
             if not dry_run:
                 vn = VernacularNameModel(
-                    taxon_id=taxon.taxon_id,
-                    name=french_name,
-                    language='fr',
+                    taxon_id=taxon.taxon_id, name=french_name, language="fr"
                 )
                 session.add(vn)
 
@@ -250,14 +252,18 @@ def load_taxref(file_path: str, dry_run: bool = False):
             print(f"\n[DRY RUN] Would add {added_count:,} French vernacular names")
 
         print(f"[INFO] Skipped {skipped_count:,} names (already existed)")
-        print(f"[INFO] No match found for {no_match_count:,} TAXREF taxa (not in GBIF database)")
+        print(
+            f"[INFO] No match found for {no_match_count:,} TAXREF taxa (not in GBIF database)"
+        )
 
         if added_count > 0:
             print("\n[IMPORTANT] Don't forget to rebuild the FTS5 search index:")
             print("    uv run init-fts")
 
         print("\n[Attribution] When using TAXREF data, include:")
-        print("French vernacular names from TAXREF v17, Museum national d'Histoire naturelle,")
+        print(
+            "French vernacular names from TAXREF v17, Museum national d'Histoire naturelle,"
+        )
         print("licensed under Etalab Open License 2.0. https://inpn.mnhn.fr/")
 
     except Exception as e:
@@ -271,17 +277,15 @@ def load_taxref(file_path: str, dry_run: bool = False):
 def main():
     parser = argparse.ArgumentParser(
         description="Import French vernacular names from TAXREF",
-        epilog="Example: uv run import-taxref-french --file TAXREFv17.txt"
+        epilog="Example: uv run import-taxref-french --file TAXREFv17.txt",
     )
     parser.add_argument(
-        '--file',
-        type=str,
-        help='Path to TAXREF file (e.g., TAXREFv17.txt)',
+        "--file", type=str, help="Path to TAXREF file (e.g., TAXREFv17.txt)"
     )
     parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='Preview changes without modifying database',
+        "--dry-run",
+        action="store_true",
+        help="Preview changes without modifying database",
     )
 
     args = parser.parse_args()
@@ -297,5 +301,5 @@ def main():
     load_taxref(args.file, dry_run=args.dry_run)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

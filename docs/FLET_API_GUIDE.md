@@ -184,7 +184,7 @@ ft.Image(
     src=image_url,
     width=400,
     height=300,
-    fit=ft.ImageFit.CONTAIN,
+    fit="contain",
     border_radius=10,
     error_content=ft.Container(
         content=ft.Column([
@@ -364,6 +364,26 @@ controls.append(
     )
 )
 ```
+
+## Migrations API historiques
+
+Corrections appliquees lors de migrations Flet :
+
+| Ancien (obsolete) | Nouveau (correct) |
+|---|---|
+| `ft.app(target=main)` | `ft.run(main=main)` |
+| `page.update_async()` | `page.update()` |
+| `ft.ImageFit.CONTAIN` | `"contain"` (string) |
+| `ft.colors.GREY_700` (lowercase) | `ft.Colors.GREY_700` (Enum) |
+| `ft.icons.TODAY` (lowercase) | `ft.Icons.CALENDAR_TODAY` (Enum) |
+
+## Checklist mise a jour Flet
+
+Lors de futures mises a jour de Flet, verifier :
+1. Compatibilite des icones utilisees
+2. Compatibilite des couleurs utilisees
+3. API async/await (changements de signature)
+4. Documentation : https://docs.flet.dev/
 
 ## Notes importantes
 

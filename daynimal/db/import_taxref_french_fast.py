@@ -17,21 +17,19 @@ import csv
 import re
 import sys
 from pathlib import Path
-from collections import defaultdict
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from daynimal.db.session import get_session
-from daynimal.db.models import TaxonModel, VernacularNameModel
 from sqlalchemy import text
 
 
 def extract_canonical_name(scientific_name: str) -> str:
     """Extract canonical name (genus + species only)."""
-    name = re.sub(r'\([^)]*\)', '', scientific_name)
-    name = re.sub(r'\b\d{4}\b', '', name)
-    name = re.sub(r',\s*\d+', '', name)
-    name = ' '.join(name.split())
+    name = re.sub(r"\([^)]*\)", "", scientific_name)
+    name = re.sub(r"\b\d{4}\b", "", name)
+    name = re.sub(r",\s*\d+", "", name)
+    name = " ".join(name.split())
     parts = name.split()
     if len(parts) >= 2:
         return f"{parts[0]} {parts[1]}"
@@ -46,7 +44,7 @@ def load_taxref_fast(file_path: str, dry_run: bool = False):
         print(f"[ERROR] File not found: {file_path}")
         sys.exit(1)
 
-    print(f"[INFO] FAST import starting...")
+    print("[INFO] FAST import starting...")
     print(f"[INFO] Loading TAXREF from: {file_path}")
 
     session = get_session()
@@ -56,23 +54,22 @@ def load_taxref_fast(file_path: str, dry_run: bool = False):
     taxref_animals = []
 
     try:
-        with open(taxref_path, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f, delimiter='\t')
+        with open(taxref_path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f, delimiter="\t")
             for row in reader:
-                if row.get('REGNE') != 'Animalia':
+                if row.get("REGNE") != "Animalia":
                     continue
-                french_name = row.get('NOM_VERN', '').strip()
+                french_name = row.get("NOM_VERN", "").strip()
                 if not french_name:
                     continue
-                scientific_name = row.get('LB_NOM', '').strip()
+                scientific_name = row.get("LB_NOM", "").strip()
                 if not scientific_name:
                     continue
 
                 canonical = extract_canonical_name(scientific_name)
-                taxref_animals.append({
-                    'canonical_name': canonical,
-                    'french_name': french_name,
-                })
+                taxref_animals.append(
+                    {"canonical_name": canonical, "french_name": french_name}
+                )
 
     except Exception as e:
         print(f"[ERROR] Failed to parse TAXREF: {e}")
@@ -84,11 +81,13 @@ def load_taxref_fast(file_path: str, dry_run: bool = False):
     print("[2/6] Loading GBIF species database (single query)...")
 
     gbif_species = {}
-    result = session.execute(text("""
+    result = session.execute(
+        text("""
         SELECT taxon_id, canonical_name, scientific_name
         FROM taxa
         WHERE rank = 'species'
-    """))
+    """)
+    )
 
     for row in result:
         taxon_id, canonical, scientific = row
@@ -106,11 +105,13 @@ def load_taxref_fast(file_path: str, dry_run: bool = False):
     print("[3/6] Loading existing French names (single query)...")
 
     existing_names = set()
-    result = session.execute(text("""
+    result = session.execute(
+        text("""
         SELECT taxon_id, name
         FROM vernacular_names
         WHERE language = 'fr'
-    """))
+    """)
+    )
 
     for taxon_id, name in result:
         existing_names.add((taxon_id, name))
@@ -129,8 +130,8 @@ def load_taxref_fast(file_path: str, dry_run: bool = False):
         if idx > 0 and idx % 10000 == 0:
             print(f"      Processed {idx:,}/{len(taxref_animals):,}...")
 
-        canonical = entry['canonical_name'].lower()
-        french_name = entry['french_name']
+        canonical = entry["canonical_name"].lower()
+        french_name = entry["french_name"]
 
         # Find taxon_id
         taxon_id = gbif_species.get(canonical)
@@ -144,18 +145,16 @@ def load_taxref_fast(file_path: str, dry_run: bool = False):
             continue
 
         # Add to insert list
-        to_insert.append({
-            'taxon_id': taxon_id,
-            'name': french_name,
-            'language': 'fr',
-        })
+        to_insert.append({"taxon_id": taxon_id, "name": french_name, "language": "fr"})
         added_count += 1
 
         # Show first 20 as examples
         if added_count <= 20:
             print(f"[OK] Will add: {canonical} -> {french_name}")
 
-    print(f"[OK] Matching complete: {added_count:,} to add, {skipped_count:,} skipped, {no_match_count:,} no match")
+    print(
+        f"[OK] Matching complete: {added_count:,} to add, {skipped_count:,} skipped, {no_match_count:,} no match"
+    )
 
     if not to_insert:
         print("[INFO] Nothing to add!")
@@ -168,15 +167,17 @@ def load_taxref_fast(file_path: str, dry_run: bool = False):
         # Split into batches of 10000 for safety
         batch_size = 10000
         for i in range(0, len(to_insert), batch_size):
-            batch = to_insert[i:i+batch_size]
+            batch = to_insert[i : i + batch_size]
             session.execute(
                 text("""
                     INSERT INTO vernacular_names (taxon_id, name, language)
                     VALUES (:taxon_id, :name, :language)
                 """),
-                batch
+                batch,
             )
-            print(f"      Inserted batch {i//batch_size + 1}/{(len(to_insert)-1)//batch_size + 1}")
+            print(
+                f"      Inserted batch {i // batch_size + 1}/{(len(to_insert) - 1) // batch_size + 1}"
+            )
 
         # STEP 6: Single commit (FAST!)
         print("[6/6] Committing changes...")
@@ -201,12 +202,14 @@ def main():
     parser = argparse.ArgumentParser(
         description="FAST import of French names from TAXREF (optimized version)"
     )
-    parser.add_argument('--file', type=str, required=True, help='Path to TAXREF file')
-    parser.add_argument('--dry-run', action='store_true', help='Preview without changes')
+    parser.add_argument("--file", type=str, required=True, help="Path to TAXREF file")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Preview without changes"
+    )
 
     args = parser.parse_args()
     load_taxref_fast(args.file, dry_run=args.dry_run)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -16,10 +16,12 @@ Documentation technique et guides pour le projet Daynimal.
   - Patterns et bonnes pratiques
   - Erreurs courantes à éviter
 
-- **[FLET_APP_VALIDATION.md](FLET_APP_VALIDATION.md)** - Checklist de validation de l'app
-  - Tests fonctionnels
-  - Validation UI/UX
-  - Performance et stabilité
+### 🔍 Revue de code
+- **[CODE_REVIEW_2026-02.md](CODE_REVIEW_2026-02.md)** - Analyse complete du code (fevrier 2026)
+  - Bugs critiques identifies (6) et corrections recommandees
+  - Couverture de tests (27%) et trous critiques
+  - Avis sur la roadmap et resequenciation recommandee
+  - Plan d'action : semaine de stabilisation
 
 ### 🗺️ Roadmap
 - **[MOBILE_DESKTOP_ROADMAP.md](MOBILE_DESKTOP_ROADMAP.md)** - Feuille de route du développement
@@ -38,8 +40,7 @@ Documentation technique et guides pour le projet Daynimal.
 - [tests/](../tests/) - Tests unitaires documentés
 
 ### Debugging
-- [debug/](../debug/) - Outils et guides de débogage
-- [memory/MEMORY.md](../memory/MEMORY.md) - Leçons apprises
+- [debug/](../debug/) - Outils et guides de debogage
 
 ## 📝 Conventions
 
@@ -71,6 +72,6 @@ Chaque rapport technique doit inclure :
 
 ## 📊 Statistiques
 
-**Guides** : 3 (Flet API, Validation, Roadmap)
+**Guides** : 3 (Flet API, Roadmap, Code Review)
 **Rapports de changements** : 4 (voir [changes/](changes/))
 **Dernière mise à jour** : 7 février 2026

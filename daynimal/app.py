@@ -569,7 +569,9 @@ class DaynimalApp:
                     controls=[
                         favorite_button,
                         ft.Text(
-                            "Ajouter aux favoris" if not is_favorite else "Retirer des favoris",
+                            "Ajouter aux favoris"
+                            if not is_favorite
+                            else "Retirer des favoris",
                             size=14,
                         ),
                     ],
@@ -1089,9 +1091,7 @@ class DaynimalApp:
                                     ft.Icons.FAVORITE, size=80, color=ft.Colors.GREY_500
                                 ),
                                 ft.Text(
-                                    "Aucun favori",
-                                    size=20,
-                                    weight=ft.FontWeight.BOLD,
+                                    "Aucun favori", size=20, weight=ft.FontWeight.BOLD
                                 ),
                                 ft.Text(
                                     "Ajoutez des animaux à vos favoris",
@@ -1108,11 +1108,7 @@ class DaynimalApp:
             else:
                 # Display favorites items
                 controls = [
-                    ft.Text(
-                        f"{total} favori(s)",
-                        size=16,
-                        color=ft.Colors.GREY_500,
-                    )
+                    ft.Text(f"{total} favori(s)", size=16, color=ft.Colors.GREY_500)
                 ]
 
                 for item in favorites_items:
@@ -1254,9 +1250,7 @@ class DaynimalApp:
                             controls=[
                                 ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
                                 ft.Text(
-                                    "Animal introuvable",
-                                    size=20,
-                                    color=ft.Colors.ERROR,
+                                    "Animal introuvable", size=20, color=ft.Colors.ERROR
                                 ),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -1314,9 +1308,7 @@ class DaynimalApp:
                 success = self.repository.remove_favorite(taxon_id)
                 if success:
                     # Show snackbar
-                    snack_bar = ft.SnackBar(
-                        content=ft.Text("Retiré des favoris"),
-                    )
+                    snack_bar = ft.SnackBar(content=ft.Text("Retiré des favoris"))
                     self.page.snack_bar = snack_bar
                     snack_bar.open = True
                     self.page.update()
@@ -1329,9 +1321,7 @@ class DaynimalApp:
                 success = self.repository.add_favorite(taxon_id)
                 if success:
                     # Show snackbar
-                    snack_bar = ft.SnackBar(
-                        content=ft.Text("Ajouté aux favoris"),
-                    )
+                    snack_bar = ft.SnackBar(content=ft.Text("Ajouté aux favoris"))
                     self.page.snack_bar = snack_bar
                     snack_bar.open = True
                     self.page.update()
@@ -1353,8 +1343,7 @@ class DaynimalApp:
 
             # Show error snackbar
             snack_bar = ft.SnackBar(
-                content=ft.Text(f"Erreur: {str(error)}"),
-                bgcolor=ft.Colors.ERROR,
+                content=ft.Text(f"Erreur: {str(error)}"), bgcolor=ft.Colors.ERROR
             )
             self.page.snack_bar = snack_bar
             snack_bar.open = True
@@ -1686,9 +1675,7 @@ class DaynimalApp:
                             controls=[
                                 ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
                                 ft.Text(
-                                    "Animal introuvable",
-                                    size=20,
-                                    color=ft.Colors.ERROR,
+                                    "Animal introuvable", size=20, color=ft.Colors.ERROR
                                 ),
                             ],
                             horizontal_alignment=ft.CrossAxisAlignment.CENTER,

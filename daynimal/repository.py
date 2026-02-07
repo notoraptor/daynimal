@@ -49,8 +49,8 @@ def remove_accents(text: str) -> str:
         guépard -> guepard
         café -> cafe
     """
-    nfd = unicodedata.normalize('NFD', text)
-    return ''.join(char for char in nfd if unicodedata.category(char) != 'Mn')
+    nfd = unicodedata.normalize("NFD", text)
+    return "".join(char for char in nfd if unicodedata.category(char) != "Mn")
 
 
 class AnimalRepository:
@@ -198,7 +198,9 @@ class AnimalRepository:
 
                     if fts_results:
                         # Get taxa by IDs preserving FTS5 ranking order
-                        taxon_ids = [row[0] for row in fts_results if row[0] not in seen_ids]
+                        taxon_ids = [
+                            row[0] for row in fts_results if row[0] not in seen_ids
+                        ]
                         if not taxon_ids:
                             continue
 
@@ -219,7 +221,10 @@ class AnimalRepository:
                                 search_lower = search_query.lower()
                                 name_matches = (
                                     search_lower in model.scientific_name.lower()
-                                    or (model.canonical_name and search_lower in model.canonical_name.lower())
+                                    or (
+                                        model.canonical_name
+                                        and search_lower in model.canonical_name.lower()
+                                    )
                                 )
 
                                 # Check vernacular names
@@ -245,7 +250,9 @@ class AnimalRepository:
                 # Prioritize results based on:
                 # 1. Species rank over other ranks
                 # 2. Vernacular name matches over scientific name matches
-                species_results = [r for r in all_results if r.taxon.rank == TaxonomicRank.SPECIES]
+                species_results = [
+                    r for r in all_results if r.taxon.rank == TaxonomicRank.SPECIES
+                ]
 
                 # If we have species, prefer them
                 if species_results:
@@ -254,7 +261,9 @@ class AnimalRepository:
                     if len(query) < 7:
                         return species_results[:limit]
                     # Otherwise return species first, then others
-                    other_results = [r for r in all_results if r.taxon.rank != TaxonomicRank.SPECIES]
+                    other_results = [
+                        r for r in all_results if r.taxon.rank != TaxonomicRank.SPECIES
+                    ]
                     return (species_results + other_results)[:limit]
 
                 # If no species found but query is short, it's probably wrong - return empty
@@ -587,7 +596,7 @@ class AnimalRepository:
                 self._save_cache(taxon_id, "wikidata", entity)
             return entity
         except Exception as e:
-            print(f"Error fetching Wikidata for {scientific_name}: {e}")
+            logger.warning(f"Error fetching Wikidata for {scientific_name}: {e}")
             return None
 
     def _fetch_and_cache_wikipedia(
@@ -600,7 +609,7 @@ class AnimalRepository:
                 self._save_cache(taxon_id, "wikipedia", article)
             return article
         except Exception as e:
-            print(f"Error fetching Wikipedia for {scientific_name}: {e}")
+            logger.warning(f"Error fetching Wikipedia for {scientific_name}: {e}")
             return None
 
     def _fetch_and_cache_images(
@@ -623,7 +632,7 @@ class AnimalRepository:
 
             return images
         except Exception as e:
-            print(f"Error fetching Commons images for {scientific_name}: {e}")
+            logger.warning(f"Error fetching Commons images for {scientific_name}: {e}")
             return []
 
     def _save_cache(self, taxon_id: int, source: str, data) -> None:

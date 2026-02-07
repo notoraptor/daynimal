@@ -18,7 +18,7 @@
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/daynimal.git
+git clone https://github.com/notoraptor/daynimal.git
 cd daynimal
 ```
 
@@ -89,11 +89,13 @@ python daynimal/app.py
 python debug/run_app_debug.py --quiet
 ```
 
-The GUI application provides an intuitive interface with:
-- 📅 **Today** - View the animal of the day
-- 📚 **History** - Browse previously viewed animals
-- 🔍 **Search** - Search by scientific or common names
-- 📊 **Stats** - Database statistics
+The GUI application provides an intuitive interface with 6 tabs:
+- **Today** - View the animal of the day or a random animal
+- **History** - Browse previously viewed animals
+- **Favorites** - Manage your favorite animals
+- **Search** - Search by scientific or common names
+- **Stats** - Database statistics
+- **Settings** - Theme, credits, preferences
 
 ## Development
 

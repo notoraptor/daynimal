@@ -27,12 +27,6 @@ Ce dossier contient les rapports détaillés des améliorations, optimisations e
 - **Résultat** : Réduction de ~33% du temps d'enrichissement
 - **Impact** : Chargement plus rapide des données externes
 
-#### [2026-02-changes-summary.md](2026-02-changes-summary.md)
-**Résumé des changements de la session**
-- Vue d'ensemble des modifications apportées
-- Liste des fichiers modifiés
-- Tests effectués et résultats
-
 ## 📊 Vue d'ensemble des améliorations
 
 ### Performance
@@ -54,7 +48,6 @@ Ce dossier contient les rapports détaillés des améliorations, optimisations e
 
 ### Documentation générale
 - [Guide API Flet](../FLET_API_GUIDE.md) - Référence des APIs Flet utilisées
-- [Validation App Flet](../FLET_APP_VALIDATION.md) - Checklist de validation
 - [Roadmap Mobile/Desktop](../MOBILE_DESKTOP_ROADMAP.md) - Feuille de route
 
 ### Mémoire et apprentissage
@@ -82,6 +75,6 @@ Lors de l'ajout d'un nouveau rapport :
 
 ## 📈 Statistiques
 
-**Total des rapports** : 4
+**Total des rapports** : 3
 **Dernière mise à jour** : 7 février 2026
 **Améliorations documentées** : Performance SQL, Logging, Parallélisation, UI

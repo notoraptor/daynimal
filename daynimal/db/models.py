@@ -1,7 +1,11 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+def _utcnow():
+    return datetime.now(UTC)
 
 
 class Base(DeclarativeBase):
@@ -105,7 +109,7 @@ class EnrichmentCacheModel(Base):
 
     # Metadata
     fetched_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=_utcnow, nullable=False
     )
     license: Mapped[str | None] = mapped_column(String(50))
 
@@ -131,7 +135,7 @@ class AnimalHistoryModel(Base):
 
     # When the animal was viewed
     viewed_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=_utcnow, nullable=False
     )
 
     # Which command was used to view it
@@ -178,13 +182,15 @@ class FavoriteModel(Base):
 
     # When the favorite was added
     added_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=_utcnow, nullable=False
     )
 
     # Relationship to taxon
     taxon: Mapped["TaxonModel"] = relationship()
 
     __table_args__ = (
-        Index("ix_favorites_taxon_id", "taxon_id", unique=True),  # One favorite per taxon
+        Index(
+            "ix_favorites_taxon_id", "taxon_id", unique=True
+        ),  # One favorite per taxon
         Index("ix_favorites_added_at", "added_at"),
     )
