@@ -38,6 +38,9 @@ class DaynimalApp:
         self.current_animal = None
         self.current_view = "today"
         self.repository = None
+        self.current_image_index = 0  # For image carousel
+        self.cached_stats = None  # Cached statistics
+        self.stats_displayed = False  # Whether stats have been displayed
 
         # Log app initialization
         if self.debugger:
@@ -53,6 +56,9 @@ class DaynimalApp:
 
     def build(self):
         """Build the user interface."""
+        # Load and apply theme from settings
+        self._load_theme()
+
         # Navigation bar - will be set as page.navigation_bar (fixed at bottom)
         self.nav_bar = ft.NavigationBar(
             destinations=[
@@ -71,6 +77,10 @@ class DaynimalApp:
                 ft.NavigationBarDestination(
                     icon=ft.Icons.BAR_CHART,
                     label="Statistiques",
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.Icons.SETTINGS,
+                    label="Paramètres",
                 ),
             ],
             selected_index=0,
@@ -94,11 +104,214 @@ class DaynimalApp:
         # Show initial view (Today)
         self.show_today_view()
 
+    def _load_theme(self):
+        """Load theme preference from database and apply it."""
+        try:
+            if self.repository:
+                theme_mode = self.repository.get_setting("theme_mode", "light")
+            else:
+                # Initialize repository temporarily to get settings
+                with AnimalRepository() as repo:
+                    theme_mode = repo.get_setting("theme_mode", "light")
+
+            # Apply theme
+            if theme_mode == "dark":
+                self.page.theme_mode = ft.ThemeMode.DARK
+            else:
+                self.page.theme_mode = ft.ThemeMode.LIGHT
+
+            if self.debugger:
+                self.debugger.logger.info(f"Theme loaded: {theme_mode}")
+        except Exception as error:
+            # If theme loading fails, default to light
+            self.page.theme_mode = ft.ThemeMode.LIGHT
+            if self.debugger:
+                self.debugger.log_error("_load_theme", error)
+            else:
+                print(f"ERROR loading theme: {error}")
+
+    def on_theme_toggle(self, e):
+        """Handle theme toggle switch change."""
+        try:
+            is_dark = e.control.value
+            new_theme = "dark" if is_dark else "light"
+
+            # Save to database
+            if self.repository:
+                self.repository.set_setting("theme_mode", new_theme)
+            else:
+                with AnimalRepository() as repo:
+                    repo.set_setting("theme_mode", new_theme)
+
+            # Apply theme immediately
+            self.page.theme_mode = ft.ThemeMode.DARK if is_dark else ft.ThemeMode.LIGHT
+            self.page.update()
+
+            if self.debugger:
+                self.debugger.logger.info(f"Theme changed to: {new_theme}")
+        except Exception as error:
+            error_msg = f"Error toggling theme: {error}"
+            error_traceback = traceback.format_exc()
+
+            if self.debugger:
+                self.debugger.log_error("on_theme_toggle", error)
+                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
+            else:
+                print(f"ERROR: {error_msg}")
+                print(f"Traceback:\n{error_traceback}")
+
+    def on_carousel_prev(self, e):
+        """Navigate to previous image in carousel."""
+        if self.current_animal and self.current_animal.images:
+            self.current_image_index = (self.current_image_index - 1) % len(
+                self.current_animal.images
+            )
+            self._update_carousel()
+
+    def on_carousel_next(self, e):
+        """Navigate to next image in carousel."""
+        if self.current_animal and self.current_animal.images:
+            self.current_image_index = (self.current_image_index + 1) % len(
+                self.current_animal.images
+            )
+            self._update_carousel()
+
+    def _update_carousel(self):
+        """Update the carousel display with the current image."""
+        if not self.current_animal or not self.current_animal.images:
+            return
+
+        # This will trigger a re-render of the current view
+        if self.current_view == "today":
+            self.display_animal_in_today_view(self.current_animal)
+        # Add other views if they also display carousels in the future
+
+    def on_image_error(self, e):
+        """Handle image loading errors."""
+        try:
+            image_url = e.control.src if hasattr(e.control, 'src') else "URL inconnue"
+            error_msg = f"Image load error: {image_url}"
+
+            # Log to debugger if available
+            if self.debugger:
+                self.debugger.logger.error(f"[IMAGE ERROR] Failed to load: {image_url}")
+                if self.current_animal:
+                    self.debugger.logger.error(
+                        f"  Animal: {self.current_animal.display_name} "
+                        f"(ID: {self.current_animal.taxon.taxon_id})"
+                    )
+
+            # Always print to console
+            print(f"\n[ERROR] Image loading failed!")
+            print(f"  URL: {image_url}")
+            if self.current_animal:
+                print(f"  Animal: {self.current_animal.display_name}")
+                print(f"  Taxon ID: {self.current_animal.taxon.taxon_id}")
+            print()
+
+        except Exception as error:
+            print(f"[ERROR] Exception in on_image_error: {error}")
+
+    def on_history_item_click(self, e):
+        """Handle click on history item - load animal and switch to Today view."""
+        try:
+            # Get taxon_id from the control's data attribute
+            taxon_id = e.control.data
+
+            if self.debugger:
+                self.debugger.logger.info(f"History item clicked: taxon_id={taxon_id}")
+
+            # Load the animal asynchronously
+            asyncio.create_task(self.load_animal_from_history(taxon_id))
+
+        except Exception as error:
+            error_msg = f"Error clicking history item: {error}"
+            error_traceback = traceback.format_exc()
+
+            if self.debugger:
+                self.debugger.log_error("on_history_item_click", error)
+                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
+            else:
+                print(f"ERROR: {error_msg}")
+                print(f"Traceback:\n{error_traceback}")
+
+    async def load_animal_from_history(self, taxon_id: int):
+        """Load an animal by taxon_id and display it in Today view."""
+        # Switch to Today view first
+        self.nav_bar.selected_index = 0
+        self.show_today_view()
+
+        # Show loading indicator
+        self.today_animal_container.controls = [
+            ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.ProgressRing(width=60, height=60),
+                        ft.Text("Chargement de l'animal...", size=18),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20,
+                ),
+                padding=40,
+            )
+        ]
+        self.page.update()
+        await asyncio.sleep(0.1)
+
+        try:
+            # Fetch animal
+            def fetch_animal():
+                if self.repository is None:
+                    self.repository = AnimalRepository()
+                return self.repository.get_by_id(taxon_id)
+
+            animal = await asyncio.to_thread(fetch_animal)
+            self.current_animal = animal
+            self.current_image_index = 0  # Reset carousel
+
+            if self.debugger:
+                self.debugger.log_animal_load("history", animal.display_name)
+
+            # Display animal in Today view
+            self.display_animal_in_today_view(animal)
+
+        except Exception as error:
+            error_msg = f"Error loading animal from history (ID {taxon_id}): {error}"
+            error_traceback = traceback.format_exc()
+
+            if self.debugger:
+                self.debugger.log_error("load_animal_from_history", error)
+                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
+            else:
+                print(f"ERROR: {error_msg}")
+                print(f"Traceback:\n{error_traceback}")
+
+            # Show error in UI
+            self.today_animal_container.controls = [
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
+                            ft.Text(
+                                "Erreur lors du chargement",
+                                size=20,
+                                color=ft.Colors.ERROR,
+                            ),
+                            ft.Text(str(error), size=14),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=40,
+                )
+            ]
+            self.page.update()
+
     def on_nav_change(self, e):
         """Handle navigation bar changes."""
         selected_index = e.control.selected_index
 
-        view_names = ["Today", "History", "Search", "Stats"]
+        view_names = ["Today", "History", "Search", "Stats", "Settings"]
         if self.debugger and selected_index < len(view_names):
             self.debugger.log_view_change(view_names[selected_index])
 
@@ -110,6 +323,8 @@ class DaynimalApp:
             self.show_search_view()
         elif selected_index == 3:
             self.show_stats_view()
+        elif selected_index == 4:
+            self.show_settings_view()
 
     # ============================================
     # TODAY VIEW
@@ -162,49 +377,70 @@ class DaynimalApp:
             spacing=10,
         )
 
-        # Animal display area
-        self.today_animal_container = ft.Column(
-            controls=[
+        # Animal display area - restore previous state if available
+        if self.current_animal is not None:
+            # Restore the previously displayed animal
+            self.today_animal_container = ft.Column(
+                controls=[],
+                spacing=10,
+            )
+            # Update content first so container is added to page
+            self.content_container.controls = [
+                header,
+                ft.Divider(),
+                ft.Container(content=button_row, padding=ft.Padding(left=20, right=20, bottom=10, top=0)),
                 ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            ft.Icon(ft.Icons.FAVORITE, size=80, color=ft.Colors.PRIMARY),
-                            ft.Text(
-                                "Bienvenue sur Daynimal !",
-                                size=24,
-                                weight=ft.FontWeight.BOLD,
-                            ),
-                            ft.Text(
-                                "Découvrez un animal chaque jour",
-                                size=16,
-                            ),
-                            ft.Text(
-                                "Cliquez sur 'Animal du jour' pour commencer",
-                                size=14,
-                                color=ft.Colors.BLUE,
-                            ),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=15,
-                    ),
-                    padding=40,
-                )
-            ],
-            spacing=10,
-        )
-
-        # Update content
-        self.content_container.controls = [
-            header,
-            ft.Divider(),
-            ft.Container(content=button_row, padding=ft.Padding(left=20, right=20, bottom=10, top=0)),
-            ft.Container(
-                content=self.today_animal_container,
-                padding=20,
-                expand=True,
-            ),
-        ]
-        self.page.update()
+                    content=self.today_animal_container,
+                    padding=20,
+                    expand=True,
+                ),
+            ]
+            self.page.update()
+            # Now display the animal
+            self.display_animal_in_today_view(self.current_animal)
+        else:
+            # Show welcome message
+            self.today_animal_container = ft.Column(
+                controls=[
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Icon(ft.Icons.FAVORITE, size=80, color=ft.Colors.PRIMARY),
+                                ft.Text(
+                                    "Bienvenue sur Daynimal !",
+                                    size=24,
+                                    weight=ft.FontWeight.BOLD,
+                                ),
+                                ft.Text(
+                                    "Découvrez un animal chaque jour",
+                                    size=16,
+                                ),
+                                ft.Text(
+                                    "Cliquez sur 'Animal du jour' pour commencer",
+                                    size=14,
+                                    color=ft.Colors.BLUE,
+                                ),
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=15,
+                        ),
+                        padding=40,
+                    )
+                ],
+                spacing=10,
+            )
+            # Update content
+            self.content_container.controls = [
+                header,
+                ft.Divider(),
+                ft.Container(content=button_row, padding=ft.Padding(left=20, right=20, bottom=10, top=0)),
+                ft.Container(
+                    content=self.today_animal_container,
+                    padding=20,
+                    expand=True,
+                ),
+            ]
+            self.page.update()
 
     async def load_today_animal(self, e):
         """Load today's animal."""
@@ -259,6 +495,7 @@ class DaynimalApp:
 
             animal = await asyncio.to_thread(fetch_animal)
             self.current_animal = animal
+            self.current_image_index = 0  # Reset carousel to first image
 
             if self.debugger:
                 self.debugger.log_animal_load(mode, animal.display_name)
@@ -442,54 +679,106 @@ class DaynimalApp:
         controls.append(ft.Text("Images", size=20, weight=ft.FontWeight.BOLD))
 
         if animal.images and len(animal.images) > 0:
-            # Show image count for debugging
-            controls.append(
-                ft.Text(
-                    f"📷 {len(animal.images)} image(s) trouvée(s)",
-                    size=12,
-                    color=ft.Colors.BLUE,
-                )
-            )
+            # Ensure current_image_index is valid
+            if self.current_image_index >= len(animal.images):
+                self.current_image_index = 0
 
-            # Show first image
-            first_image = animal.images[0]
+            current_image = animal.images[self.current_image_index]
+            total_images = len(animal.images)
 
-            controls.append(
-                ft.Image(
-                    src=first_image.url,
-                    width=400,
-                    height=300,
-                    fit="contain",  # Use string instead of ft.ImageFit.CONTAIN
-                    border_radius=10,
-                    error_content=ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Icon(ft.Icons.IMAGE, size=60, color=ft.Colors.ERROR),
-                                ft.Text("Erreur de chargement", size=14, color=ft.Colors.ERROR),
-                                ft.Text("L'URL existe mais l'image n'a pas pu être chargée", size=10),
-                            ],
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=5,
-                        ),
+            # Image carousel container
+            carousel_content = ft.Column(
+                controls=[
+                    # Image counter
+                    ft.Text(
+                        f"Image {self.current_image_index + 1}/{total_images}",
+                        size=14,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.BLUE,
+                    ),
+                    # Image
+                    ft.Image(
+                        src=current_image.url,
                         width=400,
                         height=300,
-                        bgcolor=ft.Colors.GREY_200,
+                        fit="contain",
                         border_radius=10,
-                        padding=20,
+                        error_content=ft.Container(
+                            content=ft.Column(
+                                controls=[
+                                    ft.Icon(
+                                        ft.Icons.IMAGE,
+                                        size=60,
+                                        color=ft.Colors.ERROR,
+                                    ),
+                                    ft.Text(
+                                        "Erreur de chargement",
+                                        size=14,
+                                        color=ft.Colors.ERROR,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                    ft.Text(
+                                        "L'image n'a pas pu être chargée",
+                                        size=12,
+                                    ),
+                                    ft.Text(
+                                        f"URL: {current_image.url[:80]}...",
+                                        size=9,
+                                        color=ft.Colors.GREY_600,
+                                        italic=True,
+                                        selectable=True,
+                                    ),
+                                    ft.Text(
+                                        f"Animal: {animal.display_name} (ID: {animal.taxon.taxon_id})",
+                                        size=8,
+                                        color=ft.Colors.GREY_500,
+                                        italic=True,
+                                    ),
+                                ],
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                spacing=5,
+                            ),
+                            width=400,
+                            height=300,
+                            bgcolor=ft.Colors.GREY_200,
+                            border_radius=10,
+                            padding=20,
+                        ),
                     ),
-                )
-            )
-
-            # Image credit
-            if first_image.author:
-                controls.append(
+                    # Navigation controls (only show if more than 1 image)
+                    ft.Row(
+                        controls=[
+                            ft.IconButton(
+                                icon=ft.Icons.ARROW_BACK,
+                                on_click=self.on_carousel_prev,
+                                disabled=total_images <= 1,
+                            ),
+                            ft.Container(expand=True),  # Spacer
+                            ft.IconButton(
+                                icon=ft.Icons.ARROW_FORWARD,
+                                on_click=self.on_carousel_next,
+                                disabled=total_images <= 1,
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.CENTER,
+                    )
+                    if total_images > 1
+                    else ft.Container(),
+                    # Image credit
                     ft.Text(
-                        f"Crédit: {first_image.author}",
+                        f"Crédit: {current_image.author}" if current_image.author else "",
                         size=12,
                         color=ft.Colors.GREY_500,
                         italic=True,
                     )
-                )
+                    if current_image.author
+                    else ft.Container(),
+                ],
+                spacing=10,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            )
+
+            controls.append(carousel_content)
         else:
             # No images available
             controls.append(
@@ -672,6 +961,12 @@ class DaynimalApp:
                                                 size=12,
                                                 color=ft.Colors.GREY_500,
                                             ),
+                                            ft.Container(expand=True),  # Spacer
+                                            ft.Icon(
+                                                ft.Icons.ARROW_FORWARD,
+                                                size=16,
+                                                color=ft.Colors.GREY_400,
+                                            ),
                                         ],
                                         spacing=5,
                                     ),
@@ -679,6 +974,9 @@ class DaynimalApp:
                                 spacing=5,
                             ),
                             padding=15,
+                            data=item.taxon.taxon_id,  # Store taxon_id for click handler
+                            on_click=self.on_history_item_click,
+                            ink=True,  # Add ink ripple effect on click
                         ),
                     )
                     controls.append(card)
@@ -997,10 +1295,14 @@ class DaynimalApp:
             padding=20,
         )
 
-        # Stats container
-        self.stats_container = ft.Column(
+        # Stats container - horizontal layout with wrap
+        self.stats_container = ft.Row(
             controls=[],
-            spacing=10,
+            spacing=15,
+            wrap=True,
+            run_spacing=15,
+            alignment=ft.MainAxisAlignment.CENTER,
+            vertical_alignment=ft.CrossAxisAlignment.START,  # Align cards to top
         )
 
         # Update content
@@ -1015,27 +1317,167 @@ class DaynimalApp:
         ]
         self.page.update()
 
-        # Load stats asynchronously
+        # If stats already cached, display them immediately
+        if self.cached_stats is not None:
+            self._display_stats(self.cached_stats)
+            self.page.update()
+
+        # Load/refresh stats asynchronously (will update if DB changed)
         asyncio.create_task(self.load_stats())
+
+    def _display_stats(self, stats: dict):
+        """Display statistics cards."""
+        controls = []
+
+        # Uniform card height for consistent layout
+        card_min_height = 220
+
+        # Total taxa
+        controls.append(
+            ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.PETS, size=50, color=ft.Colors.PRIMARY),
+                            ft.Text(
+                                f"{stats['total_taxa']:,}",
+                                size=32,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.Colors.PRIMARY,
+                                no_wrap=True,
+                            ),
+                            ft.Text(
+                                "Taxa totaux",
+                                size=16,
+                                color=ft.Colors.GREY_500,
+                            ),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=5,
+                        tight=True,
+                    ),
+                    padding=30,
+                    height=card_min_height,
+                ),
+            )
+        )
+
+        # Species count
+        controls.append(
+            ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.FAVORITE, size=50, color=ft.Colors.BLUE),
+                            ft.Text(
+                                f"{stats['species_count']:,}",
+                                size=32,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.Colors.BLUE,
+                                no_wrap=True,
+                            ),
+                            ft.Text(
+                                "Espèces",
+                                size=16,
+                                color=ft.Colors.GREY_500,
+                            ),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=5,
+                        tight=True,
+                    ),
+                    padding=30,
+                    height=card_min_height,
+                ),
+            )
+        )
+
+        # Enriched count
+        controls.append(
+            ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.INFO, size=50, color=ft.Colors.GREEN_500),
+                            ft.Text(
+                                f"{stats['enriched_count']:,}",
+                                size=32,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.Colors.GREEN_500,
+                                no_wrap=True,
+                            ),
+                            ft.Text(
+                                "Animaux enrichis",
+                                size=16,
+                                color=ft.Colors.GREY_500,
+                            ),
+                            ft.Text(
+                                stats['enrichment_progress'],
+                                size=14,
+                                color=ft.Colors.GREY_500,
+                            ),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=5,
+                        tight=True,
+                    ),
+                    padding=30,
+                    height=card_min_height,
+                ),
+            )
+        )
+
+        # Vernacular names
+        controls.append(
+            ft.Card(
+                content=ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.TRANSLATE, size=50, color=ft.Colors.AMBER_500),
+                            ft.Text(
+                                f"{stats['vernacular_names']:,}",
+                                size=32,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.Colors.AMBER_500,
+                                no_wrap=True,
+                            ),
+                            ft.Text(
+                                "Noms vernaculaires",
+                                size=16,
+                                color=ft.Colors.GREY_500,
+                            ),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=5,
+                        tight=True,
+                    ),
+                    padding=30,
+                    height=card_min_height,
+                ),
+            )
+        )
+
+        self.stats_container.controls = controls
 
     async def load_stats(self):
         """Load statistics from repository."""
-        # Show loading
-        self.stats_container.controls = [
-            ft.Container(
-                content=ft.Column(
-                    controls=[
-                        ft.ProgressRing(width=60, height=60),
-                        ft.Text("Chargement des statistiques...", size=18),
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=20,
-                ),
-                padding=40,
-            )
-        ]
-        self.page.update()
-        await asyncio.sleep(0.1)
+        # Show loading only if no cached stats
+        if self.cached_stats is None:
+            self.stats_container.controls = [
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.ProgressRing(width=60, height=60),
+                            ft.Text("Chargement des statistiques...", size=18),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=20,
+                    ),
+                    padding=40,
+                )
+            ]
+            self.page.update()
+            await asyncio.sleep(0.1)
 
         try:
             # Fetch stats
@@ -1047,123 +1489,12 @@ class DaynimalApp:
 
             stats = await asyncio.to_thread(fetch_stats)
 
-            # Display stats as cards
-            controls = []
+            # Update cache
+            self.cached_stats = stats
 
-            # Total taxa
-            controls.append(
-                ft.Card(
-                    content=ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Icon(ft.Icons.PETS, size=50, color=ft.Colors.PRIMARY),
-                                ft.Text(
-                                    f"{stats['total_taxa']:,}",
-                                    size=32,
-                                    weight=ft.FontWeight.BOLD,
-                                    color=ft.Colors.PRIMARY,
-                                ),
-                                ft.Text(
-                                    "Taxa totaux",
-                                    size=16,
-                                    color=ft.Colors.GREY_500,
-                                ),
-                            ],
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=5,
-                        ),
-                        padding=30,
-                    ),
-                )
-            )
-
-            # Species count
-            controls.append(
-                ft.Card(
-                    content=ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Icon(ft.Icons.FAVORITE, size=50, color=ft.Colors.BLUE),
-                                ft.Text(
-                                    f"{stats['species_count']:,}",
-                                    size=32,
-                                    weight=ft.FontWeight.BOLD,
-                                    color=ft.Colors.BLUE,
-                                ),
-                                ft.Text(
-                                    "Espèces",
-                                    size=16,
-                                    color=ft.Colors.GREY_500,
-                                ),
-                            ],
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=5,
-                        ),
-                        padding=30,
-                    ),
-                )
-            )
-
-            # Enriched count
-            controls.append(
-                ft.Card(
-                    content=ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Icon(ft.Icons.INFO, size=50, color=ft.Colors.GREEN_500),
-                                ft.Text(
-                                    f"{stats['enriched_count']:,}",
-                                    size=32,
-                                    weight=ft.FontWeight.BOLD,
-                                    color=ft.Colors.GREEN_500,
-                                ),
-                                ft.Text(
-                                    "Animaux enrichis",
-                                    size=16,
-                                    color=ft.Colors.GREY_500,
-                                ),
-                                ft.Text(
-                                    stats['enrichment_progress'],
-                                    size=14,
-                                    color=ft.Colors.GREY_500,
-                                ),
-                            ],
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=5,
-                        ),
-                        padding=30,
-                    ),
-                )
-            )
-
-            # Vernacular names
-            controls.append(
-                ft.Card(
-                    content=ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Icon(ft.Icons.TRANSLATE, size=50, color=ft.Colors.AMBER_500),
-                                ft.Text(
-                                    f"{stats['vernacular_names']:,}",
-                                    size=32,
-                                    weight=ft.FontWeight.BOLD,
-                                    color=ft.Colors.AMBER_500,
-                                ),
-                                ft.Text(
-                                    "Noms vernaculaires",
-                                    size=16,
-                                    color=ft.Colors.GREY_500,
-                                ),
-                            ],
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=5,
-                        ),
-                        padding=30,
-                    ),
-                )
-            )
-
-            self.stats_container.controls = controls
+            # Display stats
+            self._display_stats(stats)
+            self.page.update()
 
         except Exception as error:
             # Log error with full traceback
@@ -1200,6 +1531,187 @@ class DaynimalApp:
 
         finally:
             self.page.update()
+
+    # ============================================
+    # SETTINGS VIEW
+    # ============================================
+
+    def show_settings_view(self):
+        """Show the Settings/About view."""
+        self.current_view = "settings"
+
+        # Header
+        header = ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Icon(ft.Icons.SETTINGS, size=32, color=ft.Colors.PRIMARY),
+                    ft.Text(
+                        "Paramètres",
+                        size=28,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.PRIMARY,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            padding=20,
+        )
+
+        # App info section
+        app_info = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text(
+                        "🦁 Daynimal",
+                        size=24,
+                        weight=ft.FontWeight.BOLD,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Text(
+                        "Découverte quotidienne d'animaux",
+                        size=14,
+                        color=ft.Colors.GREY_700,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Text(
+                        "Version 0.2.0 - Février 2026",
+                        size=12,
+                        color=ft.Colors.GREY_500,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=5,
+            ),
+            padding=20,
+        )
+
+        # Preferences section
+        # Load current theme setting
+        try:
+            if self.repository:
+                theme_mode = self.repository.get_setting("theme_mode", "light")
+            else:
+                with AnimalRepository() as repo:
+                    theme_mode = repo.get_setting("theme_mode", "light")
+            is_dark = theme_mode == "dark"
+        except Exception:
+            is_dark = False
+
+        preferences = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text(
+                        "Préférences",
+                        size=18,
+                        weight=ft.FontWeight.BOLD,
+                    ),
+                    ft.Switch(
+                        label="Thème sombre",
+                        value=is_dark,
+                        on_change=self.on_theme_toggle,
+                    ),
+                ],
+                spacing=10,
+            ),
+            padding=ft.Padding(left=20, right=20, top=10, bottom=10),
+        )
+
+        # Credits section
+        credits = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text(
+                        "Crédits et sources de données",
+                        size=18,
+                        weight=ft.FontWeight.BOLD,
+                    ),
+                    ft.Text(
+                        "📚 GBIF - Global Biodiversity Information Facility",
+                        size=12,
+                    ),
+                    ft.Text(
+                        "   Taxonomie : CC-BY 4.0",
+                        size=10,
+                        color=ft.Colors.GREY_600,
+                    ),
+                    ft.Text(
+                        "🌐 Wikidata - Données structurées",
+                        size=12,
+                    ),
+                    ft.Text(
+                        "   Propriétés : CC0 (domaine public)",
+                        size=10,
+                        color=ft.Colors.GREY_600,
+                    ),
+                    ft.Text(
+                        "📖 Wikipedia - Descriptions",
+                        size=12,
+                    ),
+                    ft.Text(
+                        "   Articles : CC-BY-SA 3.0",
+                        size=10,
+                        color=ft.Colors.GREY_600,
+                    ),
+                    ft.Text(
+                        "🖼️ Wikimedia Commons - Images",
+                        size=12,
+                    ),
+                    ft.Text(
+                        "   Photos : Voir attributions individuelles",
+                        size=10,
+                        color=ft.Colors.GREY_600,
+                    ),
+                ],
+                spacing=8,
+            ),
+            padding=ft.Padding(left=20, right=20, top=10, bottom=10),
+        )
+
+        # Database stats
+        if self.repository:
+            stats = self.repository.get_stats()
+            db_info = ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text(
+                            "Base de données locale",
+                            size=18,
+                            weight=ft.FontWeight.BOLD,
+                        ),
+                        ft.Text(
+                            f"🔢 {stats['species_count']:,} espèces".replace(',', ' '),
+                            size=12,
+                        ),
+                        ft.Text(
+                            f"🌍 {stats['vernacular_names']:,} noms vernaculaires".replace(',', ' '),
+                            size=12,
+                        ),
+                        ft.Text(
+                            f"✨ {stats['enriched_count']} espèces enrichies",
+                            size=12,
+                        ),
+                    ],
+                    spacing=8,
+                ),
+                padding=ft.Padding(left=20, right=20, top=10, bottom=20),
+            )
+        else:
+            db_info = ft.Container()
+
+        # Update content
+        self.content_container.controls = [
+            header,
+            ft.Divider(),
+            app_info,
+            ft.Divider(),
+            preferences,
+            ft.Divider(),
+            credits,
+            ft.Divider(),
+            db_info,
+        ]
+        self.page.update()
 
     # ============================================
     # CLEANUP METHODS

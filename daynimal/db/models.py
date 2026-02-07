@@ -146,3 +146,18 @@ class AnimalHistoryModel(Base):
         Index("ix_history_viewed_at", "viewed_at"),
         Index("ix_history_taxon_id", "taxon_id"),
     )
+
+
+class UserSettingsModel(Base):
+    """
+    User preferences and settings.
+    Stores key-value pairs for app configuration.
+    """
+
+    __tablename__ = "user_settings"
+
+    # Primary key
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+
+    # Setting value (stored as string, parsed by app)
+    value: Mapped[str] = mapped_column(Text, nullable=False)

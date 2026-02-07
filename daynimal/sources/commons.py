@@ -223,6 +223,10 @@ class CommonsAPI(DataSource[CommonsImage]):
         if not url:
             return None
 
+        # Filter out non-image files (audio, video, etc.)
+        if not self._is_valid_image_url(url):
+            return None
+
         extmetadata = imageinfo.get("extmetadata", {})
 
         # Parse license
@@ -257,6 +261,48 @@ class CommonsAPI(DataSource[CommonsImage]):
             not in (License.CC0, License.PUBLIC_DOMAIN),
             description=description or None,
         )
+
+    def _is_valid_image_url(self, url: str) -> bool:
+        """
+        Check if URL points to a valid image file.
+
+        Filters out audio, video, and other non-image files.
+
+        Args:
+            url: File URL to check
+
+        Returns:
+            True if URL appears to be an image, False otherwise
+        """
+        # Valid image extensions
+        valid_extensions = (
+            '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp',
+            '.bmp', '.tif', '.tiff', '.ico'
+        )
+
+        # Invalid extensions (audio, video, documents)
+        invalid_extensions = (
+            '.mp3', '.mp4', '.ogg', '.webm', '.wav', '.avi', '.mov',
+            '.pdf', '.doc', '.txt', '.ogv', '.flac', '.m4a'
+        )
+
+        url_lower = url.lower()
+
+        # Check for invalid extensions first
+        if any(url_lower.endswith(ext) for ext in invalid_extensions):
+            return False
+
+        # Check for valid extensions
+        if any(url_lower.endswith(ext) for ext in valid_extensions):
+            return True
+
+        # If no extension match, check MIME type hint in URL
+        # Commons URLs sometimes have format hints
+        if 'image/' in url_lower:
+            return True
+
+        # Default to False for unknown types
+        return False
 
     def _parse_license(self, license_text: str) -> License | None:
         """Parse license text to License enum."""

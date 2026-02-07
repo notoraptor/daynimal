@@ -724,3 +724,46 @@ class AnimalRepository:
         self.session.query(AnimalHistoryModel).delete()
         self.session.commit()
         return count
+
+    # --- Settings ---
+
+    def get_setting(self, key: str, default: str | None = None) -> str | None:
+        """
+        Get a user setting by key.
+
+        Args:
+            key: Setting key
+            default: Default value if setting doesn't exist
+
+        Returns:
+            Setting value or default
+        """
+        from daynimal.db.models import UserSettingsModel
+
+        setting = self.session.query(UserSettingsModel).filter(
+            UserSettingsModel.key == key
+        ).first()
+
+        return setting.value if setting else default
+
+    def set_setting(self, key: str, value: str) -> None:
+        """
+        Set a user setting.
+
+        Args:
+            key: Setting key
+            value: Setting value (will be converted to string)
+        """
+        from daynimal.db.models import UserSettingsModel
+
+        setting = self.session.query(UserSettingsModel).filter(
+            UserSettingsModel.key == key
+        ).first()
+
+        if setting:
+            setting.value = str(value)
+        else:
+            setting = UserSettingsModel(key=key, value=str(value))
+            self.session.add(setting)
+
+        self.session.commit()
