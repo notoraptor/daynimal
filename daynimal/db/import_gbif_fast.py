@@ -32,7 +32,7 @@ from pathlib import Path
 from sqlalchemy import text
 
 from daynimal.config import settings
-from daynimal.db.import_gbif import (
+from daynimal.db.import_gbif_utils import (
     TAXON_COLUMNS,
     VERNACULAR_COLUMNS,
     download_backbone,

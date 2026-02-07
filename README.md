@@ -29,11 +29,9 @@ uv sync
 
 3. Import GBIF taxonomy data:
 ```bash
-# Full import (~1.5M taxa, ~500MB download)
-uv run import-gbif
-
-# OR minimal import (127K species, faster)
-uv run import-gbif-fast
+# Fast import with mode selection (~500MB download)
+# Full mode: ~1.5M taxa | Minimal mode: 127K species (recommended)
+uv run import-gbif-fast --mode minimal
 ```
 
 4. Initialize FTS5 search index (recommended):
