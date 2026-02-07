@@ -6,10 +6,18 @@ daily animal discoveries with enriched information.
 """
 
 import asyncio
+import traceback
 
 import flet as ft
 
 from daynimal.repository import AnimalRepository
+
+# Try to import debugger (optional)
+try:
+    from daynimal.debug import FletDebugger, log_info, log_error, log_debug
+    DEBUG_AVAILABLE = True
+except ImportError:
+    DEBUG_AVAILABLE = False
 
 
 class DaynimalApp:
@@ -21,24 +29,31 @@ class DaynimalApp:
         self.page.padding = 0
         self.page.scroll = ft.ScrollMode.AUTO
 
+        # Get debugger from page data if available
+        self.debugger = None
+        if hasattr(page, 'data') and isinstance(page.data, dict):
+            self.debugger = page.data.get('debugger')
+
         # Application state
         self.current_animal = None
         self.current_view = "today"
+        self.repository = None
+
+        # Log app initialization
+        if self.debugger:
+            self.debugger.logger.info("DaynimalApp initialized")
+
+        # Register cleanup handlers
+        self.page.on_disconnect = self.on_disconnect
+        if hasattr(self.page, 'on_close'):
+            self.page.on_close = self.on_close
 
         # Build UI
         self.build()
 
     def build(self):
         """Build the user interface."""
-        # Main content container (will change based on selected tab)
-        self.content_container = ft.Column(
-            controls=[],
-            spacing=10,
-            expand=True,
-            scroll=ft.ScrollMode.AUTO,
-        )
-
-        # Navigation bar
+        # Navigation bar - will be set as page.navigation_bar (fixed at bottom)
         self.nav_bar = ft.NavigationBar(
             destinations=[
                 ft.NavigationBarDestination(
@@ -62,17 +77,19 @@ class DaynimalApp:
             on_change=self.on_nav_change,
         )
 
-        # Main layout
-        self.page.add(
-            ft.Column(
-                controls=[
-                    self.content_container,
-                    self.nav_bar,
-                ],
-                spacing=0,
-                expand=True,
-            )
+        # Set navigation bar as page property (automatically fixed at bottom)
+        self.page.navigation_bar = self.nav_bar
+
+        # Main content container (will change based on selected tab)
+        self.content_container = ft.Column(
+            controls=[],
+            spacing=10,
+            expand=True,
+            scroll=ft.ScrollMode.AUTO,
         )
+
+        # Add content to page (navigation bar is separate, fixed at bottom)
+        self.page.add(self.content_container)
 
         # Show initial view (Today)
         self.show_today_view()
@@ -80,6 +97,10 @@ class DaynimalApp:
     def on_nav_change(self, e):
         """Handle navigation bar changes."""
         selected_index = e.control.selected_index
+
+        view_names = ["Today", "History", "Search", "Stats"]
+        if self.debugger and selected_index < len(view_names):
+            self.debugger.log_view_change(view_names[selected_index])
 
         if selected_index == 0:
             self.show_today_view()
@@ -115,7 +136,7 @@ class DaynimalApp:
         )
 
         # Buttons
-        today_button = ft.ElevatedButton(
+        today_button = ft.Button(
             "Animal du jour",
             icon=ft.Icons.CALENDAR_TODAY,
             on_click=self.load_today_animal,
@@ -125,7 +146,7 @@ class DaynimalApp:
             ),
         )
 
-        random_button = ft.ElevatedButton(
+        random_button = ft.Button(
             "Animal aléatoire",
             icon=ft.Icons.SHUFFLE,
             on_click=self.load_random_animal,
@@ -176,7 +197,7 @@ class DaynimalApp:
         self.content_container.controls = [
             header,
             ft.Divider(),
-            ft.Container(content=button_row, padding=ft.padding.only(left=20, right=20, bottom=10)),
+            ft.Container(content=button_row, padding=ft.Padding(left=20, right=20, bottom=10, top=0)),
             ft.Container(
                 content=self.today_animal_container,
                 padding=20,
@@ -195,6 +216,9 @@ class DaynimalApp:
 
     async def load_animal_for_today_view(self, mode: str):
         """Load and display an animal in the Today view."""
+        if self.debugger:
+            self.debugger.log_animal_load(mode)
+
         # Show loading message in container
         self.today_animal_container.controls = [
             ft.Container(
@@ -221,22 +245,40 @@ class DaynimalApp:
         try:
             # Fetch animal from repository in a separate thread
             def fetch_animal():
-                with AnimalRepository() as repo:
-                    if mode == "today":
-                        animal = repo.get_animal_of_the_day()
-                        repo.add_to_history(animal.taxon.taxon_id, command="today")
-                    else:  # random
-                        animal = repo.get_random()
-                        repo.add_to_history(animal.taxon.taxon_id, command="random")
+                # Create repository if needed
+                if self.repository is None:
+                    self.repository = AnimalRepository()
+
+                if mode == "today":
+                    animal = self.repository.get_animal_of_the_day()
+                    self.repository.add_to_history(animal.taxon.taxon_id, command="today")
+                else:  # random
+                    animal = self.repository.get_random()
+                    self.repository.add_to_history(animal.taxon.taxon_id, command="random")
                 return animal
 
             animal = await asyncio.to_thread(fetch_animal)
             self.current_animal = animal
 
+            if self.debugger:
+                self.debugger.log_animal_load(mode, animal.display_name)
+
             # Display animal in Today view
             self.display_animal_in_today_view(animal)
 
         except Exception as error:
+            # Log error with full traceback
+            error_msg = f"Error in load_animal_for_today_view ({mode}): {error}"
+            error_traceback = traceback.format_exc()
+
+            if self.debugger:
+                self.debugger.log_error(f"load_animal_for_today_view ({mode})", error)
+                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
+            else:
+                # Fallback: print to console if no debugger
+                print(f"ERROR: {error_msg}")
+                print(f"Traceback:\n{error_traceback}")
+
             # Show error
             self.today_animal_container.controls = [
                 ft.Container(
@@ -417,7 +459,7 @@ class DaynimalApp:
                     src=first_image.url,
                     width=400,
                     height=300,
-                    fit=ft.ImageFit.CONTAIN,
+                    fit="contain",  # Use string instead of ft.ImageFit.CONTAIN
                     border_radius=10,
                     error_content=ft.Container(
                         content=ft.Column(
@@ -439,10 +481,10 @@ class DaynimalApp:
             )
 
             # Image credit
-            if first_image.artist:
+            if first_image.author:
                 controls.append(
                     ft.Text(
-                        f"Crédit: {first_image.artist}",
+                        f"Crédit: {first_image.author}",
                         size=12,
                         color=ft.Colors.GREY_500,
                         italic=True,
@@ -558,8 +600,10 @@ class DaynimalApp:
         try:
             # Fetch history
             def fetch_history():
-                with AnimalRepository() as repo:
-                    return repo.get_history(page=1, per_page=50)
+                # Create repository if needed
+                if self.repository is None:
+                    self.repository = AnimalRepository()
+                return self.repository.get_history(page=1, per_page=50)
 
             history_items, total = await asyncio.to_thread(fetch_history)
 
@@ -642,6 +686,18 @@ class DaynimalApp:
                 self.history_list.controls = controls
 
         except Exception as error:
+            # Log error with full traceback
+            error_msg = f"Error in load_history_view: {error}"
+            error_traceback = traceback.format_exc()
+
+            if self.debugger:
+                self.debugger.log_error("load_history_view", error)
+                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
+            else:
+                # Fallback: print to console if no debugger
+                print(f"ERROR: {error_msg}")
+                print(f"Traceback:\n{error_traceback}")
+
             # Show error
             self.history_list.controls = [
                 ft.Container(
@@ -774,6 +830,9 @@ class DaynimalApp:
 
     async def perform_search(self, query: str):
         """Perform search in repository."""
+        if self.debugger:
+            self.debugger.logger.debug(f"Search started: '{query}'")
+
         # Show loading
         self.search_results.controls = [
             ft.Container(
@@ -794,10 +853,15 @@ class DaynimalApp:
         try:
             # Search
             def search():
-                with AnimalRepository() as repo:
-                    return repo.search(query, limit=20)
+                # Create repository if needed
+                if self.repository is None:
+                    self.repository = AnimalRepository()
+                return self.repository.search(query, limit=20)
 
             results = await asyncio.to_thread(search)
+
+            if self.debugger:
+                self.debugger.log_search(query, len(results))
 
             if not results:
                 # No results
@@ -874,6 +938,18 @@ class DaynimalApp:
                 self.search_results.controls = controls
 
         except Exception as error:
+            # Log error with full traceback
+            error_msg = f"Error in perform_search: {error}"
+            error_traceback = traceback.format_exc()
+
+            if self.debugger:
+                self.debugger.log_error("perform_search", error)
+                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
+            else:
+                # Fallback: print to console if no debugger
+                print(f"ERROR: {error_msg}")
+                print(f"Traceback:\n{error_traceback}")
+
             # Show error
             self.search_results.controls = [
                 ft.Container(
@@ -964,8 +1040,10 @@ class DaynimalApp:
         try:
             # Fetch stats
             def fetch_stats():
-                with AnimalRepository() as repo:
-                    return repo.get_stats()
+                # Create repository if needed
+                if self.repository is None:
+                    self.repository = AnimalRepository()
+                return self.repository.get_stats()
 
             stats = await asyncio.to_thread(fetch_stats)
 
@@ -1088,6 +1166,18 @@ class DaynimalApp:
             self.stats_container.controls = controls
 
         except Exception as error:
+            # Log error with full traceback
+            error_msg = f"Error in load_stats_view: {error}"
+            error_traceback = traceback.format_exc()
+
+            if self.debugger:
+                self.debugger.log_error("load_stats_view", error)
+                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
+            else:
+                # Fallback: print to console if no debugger
+                print(f"ERROR: {error_msg}")
+                print(f"Traceback:\n{error_traceback}")
+
             # Show error
             self.stats_container.controls = [
                 ft.Container(
@@ -1110,6 +1200,54 @@ class DaynimalApp:
 
         finally:
             self.page.update()
+
+    # ============================================
+    # CLEANUP METHODS
+    # ============================================
+
+    def cleanup(self):
+        """
+        Clean up resources (close connections, database, etc.).
+
+        This is called when the app is closing to properly release resources.
+        Designed to be fast to avoid blocking the app closure.
+        """
+        if self.debugger:
+            self.debugger.logger.info("Cleaning up application resources...")
+
+        # Close repository and all its connections (fast operation)
+        if self.repository:
+            try:
+                # Close API connections
+                self.repository.close()
+                if self.debugger:
+                    self.debugger.logger.info("Repository closed successfully")
+            except Exception as e:
+                if self.debugger:
+                    self.debugger.logger.error(f"Error closing repository: {e}")
+
+        if self.debugger:
+            self.debugger.logger.info("Cleanup completed")
+
+    def on_disconnect(self, e):
+        """Handle page disconnect event (when user closes the window)."""
+        if self.debugger:
+            self.debugger.logger.info("Page disconnected, cleaning up...")
+        try:
+            self.cleanup()
+        except Exception as error:
+            if self.debugger:
+                self.debugger.logger.error(f"Error during disconnect cleanup: {error}")
+
+    def on_close(self, e):
+        """Handle page close event."""
+        if self.debugger:
+            self.debugger.logger.info("Page closed, cleaning up...")
+        try:
+            self.cleanup()
+        except Exception as error:
+            if self.debugger:
+                self.debugger.logger.error(f"Error during close cleanup: {error}")
 
 
 def main():

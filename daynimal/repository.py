@@ -9,7 +9,9 @@ It handles:
 """
 
 import json
-from datetime import datetime
+import logging
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, UTC
 
 from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session
@@ -31,6 +33,9 @@ from daynimal.schemas import (
 )
 from daynimal.sources.wikidata import WikidataAPI
 from daynimal.sources.wikipedia import WikipediaAPI
+
+# Logger for this module
+logger = logging.getLogger(__name__)
 from daynimal.sources.commons import CommonsAPI
 
 
@@ -224,25 +229,29 @@ class AnimalRepository:
         self, rank: str = "species", prefer_unenriched: bool = True, enrich: bool = True
     ) -> AnimalInfo | None:
         """
-        Get a random animal.
+        Get a random animal using fast ID-based selection.
+
+        This method is optimized for large datasets by selecting a random ID
+        in the valid range instead of using ORDER BY RANDOM(), which is slow.
 
         Args:
             rank: Taxonomic rank to filter by (default: species)
             prefer_unenriched: Prefer animals not yet enriched (for "animal of the day")
             enrich: Whether to fetch additional data
         """
-        query = self.session.query(TaxonModel).filter(TaxonModel.rank == rank)
+        import random
 
         if prefer_unenriched:
             # First try to get an unenriched animal
-            unenriched = query.filter(TaxonModel.is_enriched.is_(False))
-            taxon_model = unenriched.order_by(func.random()).first()
+            taxon_model = self._get_random_by_id_range(
+                rank=rank, is_enriched=False
+            )
 
             if not taxon_model:
                 # Fall back to any animal
-                taxon_model = query.order_by(func.random()).first()
+                taxon_model = self._get_random_by_id_range(rank=rank)
         else:
-            taxon_model = query.order_by(func.random()).first()
+            taxon_model = self._get_random_by_id_range(rank=rank)
 
         if not taxon_model:
             return None
@@ -255,43 +264,111 @@ class AnimalRepository:
 
         return animal
 
+    def _get_random_by_id_range(
+        self, rank: str, is_enriched: bool | None = None
+    ) -> TaxonModel | None:
+        """
+        Fast random selection by ID range.
+
+        Instead of ORDER BY RANDOM() (which is O(n)), this method:
+        1. Gets min/max taxon_id from entire table (fast - uses PK index)
+        2. Generates random ID in that range
+        3. Finds first taxon matching filters with id >= random_id
+
+        This avoids slow MIN/MAX on filtered columns without index.
+
+        Args:
+            rank: Taxonomic rank to filter
+            is_enriched: Optional filter by enrichment status
+        """
+        import random
+
+        # Build base query with filters
+        query = self.session.query(TaxonModel).filter(TaxonModel.rank == rank)
+
+        if is_enriched is not None:
+            query = query.filter(TaxonModel.is_enriched.is_(is_enriched))
+
+        # Get ID range from entire table (fast - uses primary key index)
+        # Don't filter by rank/is_enriched here to avoid full table scan
+        id_range = self.session.query(
+            func.min(TaxonModel.taxon_id),
+            func.max(TaxonModel.taxon_id)
+        ).first()
+
+        min_id, max_id = id_range
+
+        if min_id is None or max_id is None:
+            return None
+
+        # Generate random ID in range and find closest match with filters
+        # Try up to 20 times to find a valid taxon (handles gaps and filtering)
+        for _ in range(20):
+            random_id = random.randint(min_id, max_id)
+
+            taxon_model = query.filter(
+                TaxonModel.taxon_id >= random_id
+            ).first()
+
+            if taxon_model:
+                return taxon_model
+
+        # Fallback: just get the first one matching filters
+        return query.first()
+
     def get_animal_of_the_day(self, date: datetime | None = None) -> AnimalInfo | None:
         """
         Get a consistent "animal of the day" based on the date.
 
-        Uses the date as a seed for deterministic random selection,
-        so the same date always returns the same animal.
+        Uses the date as a seed for deterministic selection using ID-based approach,
+        so the same date always returns the same animal. This is optimized for
+        large datasets by avoiding COUNT(), OFFSET, and filtered MIN/MAX operations.
 
         Args:
             date: Date to use for selection (default: today)
         """
+        import random
+
         if date is None:
             date = datetime.now()
 
         # Use date as seed for consistent selection
         day_seed = date.year * 10000 + date.month * 100 + date.day
 
-        # Count species
-        species_count = (
-            self.session.query(TaxonModel)
-            .filter(TaxonModel.rank == "species")
-            .filter(TaxonModel.is_synonym.is_(False))
-            .count()
-        )
+        # Get ID range from entire table (fast - uses primary key index)
+        # Don't filter by rank/is_synonym here to avoid slow full table scan
+        id_range = self.session.query(
+            func.min(TaxonModel.taxon_id),
+            func.max(TaxonModel.taxon_id)
+        ).first()
 
-        if species_count == 0:
+        min_id, max_id = id_range
+
+        if min_id is None or max_id is None:
             return None
 
-        # Select based on seed
-        offset = day_seed % species_count
+        # Use date seed to generate deterministic random ID
+        rng = random.Random(day_seed)
+        target_id = rng.randint(min_id, max_id)
 
+        # Find closest taxon with id >= target_id matching filters
         taxon_model = (
             self.session.query(TaxonModel)
             .filter(TaxonModel.rank == "species")
             .filter(TaxonModel.is_synonym.is_(False))
-            .offset(offset)
+            .filter(TaxonModel.taxon_id >= target_id)
             .first()
         )
+
+        # If no taxon found (target_id was beyond last valid ID), wrap around
+        if not taxon_model:
+            taxon_model = (
+                self.session.query(TaxonModel)
+                .filter(TaxonModel.rank == "species")
+                .filter(TaxonModel.is_synonym.is_(False))
+                .order_by(TaxonModel.taxon_id)
+                .first()
+            )
 
         if not taxon_model:
             return None
@@ -305,7 +382,19 @@ class AnimalRepository:
     # --- Enrichment methods ---
 
     def _enrich(self, animal: AnimalInfo, taxon_model: TaxonModel) -> None:
-        """Enrich animal with data from external APIs."""
+        """
+        Enrich animal with data from external APIs (parallelized).
+
+        This method fetches missing data from Wikidata, Wikipedia, and Wikimedia Commons.
+        To optimize performance:
+        - Wikidata and Wikipedia are fetched in parallel (independent calls)
+        - Images are fetched after (may depend on Wikidata results)
+        - All results are cached in the database for future use
+
+        Args:
+            animal: AnimalInfo object to enrich (modified in place)
+            taxon_model: Database model with taxon information
+        """
         scientific_name = animal.taxon.canonical_name or animal.taxon.scientific_name
 
         # Try to load from cache first
@@ -313,18 +402,44 @@ class AnimalRepository:
         animal.wikipedia = self._get_cached_wikipedia(taxon_model.taxon_id)
         animal.images = self._get_cached_images(taxon_model.taxon_id)
 
-        # Fetch missing data from APIs
-        if animal.wikidata is None:
-            animal.wikidata = self._fetch_and_cache_wikidata(
-                taxon_model.taxon_id, scientific_name
-            )
+        # Determine what needs to be fetched
+        needs_wikidata = animal.wikidata is None
+        needs_wikipedia = animal.wikipedia is None
+        needs_images = not animal.images
 
-        if animal.wikipedia is None:
-            animal.wikipedia = self._fetch_and_cache_wikipedia(
-                taxon_model.taxon_id, scientific_name
-            )
+        # Fetch missing data in parallel
+        if needs_wikidata or needs_wikipedia:
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                futures = {}
 
-        if not animal.images:
+                # Submit Wikidata and Wikipedia in parallel (they're independent)
+                if needs_wikidata:
+                    futures['wikidata'] = executor.submit(
+                        self._fetch_and_cache_wikidata,
+                        taxon_model.taxon_id,
+                        scientific_name
+                    )
+
+                if needs_wikipedia:
+                    futures['wikipedia'] = executor.submit(
+                        self._fetch_and_cache_wikipedia,
+                        taxon_model.taxon_id,
+                        scientific_name
+                    )
+
+                # Wait for completion and assign results
+                for key, future in futures.items():
+                    try:
+                        result = future.result()
+                        if key == 'wikidata':
+                            animal.wikidata = result
+                        elif key == 'wikipedia':
+                            animal.wikipedia = result
+                    except Exception as e:
+                        logger.error(f"Error fetching {key} for taxon {taxon_model.taxon_id}: {e}", exc_info=True)
+
+        # Fetch images (depends on wikidata, so must be after)
+        if needs_images:
             animal.images = self._fetch_and_cache_images(
                 taxon_model.taxon_id, scientific_name, animal.wikidata
             )
@@ -332,7 +447,7 @@ class AnimalRepository:
         # Mark as enriched
         if not taxon_model.is_enriched:
             taxon_model.is_enriched = True
-            taxon_model.enriched_at = datetime.utcnow()
+            taxon_model.enriched_at = datetime.now(UTC)
             self.session.commit()
 
         animal.is_enriched = True
@@ -457,13 +572,13 @@ class AnimalRepository:
 
         if existing:
             existing.data = json_data
-            existing.fetched_at = datetime.utcnow()
+            existing.fetched_at = datetime.now(UTC)
         else:
             cache = EnrichmentCacheModel(
                 taxon_id=taxon_id,
                 source=source,
                 data=json_data,
-                fetched_at=datetime.utcnow(),
+                fetched_at=datetime.now(UTC),
             )
             self.session.add(cache)
 
@@ -550,7 +665,7 @@ class AnimalRepository:
             The created history entry
         """
         entry = AnimalHistoryModel(
-            taxon_id=taxon_id, viewed_at=datetime.utcnow(), command=command
+            taxon_id=taxon_id, viewed_at=datetime.now(UTC), command=command
         )
         self.session.add(entry)
         self.session.commit()
