@@ -22,9 +22,7 @@ def get_log_files():
         return []
 
     log_files = sorted(
-        log_dir.glob("daynimal_*.log"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True
+        log_dir.glob("daynimal_*.log"), key=lambda p: p.stat().st_mtime, reverse=True
     )
     return log_files
 
@@ -47,8 +45,12 @@ def show_latest_log(tail: bool = False):
         try:
             if sys.platform == "win32":
                 subprocess.run(
-                    ["powershell", "-Command", f"Get-Content -Path '{latest_log}' -Wait"],
-                    check=True
+                    [
+                        "powershell",
+                        "-Command",
+                        f"Get-Content -Path '{latest_log}' -Wait",
+                    ],
+                    check=True,
                 )
             else:
                 subprocess.run(["tail", "-f", str(latest_log)], check=True)
@@ -56,7 +58,7 @@ def show_latest_log(tail: bool = False):
             print("\nStopped following log file")
     else:
         # Show the entire file
-        with open(latest_log, 'r', encoding='utf-8') as f:
+        with open(latest_log, "r", encoding="utf-8") as f:
             print(f.read())
 
 
@@ -76,6 +78,7 @@ def list_log_files():
         mtime = Path(log_file).stat().st_mtime
 
         from datetime import datetime
+
         mtime_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
 
         print(f"  {log_file.name}")
@@ -97,31 +100,19 @@ def show_all_logs():
 
     for log_file in reversed(log_files):  # Oldest first
         print(f"\n### {log_file.name} ###\n")
-        with open(log_file, 'r', encoding='utf-8') as f:
+        with open(log_file, "r", encoding="utf-8") as f:
             print(f.read())
         print("\n" + "=" * 60)
 
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="View Daynimal application logs"
-    )
+    parser = argparse.ArgumentParser(description="View Daynimal application logs")
     parser.add_argument(
-        "--tail",
-        action="store_true",
-        help="Follow the latest log file (real-time)",
+        "--tail", action="store_true", help="Follow the latest log file (real-time)"
     )
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="List all log files",
-    )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Show all logs concatenated",
-    )
+    parser.add_argument("--list", action="store_true", help="List all log files")
+    parser.add_argument("--all", action="store_true", help="Show all logs concatenated")
     args = parser.parse_args()
 
     if args.list:

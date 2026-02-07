@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 
 
@@ -199,8 +200,10 @@ class CommonsImage:
         author_str = self.author or "Unknown author"
         # Handle both enum and string (from cache)
         license_str = (
-            self.license.value if hasattr(self.license, "value") else self.license
-        ) if self.license else "CC-BY-SA"
+            (self.license.value if hasattr(self.license, "value") else self.license)
+            if self.license
+            else "CC-BY-SA"
+        )
         return (
             f'"{self.filename}" by {author_str}, via Wikimedia Commons ({license_str})'
         )
@@ -210,8 +213,10 @@ class CommonsImage:
         author_str = self.author or "Unknown author"
         # Handle both enum and string (from cache)
         license_str = (
-            self.license.value if hasattr(self.license, "value") else self.license
-        ) if self.license else "CC-BY-SA"
+            (self.license.value if hasattr(self.license, "value") else self.license)
+            if self.license
+            else "CC-BY-SA"
+        )
         return (
             f'<a href="{self.commons_page_url}">{self.filename}</a> '
             f"by {author_str}, via "

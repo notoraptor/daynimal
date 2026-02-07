@@ -14,7 +14,8 @@ from daynimal.repository import AnimalRepository
 
 # Try to import debugger (optional)
 try:
-    from daynimal.debug import FletDebugger, log_info, log_error, log_debug
+    import daynimal.debug  # noqa: F401
+
     DEBUG_AVAILABLE = True
 except ImportError:
     DEBUG_AVAILABLE = False
@@ -31,8 +32,8 @@ class DaynimalApp:
 
         # Get debugger from page data if available
         self.debugger = None
-        if hasattr(page, 'data') and isinstance(page.data, dict):
-            self.debugger = page.data.get('debugger')
+        if hasattr(page, "data") and isinstance(page.data, dict):
+            self.debugger = page.data.get("debugger")
 
         # Application state
         self.current_animal = None
@@ -48,7 +49,7 @@ class DaynimalApp:
 
         # Register cleanup handlers
         self.page.on_disconnect = self.on_disconnect
-        if hasattr(self.page, 'on_close'):
+        if hasattr(self.page, "on_close"):
             self.page.on_close = self.on_close
 
         # Build UI
@@ -63,25 +64,14 @@ class DaynimalApp:
         self.nav_bar = ft.NavigationBar(
             destinations=[
                 ft.NavigationBarDestination(
-                    icon=ft.Icons.CALENDAR_TODAY,
-                    label="Aujourd'hui",
+                    icon=ft.Icons.CALENDAR_TODAY, label="Aujourd'hui"
                 ),
+                ft.NavigationBarDestination(icon=ft.Icons.HISTORY, label="Historique"),
+                ft.NavigationBarDestination(icon=ft.Icons.SEARCH, label="Recherche"),
                 ft.NavigationBarDestination(
-                    icon=ft.Icons.HISTORY,
-                    label="Historique",
+                    icon=ft.Icons.BAR_CHART, label="Statistiques"
                 ),
-                ft.NavigationBarDestination(
-                    icon=ft.Icons.SEARCH,
-                    label="Recherche",
-                ),
-                ft.NavigationBarDestination(
-                    icon=ft.Icons.BAR_CHART,
-                    label="Statistiques",
-                ),
-                ft.NavigationBarDestination(
-                    icon=ft.Icons.SETTINGS,
-                    label="Paramètres",
-                ),
+                ft.NavigationBarDestination(icon=ft.Icons.SETTINGS, label="Paramètres"),
             ],
             selected_index=0,
             on_change=self.on_nav_change,
@@ -92,10 +82,7 @@ class DaynimalApp:
 
         # Main content container (will change based on selected tab)
         self.content_container = ft.Column(
-            controls=[],
-            spacing=10,
-            expand=True,
-            scroll=ft.ScrollMode.AUTO,
+            controls=[], spacing=10, expand=True, scroll=ft.ScrollMode.AUTO
         )
 
         # Add content to page (navigation bar is separate, fixed at bottom)
@@ -189,8 +176,7 @@ class DaynimalApp:
     def on_image_error(self, e):
         """Handle image loading errors."""
         try:
-            image_url = e.control.src if hasattr(e.control, 'src') else "URL inconnue"
-            error_msg = f"Image load error: {image_url}"
+            image_url = e.control.src if hasattr(e.control, "src") else "URL inconnue"
 
             # Log to debugger if available
             if self.debugger:
@@ -202,7 +188,7 @@ class DaynimalApp:
                     )
 
             # Always print to console
-            print(f"\n[ERROR] Image loading failed!")
+            print("\n[ERROR] Image loading failed!")
             print(f"  URL: {image_url}")
             if self.current_animal:
                 print(f"  Animal: {self.current_animal.display_name}")
@@ -343,7 +329,7 @@ class DaynimalApp:
                         size=28,
                         weight=ft.FontWeight.BOLD,
                         color=ft.Colors.PRIMARY,
-                    ),
+                    )
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
             ),
@@ -355,20 +341,14 @@ class DaynimalApp:
             "Animal du jour",
             icon=ft.Icons.CALENDAR_TODAY,
             on_click=self.load_today_animal,
-            style=ft.ButtonStyle(
-                color=ft.Colors.WHITE,
-                bgcolor=ft.Colors.PRIMARY,
-            ),
+            style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=ft.Colors.PRIMARY),
         )
 
         random_button = ft.Button(
             "Animal aléatoire",
             icon=ft.Icons.SHUFFLE,
             on_click=self.load_random_animal,
-            style=ft.ButtonStyle(
-                color=ft.Colors.WHITE,
-                bgcolor=ft.Colors.BLUE,
-            ),
+            style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=ft.Colors.BLUE),
         )
 
         button_row = ft.Row(
@@ -380,19 +360,17 @@ class DaynimalApp:
         # Animal display area - restore previous state if available
         if self.current_animal is not None:
             # Restore the previously displayed animal
-            self.today_animal_container = ft.Column(
-                controls=[],
-                spacing=10,
-            )
+            self.today_animal_container = ft.Column(controls=[], spacing=10)
             # Update content first so container is added to page
             self.content_container.controls = [
                 header,
                 ft.Divider(),
-                ft.Container(content=button_row, padding=ft.Padding(left=20, right=20, bottom=10, top=0)),
                 ft.Container(
-                    content=self.today_animal_container,
-                    padding=20,
-                    expand=True,
+                    content=button_row,
+                    padding=ft.Padding(left=20, right=20, bottom=10, top=0),
+                ),
+                ft.Container(
+                    content=self.today_animal_container, padding=20, expand=True
                 ),
             ]
             self.page.update()
@@ -405,16 +383,15 @@ class DaynimalApp:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.FAVORITE, size=80, color=ft.Colors.PRIMARY),
+                                ft.Icon(
+                                    ft.Icons.FAVORITE, size=80, color=ft.Colors.PRIMARY
+                                ),
                                 ft.Text(
                                     "Bienvenue sur Daynimal !",
                                     size=24,
                                     weight=ft.FontWeight.BOLD,
                                 ),
-                                ft.Text(
-                                    "Découvrez un animal chaque jour",
-                                    size=16,
-                                ),
+                                ft.Text("Découvrez un animal chaque jour", size=16),
                                 ft.Text(
                                     "Cliquez sur 'Animal du jour' pour commencer",
                                     size=14,
@@ -433,11 +410,12 @@ class DaynimalApp:
             self.content_container.controls = [
                 header,
                 ft.Divider(),
-                ft.Container(content=button_row, padding=ft.Padding(left=20, right=20, bottom=10, top=0)),
                 ft.Container(
-                    content=self.today_animal_container,
-                    padding=20,
-                    expand=True,
+                    content=button_row,
+                    padding=ft.Padding(left=20, right=20, bottom=10, top=0),
+                ),
+                ft.Container(
+                    content=self.today_animal_container, padding=20, expand=True
                 ),
             ]
             self.page.update()
@@ -461,7 +439,9 @@ class DaynimalApp:
                 content=ft.Column(
                     controls=[
                         ft.ProgressRing(width=60, height=60),
-                        ft.Text("Chargement en cours...", size=18, weight=ft.FontWeight.BOLD),
+                        ft.Text(
+                            "Chargement en cours...", size=18, weight=ft.FontWeight.BOLD
+                        ),
                         ft.Text(
                             f"Récupération de l'animal {'du jour' if mode == 'today' else 'aléatoire'}",
                             size=14,
@@ -487,10 +467,14 @@ class DaynimalApp:
 
                 if mode == "today":
                     animal = self.repository.get_animal_of_the_day()
-                    self.repository.add_to_history(animal.taxon.taxon_id, command="today")
+                    self.repository.add_to_history(
+                        animal.taxon.taxon_id, command="today"
+                    )
                 else:  # random
                     animal = self.repository.get_random()
-                    self.repository.add_to_history(animal.taxon.taxon_id, command="random")
+                    self.repository.add_to_history(
+                        animal.taxon.taxon_id, command="random"
+                    )
                 return animal
 
             animal = await asyncio.to_thread(fetch_animal)
@@ -528,16 +512,13 @@ class DaynimalApp:
                                 weight=ft.FontWeight.BOLD,
                                 color=ft.Colors.ERROR,
                             ),
-                            ft.Text(
-                                str(error),
-                                size=14,
-                            ),
+                            ft.Text(str(error), size=14),
                         ],
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                         spacing=10,
                     ),
                     padding=40,
-                    )
+                )
             ]
 
         finally:
@@ -550,30 +531,19 @@ class DaynimalApp:
 
         # Title
         controls.append(
-            ft.Text(
-                animal.display_name.upper(),
-                size=28,
-                weight=ft.FontWeight.BOLD,
-            )
+            ft.Text(animal.display_name.upper(), size=28, weight=ft.FontWeight.BOLD)
         )
 
         # Scientific name
         controls.append(
             ft.Text(
-                animal.taxon.scientific_name,
-                size=18,
-                italic=True,
-                color=ft.Colors.BLUE,
+                animal.taxon.scientific_name, size=18, italic=True, color=ft.Colors.BLUE
             )
         )
 
         # ID
         controls.append(
-            ft.Text(
-                f"ID: {animal.taxon.taxon_id}",
-                size=14,
-                color=ft.Colors.GREY_500,
-            )
+            ft.Text(f"ID: {animal.taxon.taxon_id}", size=14, color=ft.Colors.GREY_500)
         )
 
         controls.append(ft.Divider())
@@ -665,12 +635,7 @@ class DaynimalApp:
             if len(description) > 500:
                 description = description[:500] + "..."
 
-            controls.append(
-                ft.Text(
-                    description,
-                    size=14,
-                )
-            )
+            controls.append(ft.Text(description, size=14))
 
             controls.append(ft.Divider())
 
@@ -707,9 +672,7 @@ class DaynimalApp:
                             content=ft.Column(
                                 controls=[
                                     ft.Icon(
-                                        ft.Icons.IMAGE,
-                                        size=60,
-                                        color=ft.Colors.ERROR,
+                                        ft.Icons.IMAGE, size=60, color=ft.Colors.ERROR
                                     ),
                                     ft.Text(
                                         "Erreur de chargement",
@@ -717,10 +680,7 @@ class DaynimalApp:
                                         color=ft.Colors.ERROR,
                                         weight=ft.FontWeight.BOLD,
                                     ),
-                                    ft.Text(
-                                        "L'image n'a pas pu être chargée",
-                                        size=12,
-                                    ),
+                                    ft.Text("L'image n'a pas pu être chargée", size=12),
                                     ft.Text(
                                         f"URL: {current_image.url[:80]}...",
                                         size=9,
@@ -766,7 +726,9 @@ class DaynimalApp:
                     else ft.Container(),
                     # Image credit
                     ft.Text(
-                        f"Crédit: {current_image.author}" if current_image.author else "",
+                        f"Crédit: {current_image.author}"
+                        if current_image.author
+                        else "",
                         size=12,
                         color=ft.Colors.GREY_500,
                         italic=True,
@@ -839,7 +801,7 @@ class DaynimalApp:
                         size=28,
                         weight=ft.FontWeight.BOLD,
                         color=ft.Colors.PRIMARY,
-                    ),
+                    )
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
             ),
@@ -847,20 +809,13 @@ class DaynimalApp:
         )
 
         # History list container
-        self.history_list = ft.Column(
-            controls=[],
-            spacing=10,
-        )
+        self.history_list = ft.Column(controls=[], spacing=10)
 
         # Update content
         self.content_container.controls = [
             header,
             ft.Divider(),
-            ft.Container(
-                content=self.history_list,
-                padding=20,
-                expand=True,
-            ),
+            ft.Container(content=self.history_list, padding=20, expand=True),
         ]
         self.page.update()
 
@@ -902,7 +857,9 @@ class DaynimalApp:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.HISTORY, size=80, color=ft.Colors.GREY_500),
+                                ft.Icon(
+                                    ft.Icons.HISTORY, size=80, color=ft.Colors.GREY_500
+                                ),
                                 ft.Text(
                                     "Aucun historique",
                                     size=20,
@@ -941,11 +898,12 @@ class DaynimalApp:
                                     ft.Row(
                                         controls=[
                                             ft.Text(
-                                                item.taxon.canonical_name or item.taxon.scientific_name,
+                                                item.taxon.canonical_name
+                                                or item.taxon.scientific_name,
                                                 size=18,
                                                 weight=ft.FontWeight.BOLD,
-                                            ),
-                                        ],
+                                            )
+                                        ]
                                     ),
                                     ft.Text(
                                         item.taxon.scientific_name,
@@ -955,7 +913,11 @@ class DaynimalApp:
                                     ),
                                     ft.Row(
                                         controls=[
-                                            ft.Icon(ft.Icons.HISTORY, size=16, color=ft.Colors.GREY_500),
+                                            ft.Icon(
+                                                ft.Icons.HISTORY,
+                                                size=16,
+                                                color=ft.Colors.GREY_500,
+                                            ),
                                             ft.Text(
                                                 viewed_at,
                                                 size=12,
@@ -977,7 +939,7 @@ class DaynimalApp:
                             data=item.taxon.taxon_id,  # Store taxon_id for click handler
                             on_click=self.on_history_item_click,
                             ink=True,  # Add ink ripple effect on click
-                        ),
+                        )
                     )
                     controls.append(card)
 
@@ -1036,7 +998,7 @@ class DaynimalApp:
                         size=28,
                         weight=ft.FontWeight.BOLD,
                         color=ft.Colors.PRIMARY,
-                    ),
+                    )
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
             ),
@@ -1083,12 +1045,11 @@ class DaynimalApp:
         self.content_container.controls = [
             header,
             ft.Divider(),
-            ft.Container(content=self.search_field, padding=ft.padding.only(left=20, right=20, top=10)),
             ft.Container(
-                content=self.search_results,
-                padding=20,
-                expand=True,
+                content=self.search_field,
+                padding=ft.padding.only(left=20, right=20, top=10),
             ),
+            ft.Container(content=self.search_results, padding=20, expand=True),
         ]
         self.page.update()
 
@@ -1167,11 +1128,11 @@ class DaynimalApp:
                     ft.Container(
                         content=ft.Column(
                             controls=[
-                                ft.Icon(ft.Icons.SEARCH, size=60, color=ft.Colors.GREY_500),
+                                ft.Icon(
+                                    ft.Icons.SEARCH, size=60, color=ft.Colors.GREY_500
+                                ),
                                 ft.Text(
-                                    "Aucun résultat",
-                                    size=20,
-                                    weight=ft.FontWeight.BOLD,
+                                    "Aucun résultat", size=20, weight=ft.FontWeight.BOLD
                                 ),
                                 ft.Text(
                                     f"Aucun animal trouvé pour '{query}'",
@@ -1210,7 +1171,8 @@ class DaynimalApp:
                             content=ft.Column(
                                 controls=[
                                     ft.Text(
-                                        animal.taxon.canonical_name or animal.taxon.scientific_name,
+                                        animal.taxon.canonical_name
+                                        or animal.taxon.scientific_name,
                                         size=18,
                                         weight=ft.FontWeight.BOLD,
                                     ),
@@ -1221,7 +1183,9 @@ class DaynimalApp:
                                         color=ft.Colors.BLUE,
                                     ),
                                     ft.Text(
-                                        vernacular if vernacular else "Pas de nom vernaculaire",
+                                        vernacular
+                                        if vernacular
+                                        else "Pas de nom vernaculaire",
                                         size=12,
                                         color=ft.Colors.GREY_500,
                                     ),
@@ -1229,7 +1193,7 @@ class DaynimalApp:
                                 spacing=5,
                             ),
                             padding=15,
-                        ),
+                        )
                     )
                     controls.append(card)
 
@@ -1288,7 +1252,7 @@ class DaynimalApp:
                         size=28,
                         weight=ft.FontWeight.BOLD,
                         color=ft.Colors.PRIMARY,
-                    ),
+                    )
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
             ),
@@ -1309,11 +1273,7 @@ class DaynimalApp:
         self.content_container.controls = [
             header,
             ft.Divider(),
-            ft.Container(
-                content=self.stats_container,
-                padding=20,
-                expand=True,
-            ),
+            ft.Container(content=self.stats_container, padding=20, expand=True),
         ]
         self.page.update()
 
@@ -1346,11 +1306,7 @@ class DaynimalApp:
                                 color=ft.Colors.PRIMARY,
                                 no_wrap=True,
                             ),
-                            ft.Text(
-                                "Taxa totaux",
-                                size=16,
-                                color=ft.Colors.GREY_500,
-                            ),
+                            ft.Text("Taxa totaux", size=16, color=ft.Colors.GREY_500),
                         ],
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                         spacing=5,
@@ -1358,7 +1314,7 @@ class DaynimalApp:
                     ),
                     padding=30,
                     height=card_min_height,
-                ),
+                )
             )
         )
 
@@ -1376,11 +1332,7 @@ class DaynimalApp:
                                 color=ft.Colors.BLUE,
                                 no_wrap=True,
                             ),
-                            ft.Text(
-                                "Espèces",
-                                size=16,
-                                color=ft.Colors.GREY_500,
-                            ),
+                            ft.Text("Espèces", size=16, color=ft.Colors.GREY_500),
                         ],
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                         spacing=5,
@@ -1388,7 +1340,7 @@ class DaynimalApp:
                     ),
                     padding=30,
                     height=card_min_height,
-                ),
+                )
             )
         )
 
@@ -1407,12 +1359,10 @@ class DaynimalApp:
                                 no_wrap=True,
                             ),
                             ft.Text(
-                                "Animaux enrichis",
-                                size=16,
-                                color=ft.Colors.GREY_500,
+                                "Animaux enrichis", size=16, color=ft.Colors.GREY_500
                             ),
                             ft.Text(
-                                stats['enrichment_progress'],
+                                stats["enrichment_progress"],
                                 size=14,
                                 color=ft.Colors.GREY_500,
                             ),
@@ -1423,7 +1373,7 @@ class DaynimalApp:
                     ),
                     padding=30,
                     height=card_min_height,
-                ),
+                )
             )
         )
 
@@ -1433,7 +1383,9 @@ class DaynimalApp:
                 content=ft.Container(
                     content=ft.Column(
                         controls=[
-                            ft.Icon(ft.Icons.TRANSLATE, size=50, color=ft.Colors.AMBER_500),
+                            ft.Icon(
+                                ft.Icons.TRANSLATE, size=50, color=ft.Colors.AMBER_500
+                            ),
                             ft.Text(
                                 f"{stats['vernacular_names']:,}",
                                 size=32,
@@ -1442,9 +1394,7 @@ class DaynimalApp:
                                 no_wrap=True,
                             ),
                             ft.Text(
-                                "Noms vernaculaires",
-                                size=16,
-                                color=ft.Colors.GREY_500,
+                                "Noms vernaculaires", size=16, color=ft.Colors.GREY_500
                             ),
                         ],
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -1453,7 +1403,7 @@ class DaynimalApp:
                     ),
                     padding=30,
                     height=card_min_height,
-                ),
+                )
             )
         )
 
@@ -1601,11 +1551,7 @@ class DaynimalApp:
         preferences = ft.Container(
             content=ft.Column(
                 controls=[
-                    ft.Text(
-                        "Préférences",
-                        size=18,
-                        weight=ft.FontWeight.BOLD,
-                    ),
+                    ft.Text("Préférences", size=18, weight=ft.FontWeight.BOLD),
                     ft.Switch(
                         label="Thème sombre",
                         value=is_dark,
@@ -1627,36 +1573,22 @@ class DaynimalApp:
                         weight=ft.FontWeight.BOLD,
                     ),
                     ft.Text(
-                        "📚 GBIF - Global Biodiversity Information Facility",
-                        size=12,
+                        "📚 GBIF - Global Biodiversity Information Facility", size=12
                     ),
                     ft.Text(
-                        "   Taxonomie : CC-BY 4.0",
-                        size=10,
-                        color=ft.Colors.GREY_600,
+                        "   Taxonomie : CC-BY 4.0", size=10, color=ft.Colors.GREY_600
                     ),
-                    ft.Text(
-                        "🌐 Wikidata - Données structurées",
-                        size=12,
-                    ),
+                    ft.Text("🌐 Wikidata - Données structurées", size=12),
                     ft.Text(
                         "   Propriétés : CC0 (domaine public)",
                         size=10,
                         color=ft.Colors.GREY_600,
                     ),
+                    ft.Text("📖 Wikipedia - Descriptions", size=12),
                     ft.Text(
-                        "📖 Wikipedia - Descriptions",
-                        size=12,
+                        "   Articles : CC-BY-SA 3.0", size=10, color=ft.Colors.GREY_600
                     ),
-                    ft.Text(
-                        "   Articles : CC-BY-SA 3.0",
-                        size=10,
-                        color=ft.Colors.GREY_600,
-                    ),
-                    ft.Text(
-                        "🖼️ Wikimedia Commons - Images",
-                        size=12,
-                    ),
+                    ft.Text("🖼️ Wikimedia Commons - Images", size=12),
                     ft.Text(
                         "   Photos : Voir attributions individuelles",
                         size=10,
@@ -1675,21 +1607,20 @@ class DaynimalApp:
                 content=ft.Column(
                     controls=[
                         ft.Text(
-                            "Base de données locale",
-                            size=18,
-                            weight=ft.FontWeight.BOLD,
+                            "Base de données locale", size=18, weight=ft.FontWeight.BOLD
                         ),
                         ft.Text(
-                            f"🔢 {stats['species_count']:,} espèces".replace(',', ' '),
+                            f"🔢 {stats['species_count']:,} espèces".replace(",", " "),
                             size=12,
                         ),
                         ft.Text(
-                            f"🌍 {stats['vernacular_names']:,} noms vernaculaires".replace(',', ' '),
+                            f"🌍 {stats['vernacular_names']:,} noms vernaculaires".replace(
+                                ",", " "
+                            ),
                             size=12,
                         ),
                         ft.Text(
-                            f"✨ {stats['enriched_count']} espèces enrichies",
-                            size=12,
+                            f"✨ {stats['enriched_count']} espèces enrichies", size=12
                         ),
                     ],
                     spacing=8,

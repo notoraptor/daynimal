@@ -61,7 +61,9 @@ def restore_database_settings(engine):
     print("Settings restored.")
 
 
-def extract_and_filter_taxa(zip_path: Path, output_path: Path, mode: str = "full") -> int:
+def extract_and_filter_taxa(
+    zip_path: Path, output_path: Path, mode: str = "full"
+) -> int:
     """
     Extract taxa from GBIF ZIP and create a filtered TSV file.
 
@@ -395,9 +397,7 @@ def main():
     """Main entry point for fast GBIF import."""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Fast GBIF Backbone Taxonomy importer"
-    )
+    parser = argparse.ArgumentParser(description="Fast GBIF Backbone Taxonomy importer")
     parser.add_argument(
         "--mode",
         choices=["full", "minimal"],
@@ -525,7 +525,7 @@ def main():
     print(f"Vernacular names: {vernacular_count:,}")
 
     if args.mode == "minimal":
-        print(f"\nNote: Minimal mode includes only species with common names.")
+        print("\nNote: Minimal mode includes only species with common names.")
         print(f"This is optimized for mobile apps (~{total_taxa:,} taxa).")
 
     # Compact database to reclaim unused space
@@ -551,7 +551,7 @@ def main():
         print("  - Run 'uv run init-fts' to create search index")
         print("  - Database is ready for mobile deployment!")
         if args.save_tsv:
-            print(f"  - Compress TSV files for distribution:")
+            print("  - Compress TSV files for distribution:")
             print(f"    gzip {taxa_tsv}")
             print(f"    gzip {vernacular_tsv}")
 

@@ -5,7 +5,6 @@ A command-line tool to discover and learn about animals every day.
 """
 
 import argparse
-import sys
 
 from daynimal import AnimalInfo
 from daynimal.attribution import get_app_legal_notice
@@ -223,9 +222,7 @@ def cmd_history(args: list[str]):
                 return
         else:
             print(f"Unknown argument: {args[i]}")
-            print(
-                "Usage: daynimal history [--page <n>] [--per-page <m>]"
-            )
+            print("Usage: daynimal history [--page <n>] [--per-page <m>]")
             return
 
     if page < 1:
@@ -298,74 +295,44 @@ def create_parser():
 
     # Global options
     parser.add_argument(
-        "--db",
-        type=str,
-        metavar="PATH",
-        help="Use alternative database file",
+        "--db", type=str, metavar="PATH", help="Use alternative database file"
     )
 
     # Subcommands
-    subparsers = parser.add_subparsers(
-        dest="command",
-        help="Available commands",
-    )
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # today command (default if no command specified)
-    parser_today = subparsers.add_parser(
-        "today",
-        help="Show today's animal (default)",
-    )
+    subparsers.add_parser("today", help="Show today's animal (default)")
 
     # random command
-    parser_random = subparsers.add_parser(
-        "random",
-        help="Show a random animal",
-    )
+    subparsers.add_parser("random", help="Show a random animal")
 
     # search command
-    parser_search = subparsers.add_parser(
-        "search",
-        help="Search for animals by name",
-    )
+    parser_search = subparsers.add_parser("search", help="Search for animals by name")
     parser_search.add_argument(
-        "query",
-        nargs="+",
-        help="Search query (scientific or common name)",
+        "query", nargs="+", help="Search query (scientific or common name)"
     )
 
     # info command
     parser_info = subparsers.add_parser(
-        "info",
-        help="Get detailed information about a specific animal",
+        "info", help="Get detailed information about a specific animal"
     )
     parser_info.add_argument(
-        "identifier",
-        nargs="+",
-        help="Animal ID or scientific name",
+        "identifier", nargs="+", help="Animal ID or scientific name"
     )
 
     # stats command
-    parser_stats = subparsers.add_parser(
-        "stats",
-        help="Show database statistics",
-    )
+    subparsers.add_parser("stats", help="Show database statistics")
 
     # credits command
-    parser_credits = subparsers.add_parser(
-        "credits",
-        help="Show full legal credits and licenses",
-    )
+    subparsers.add_parser("credits", help="Show full legal credits and licenses")
 
     # history command
     parser_history = subparsers.add_parser(
-        "history",
-        help="Show history of viewed animals",
+        "history", help="Show history of viewed animals"
     )
     parser_history.add_argument(
-        "--page",
-        type=int,
-        default=1,
-        help="Page number (default: 1)",
+        "--page", type=int, default=1, help="Page number (default: 1)"
     )
     parser_history.add_argument(
         "--per-page",

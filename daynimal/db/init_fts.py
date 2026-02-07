@@ -28,7 +28,8 @@ def create_fts_table(session):
     session.execute(text("DROP TABLE IF EXISTS taxa_fts"))
 
     # Create FTS5 virtual table
-    session.execute(text("""
+    session.execute(
+        text("""
         CREATE VIRTUAL TABLE taxa_fts USING fts5(
             scientific_name,
             canonical_name,
@@ -36,7 +37,8 @@ def create_fts_table(session):
             taxonomic_rank UNINDEXED,
             taxon_id UNINDEXED
         )
-    """))
+    """)
+    )
 
     session.commit()
     print("[OK] Created FTS5 table: taxa_fts")
@@ -53,7 +55,8 @@ def populate_fts_table(session):
 
     # Insert data into FTS5 table
     # We concatenate all vernacular names into a single field for searching
-    session.execute(text("""
+    session.execute(
+        text("""
         INSERT INTO taxa_fts(taxon_id, scientific_name, canonical_name, vernacular_names, taxonomic_rank)
         SELECT
             t.taxon_id,
@@ -64,7 +67,8 @@ def populate_fts_table(session):
         FROM taxa t
         LEFT JOIN vernacular_names v ON t.taxon_id = v.taxon_id
         GROUP BY t.taxon_id
-    """))
+    """)
+    )
 
     session.commit()
 
@@ -120,9 +124,7 @@ def main():
         description="Initialize FTS5 full-text search index"
     )
     parser.add_argument(
-        "--db",
-        type=str,
-        help="Path to database file (default: uses config setting)",
+        "--db", type=str, help="Path to database file (default: uses config setting)"
     )
     args = parser.parse_args()
 

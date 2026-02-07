@@ -276,14 +276,33 @@ class CommonsAPI(DataSource[CommonsImage]):
         """
         # Valid image extensions
         valid_extensions = (
-            '.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp',
-            '.bmp', '.tif', '.tiff', '.ico'
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".svg",
+            ".webp",
+            ".bmp",
+            ".tif",
+            ".tiff",
+            ".ico",
         )
 
         # Invalid extensions (audio, video, documents)
         invalid_extensions = (
-            '.mp3', '.mp4', '.ogg', '.webm', '.wav', '.avi', '.mov',
-            '.pdf', '.doc', '.txt', '.ogv', '.flac', '.m4a'
+            ".mp3",
+            ".mp4",
+            ".ogg",
+            ".webm",
+            ".wav",
+            ".avi",
+            ".mov",
+            ".pdf",
+            ".doc",
+            ".txt",
+            ".ogv",
+            ".flac",
+            ".m4a",
         )
 
         url_lower = url.lower()
@@ -298,7 +317,7 @@ class CommonsAPI(DataSource[CommonsImage]):
 
         # If no extension match, check MIME type hint in URL
         # Commons URLs sometimes have format hints
-        if 'image/' in url_lower:
+        if "image/" in url_lower:
             return True
 
         # Default to False for unknown types

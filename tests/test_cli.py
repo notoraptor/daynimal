@@ -9,7 +9,7 @@ dependencies.
 import io
 import sys
 from datetime import datetime
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -307,7 +307,7 @@ class TestCmdHistory:
         """Test history command with pagination."""
         mock_repo_class.return_value.__enter__.return_value = mock_repository
 
-        output = capture_stdout(cmd_history, ["--page", "2", "--per-page", "5"])
+        _ = capture_stdout(cmd_history, ["--page", "2", "--per-page", "5"])
 
         # Verify the repository was called with correct parameters
         mock_repository.get_history.assert_called_once_with(page=2, per_page=5)

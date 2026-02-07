@@ -2,14 +2,14 @@
 Tests for animal history functionality.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
 from sqlalchemy.orm import Session
 
-from daynimal.db.models import AnimalHistoryModel, TaxonModel
+from daynimal.db.models import TaxonModel
 from daynimal.repository import AnimalRepository
-from daynimal.schemas import AnimalInfo, Taxon, TaxonomicRank
+from daynimal.schemas import AnimalInfo
 
 
 @pytest.fixture

@@ -14,7 +14,6 @@ Usage (from project root):
 import argparse
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 # Add parent directory to path for imports
@@ -29,9 +28,7 @@ def main():
         description="Launch Daynimal Flet app with debug logging"
     )
     parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Disable console logging (file only)",
+        "--quiet", action="store_true", help="Disable console logging (file only)"
     )
     parser.add_argument(
         "--tail",
@@ -39,9 +36,7 @@ def main():
         help="Tail the log file in a separate window (Windows only)",
     )
     parser.add_argument(
-        "--web",
-        action="store_true",
-        help="Run as web app instead of desktop",
+        "--web", action="store_true", help="Run as web app instead of desktop"
     )
     args = parser.parse_args()
 
@@ -61,8 +56,14 @@ def main():
         try:
             # Try PowerShell Get-Content -Wait (Windows equivalent of tail -f)
             tail_process = subprocess.Popen(
-                ["powershell", "-Command", f"Get-Content -Path '{debugger.log_file}' -Wait"],
-                creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == "win32" else 0
+                [
+                    "powershell",
+                    "-Command",
+                    f"Get-Content -Path '{debugger.log_file}' -Wait",
+                ],
+                creationflags=subprocess.CREATE_NEW_CONSOLE
+                if sys.platform == "win32"
+                else 0,
             )
             debugger.logger.info("Opened tail window for log file")
         except Exception as e:

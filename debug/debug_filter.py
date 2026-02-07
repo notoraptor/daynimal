@@ -13,8 +13,6 @@ Usage (from project root):
 """
 
 import argparse
-import re
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -27,9 +25,7 @@ def get_latest_log():
         return None
 
     log_files = sorted(
-        log_dir.glob("daynimal_*.log"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True
+        log_dir.glob("daynimal_*.log"), key=lambda p: p.stat().st_mtime, reverse=True
     )
     return log_files[0] if log_files else None
 
@@ -46,7 +42,10 @@ def filter_line(line: str, errors_only: bool = False, search: str = None) -> boo
 
     # Filter by level if errors_only
     if errors_only:
-        if not any(level in line for level in [" - ERROR - ", " - CRITICAL - ", " - WARNING - "]):
+        if not any(
+            level in line
+            for level in [" - ERROR - ", " - CRITICAL - ", " - WARNING - "]
+        ):
             return False
 
     # Filter by search keyword
@@ -70,12 +69,14 @@ def colorize_log_line(line: str) -> str:
         return line
 
 
-def show_filtered_log(log_file: Path, errors_only: bool = False, search: str = None, colorize: bool = True):
+def show_filtered_log(
+    log_file: Path, errors_only: bool = False, search: str = None, colorize: bool = True
+):
     """Display filtered log file."""
     print(f"[LOG] {log_file}")
     print("=" * 60)
 
-    with open(log_file, 'r', encoding='utf-8') as f:
+    with open(log_file, "r", encoding="utf-8") as f:
         for line in f:
             line = line.rstrip()
             if filter_line(line, errors_only=errors_only, search=search):
@@ -86,7 +87,7 @@ def show_filtered_log(log_file: Path, errors_only: bool = False, search: str = N
                         print(line)
                 except UnicodeEncodeError:
                     # Fallback for consoles that don't support full Unicode
-                    print(line.encode('ascii', errors='replace').decode('ascii'))
+                    print(line.encode("ascii", errors="replace").decode("ascii"))
 
 
 def tail_filtered_log(log_file: Path, errors_only: bool = False, search: str = None):
@@ -95,7 +96,7 @@ def tail_filtered_log(log_file: Path, errors_only: bool = False, search: str = N
     print("[TIP] Press Ctrl+C to stop")
     print("=" * 60)
 
-    with open(log_file, 'r', encoding='utf-8') as f:
+    with open(log_file, "r", encoding="utf-8") as f:
         # Move to end of file
         f.seek(0, 2)
 
@@ -118,33 +119,33 @@ def tail_filtered_log(log_file: Path, errors_only: bool = False, search: str = N
 def show_statistics(log_file: Path):
     """Show statistics about the log file."""
     stats = {
-        'total': 0,
-        'debug': 0,
-        'info': 0,
-        'warning': 0,
-        'error': 0,
-        'critical': 0,
-        'daynimal': 0,
-        'flet': 0,
+        "total": 0,
+        "debug": 0,
+        "info": 0,
+        "warning": 0,
+        "error": 0,
+        "critical": 0,
+        "daynimal": 0,
+        "flet": 0,
     }
 
-    with open(log_file, 'r', encoding='utf-8') as f:
+    with open(log_file, "r", encoding="utf-8") as f:
         for line in f:
-            stats['total'] += 1
+            stats["total"] += 1
             if " - DEBUG - " in line:
-                stats['debug'] += 1
+                stats["debug"] += 1
             if " - INFO - " in line:
-                stats['info'] += 1
+                stats["info"] += 1
             if " - WARNING - " in line:
-                stats['warning'] += 1
+                stats["warning"] += 1
             if " - ERROR - " in line:
-                stats['error'] += 1
+                stats["error"] += 1
             if " - CRITICAL - " in line:
-                stats['critical'] += 1
+                stats["critical"] += 1
             if " - daynimal - " in line:
-                stats['daynimal'] += 1
+                stats["daynimal"] += 1
             if " - flet" in line:
-                stats['flet'] += 1
+                stats["flet"] += 1
 
     print(f"\n[STATS] {log_file.name}")
     print("=" * 60)
@@ -155,8 +156,12 @@ def show_statistics(log_file: Path):
     print(f"  ERROR:         {stats['error']:,}")
     print(f"  CRITICAL:      {stats['critical']:,}")
     print()
-    print(f"Daynimal logs:   {stats['daynimal']:,} ({stats['daynimal']/stats['total']*100:.1f}%)")
-    print(f"Flet logs:       {stats['flet']:,} ({stats['flet']/stats['total']*100:.1f}%)")
+    print(
+        f"Daynimal logs:   {stats['daynimal']:,} ({stats['daynimal'] / stats['total'] * 100:.1f}%)"
+    )
+    print(
+        f"Flet logs:       {stats['flet']:,} ({stats['flet'] / stats['total'] * 100:.1f}%)"
+    )
     print()
 
 
@@ -166,9 +171,7 @@ def main():
         description="Filter and display Daynimal application logs"
     )
     parser.add_argument(
-        "--tail",
-        action="store_true",
-        help="Follow the log file in real-time",
+        "--tail", action="store_true", help="Follow the log file in real-time"
     )
     parser.add_argument(
         "--errors-only",
@@ -176,19 +179,13 @@ def main():
         help="Show only ERROR, CRITICAL, and WARNING logs",
     )
     parser.add_argument(
-        "--search",
-        type=str,
-        help="Search for lines containing this keyword",
+        "--search", type=str, help="Search for lines containing this keyword"
     )
     parser.add_argument(
-        "--stats",
-        action="store_true",
-        help="Show statistics about the log file",
+        "--stats", action="store_true", help="Show statistics about the log file"
     )
     parser.add_argument(
-        "--no-color",
-        action="store_true",
-        help="Disable colored output",
+        "--no-color", action="store_true", help="Disable colored output"
     )
     args = parser.parse_args()
 
@@ -210,7 +207,12 @@ def main():
     if args.tail:
         tail_filtered_log(log_file, errors_only=args.errors_only, search=args.search)
     else:
-        show_filtered_log(log_file, errors_only=args.errors_only, search=args.search, colorize=colorize)
+        show_filtered_log(
+            log_file,
+            errors_only=args.errors_only,
+            search=args.search,
+            colorize=colorize,
+        )
 
 
 if __name__ == "__main__":

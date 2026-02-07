@@ -56,7 +56,7 @@ def migrate_add_user_settings(db_path: str) -> None:
         # Add default theme setting
         cursor.execute(
             "INSERT INTO user_settings (key, value) VALUES (?, ?)",
-            ("theme_mode", "light")
+            ("theme_mode", "light"),
         )
 
         conn.commit()

@@ -63,13 +63,14 @@ def test_parallel_api_calls_timing(mock_taxon_model, animal_info):
     mock_session = MagicMock()
     mock_session.commit = MagicMock()
 
-    with patch.object(AnimalRepository, "_get_cached_wikidata", return_value=None), \
-         patch.object(AnimalRepository, "_get_cached_wikipedia", return_value=None), \
-         patch.object(AnimalRepository, "_get_cached_images", return_value=[]), \
-         patch.object(AnimalRepository, "_fetch_and_cache_wikidata") as mock_wikidata, \
-         patch.object(AnimalRepository, "_fetch_and_cache_wikipedia") as mock_wikipedia, \
-         patch.object(AnimalRepository, "_fetch_and_cache_images") as mock_images:
-
+    with (
+        patch.object(AnimalRepository, "_get_cached_wikidata", return_value=None),
+        patch.object(AnimalRepository, "_get_cached_wikipedia", return_value=None),
+        patch.object(AnimalRepository, "_get_cached_images", return_value=[]),
+        patch.object(AnimalRepository, "_fetch_and_cache_wikidata") as mock_wikidata,
+        patch.object(AnimalRepository, "_fetch_and_cache_wikipedia") as mock_wikipedia,
+        patch.object(AnimalRepository, "_fetch_and_cache_images") as mock_images,
+    ):
         # Configure mocks to simulate API delay
         def slow_wikidata(*args):
             time.sleep(0.1)  # 100ms delay
@@ -93,7 +94,9 @@ def test_parallel_api_calls_timing(mock_taxon_model, animal_info):
         # With parallel execution: ~0.1s (max of both)
         # With sequential execution: ~0.2s (sum of both)
         # Allow some overhead but should be much less than 0.2s
-        assert duration < 0.15, f"Expected parallel execution (~0.1s), got {duration:.3f}s"
+        assert duration < 0.15, (
+            f"Expected parallel execution (~0.1s), got {duration:.3f}s"
+        )
 
         # Verify both functions were called
         assert mock_wikidata.called
@@ -110,13 +113,14 @@ def test_parallel_api_calls_error_handling(mock_taxon_model, animal_info):
     mock_session = MagicMock()
     mock_session.commit = MagicMock()
 
-    with patch.object(AnimalRepository, "_get_cached_wikidata", return_value=None), \
-         patch.object(AnimalRepository, "_get_cached_wikipedia", return_value=None), \
-         patch.object(AnimalRepository, "_get_cached_images", return_value=[]), \
-         patch.object(AnimalRepository, "_fetch_and_cache_wikidata") as mock_wikidata, \
-         patch.object(AnimalRepository, "_fetch_and_cache_wikipedia") as mock_wikipedia, \
-         patch.object(AnimalRepository, "_fetch_and_cache_images") as mock_images:
-
+    with (
+        patch.object(AnimalRepository, "_get_cached_wikidata", return_value=None),
+        patch.object(AnimalRepository, "_get_cached_wikipedia", return_value=None),
+        patch.object(AnimalRepository, "_get_cached_images", return_value=[]),
+        patch.object(AnimalRepository, "_fetch_and_cache_wikidata") as mock_wikidata,
+        patch.object(AnimalRepository, "_fetch_and_cache_wikipedia") as mock_wikipedia,
+        patch.object(AnimalRepository, "_fetch_and_cache_images") as mock_images,
+    ):
         # Simulate Wikidata error but Wikipedia success
         mock_wikidata.side_effect = Exception("Wikidata API error")
         mock_wikipedia.return_value = MagicMock()  # Success
@@ -148,13 +152,20 @@ def test_only_missing_data_fetched(mock_taxon_model, animal_info):
     mock_session = MagicMock()
     mock_session.commit = MagicMock()
 
-    with patch.object(AnimalRepository, "_get_cached_wikidata", return_value=mock_wikidata_cached), \
-         patch.object(AnimalRepository, "_get_cached_wikipedia", return_value=mock_wikipedia_cached), \
-         patch.object(AnimalRepository, "_get_cached_images", return_value=[]), \
-         patch.object(AnimalRepository, "_fetch_and_cache_wikidata") as mock_fetch_wd, \
-         patch.object(AnimalRepository, "_fetch_and_cache_wikipedia") as mock_fetch_wp, \
-         patch.object(AnimalRepository, "_fetch_and_cache_images") as mock_fetch_img:
-
+    with (
+        patch.object(
+            AnimalRepository, "_get_cached_wikidata", return_value=mock_wikidata_cached
+        ),
+        patch.object(
+            AnimalRepository,
+            "_get_cached_wikipedia",
+            return_value=mock_wikipedia_cached,
+        ),
+        patch.object(AnimalRepository, "_get_cached_images", return_value=[]),
+        patch.object(AnimalRepository, "_fetch_and_cache_wikidata") as mock_fetch_wd,
+        patch.object(AnimalRepository, "_fetch_and_cache_wikipedia") as mock_fetch_wp,
+        patch.object(AnimalRepository, "_fetch_and_cache_images") as mock_fetch_img,
+    ):
         mock_fetch_img.return_value = []
 
         repo = AnimalRepository(session=mock_session)
@@ -197,13 +208,20 @@ def test_images_fetched_after_parallel_calls(mock_taxon_model, animal_info):
     mock_session = MagicMock()
     mock_session.commit = MagicMock()
 
-    with patch.object(AnimalRepository, "_get_cached_wikidata", return_value=None), \
-         patch.object(AnimalRepository, "_get_cached_wikipedia", return_value=None), \
-         patch.object(AnimalRepository, "_get_cached_images", return_value=[]), \
-         patch.object(AnimalRepository, "_fetch_and_cache_wikidata", side_effect=track_wikidata), \
-         patch.object(AnimalRepository, "_fetch_and_cache_wikipedia", side_effect=track_wikipedia), \
-         patch.object(AnimalRepository, "_fetch_and_cache_images", side_effect=track_images):
-
+    with (
+        patch.object(AnimalRepository, "_get_cached_wikidata", return_value=None),
+        patch.object(AnimalRepository, "_get_cached_wikipedia", return_value=None),
+        patch.object(AnimalRepository, "_get_cached_images", return_value=[]),
+        patch.object(
+            AnimalRepository, "_fetch_and_cache_wikidata", side_effect=track_wikidata
+        ),
+        patch.object(
+            AnimalRepository, "_fetch_and_cache_wikipedia", side_effect=track_wikipedia
+        ),
+        patch.object(
+            AnimalRepository, "_fetch_and_cache_images", side_effect=track_images
+        ),
+    ):
         repo = AnimalRepository(session=mock_session)
 
         repo._enrich(animal_info, mock_taxon_model)
@@ -220,13 +238,14 @@ def test_enrichment_flag_set(mock_taxon_model, animal_info):
     mock_session = MagicMock()
     mock_session.commit = MagicMock()
 
-    with patch.object(AnimalRepository, "_get_cached_wikidata", return_value=None), \
-         patch.object(AnimalRepository, "_get_cached_wikipedia", return_value=None), \
-         patch.object(AnimalRepository, "_get_cached_images", return_value=[]), \
-         patch.object(AnimalRepository, "_fetch_and_cache_wikidata", return_value=None), \
-         patch.object(AnimalRepository, "_fetch_and_cache_wikipedia", return_value=None), \
-         patch.object(AnimalRepository, "_fetch_and_cache_images", return_value=[]):
-
+    with (
+        patch.object(AnimalRepository, "_get_cached_wikidata", return_value=None),
+        patch.object(AnimalRepository, "_get_cached_wikipedia", return_value=None),
+        patch.object(AnimalRepository, "_get_cached_images", return_value=[]),
+        patch.object(AnimalRepository, "_fetch_and_cache_wikidata", return_value=None),
+        patch.object(AnimalRepository, "_fetch_and_cache_wikipedia", return_value=None),
+        patch.object(AnimalRepository, "_fetch_and_cache_images", return_value=[]),
+    ):
         repo = AnimalRepository(session=mock_session)
 
         # Initially not enriched

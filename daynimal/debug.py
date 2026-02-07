@@ -59,9 +59,7 @@ class FletDebugger:
         if log_to_console:
             console_handler = logging.StreamHandler(sys.stdout)
             console_handler.setLevel(logging.INFO)
-            console_formatter = logging.Formatter(
-                "%(levelname)s: %(message)s"
-            )
+            console_formatter = logging.Formatter("%(levelname)s: %(message)s")
             console_handler.setFormatter(console_formatter)
             self.logger.addHandler(console_handler)
 
@@ -108,8 +106,7 @@ class FletDebugger:
     def log_exception(self, exc_type, exc_value, exc_traceback):
         """Log uncaught exception (for sys.excepthook)."""
         self.logger.critical(
-            "Uncaught exception",
-            exc_info=(exc_type, exc_value, exc_traceback)
+            "Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback)
         )
 
     def get_logger(self):
@@ -121,7 +118,7 @@ class FletDebugger:
         # Use safe strings for Windows console (no emojis)
         try:
             print(f"\n[LOG] Logs are being written to: {self.log_file.absolute()}")
-            print(f"[TIP] To follow logs in real-time, run:")
+            print("[TIP] To follow logs in real-time, run:")
             print(f"      Get-Content -Path '{self.log_file.absolute()}' -Wait\n")
         except UnicodeEncodeError:
             # Fallback for very restrictive consoles

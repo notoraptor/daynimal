@@ -33,10 +33,10 @@ from daynimal.schemas import (
 )
 from daynimal.sources.wikidata import WikidataAPI
 from daynimal.sources.wikipedia import WikipediaAPI
+from daynimal.sources.commons import CommonsAPI
 
 # Logger for this module
 logger = logging.getLogger(__name__)
-from daynimal.sources.commons import CommonsAPI
 
 
 class AnimalRepository:
@@ -239,13 +239,10 @@ class AnimalRepository:
             prefer_unenriched: Prefer animals not yet enriched (for "animal of the day")
             enrich: Whether to fetch additional data
         """
-        import random
 
         if prefer_unenriched:
             # First try to get an unenriched animal
-            taxon_model = self._get_random_by_id_range(
-                rank=rank, is_enriched=False
-            )
+            taxon_model = self._get_random_by_id_range(rank=rank, is_enriched=False)
 
             if not taxon_model:
                 # Fall back to any animal
@@ -292,8 +289,7 @@ class AnimalRepository:
         # Get ID range from entire table (fast - uses primary key index)
         # Don't filter by rank/is_enriched here to avoid full table scan
         id_range = self.session.query(
-            func.min(TaxonModel.taxon_id),
-            func.max(TaxonModel.taxon_id)
+            func.min(TaxonModel.taxon_id), func.max(TaxonModel.taxon_id)
         ).first()
 
         min_id, max_id = id_range
@@ -306,9 +302,7 @@ class AnimalRepository:
         for _ in range(20):
             random_id = random.randint(min_id, max_id)
 
-            taxon_model = query.filter(
-                TaxonModel.taxon_id >= random_id
-            ).first()
+            taxon_model = query.filter(TaxonModel.taxon_id >= random_id).first()
 
             if taxon_model:
                 return taxon_model
@@ -338,8 +332,7 @@ class AnimalRepository:
         # Get ID range from entire table (fast - uses primary key index)
         # Don't filter by rank/is_synonym here to avoid slow full table scan
         id_range = self.session.query(
-            func.min(TaxonModel.taxon_id),
-            func.max(TaxonModel.taxon_id)
+            func.min(TaxonModel.taxon_id), func.max(TaxonModel.taxon_id)
         ).first()
 
         min_id, max_id = id_range
@@ -414,29 +407,32 @@ class AnimalRepository:
 
                 # Submit Wikidata and Wikipedia in parallel (they're independent)
                 if needs_wikidata:
-                    futures['wikidata'] = executor.submit(
+                    futures["wikidata"] = executor.submit(
                         self._fetch_and_cache_wikidata,
                         taxon_model.taxon_id,
-                        scientific_name
+                        scientific_name,
                     )
 
                 if needs_wikipedia:
-                    futures['wikipedia'] = executor.submit(
+                    futures["wikipedia"] = executor.submit(
                         self._fetch_and_cache_wikipedia,
                         taxon_model.taxon_id,
-                        scientific_name
+                        scientific_name,
                     )
 
                 # Wait for completion and assign results
                 for key, future in futures.items():
                     try:
                         result = future.result()
-                        if key == 'wikidata':
+                        if key == "wikidata":
                             animal.wikidata = result
-                        elif key == 'wikipedia':
+                        elif key == "wikipedia":
                             animal.wikipedia = result
                     except Exception as e:
-                        logger.error(f"Error fetching {key} for taxon {taxon_model.taxon_id}: {e}", exc_info=True)
+                        logger.error(
+                            f"Error fetching {key} for taxon {taxon_model.taxon_id}: {e}",
+                            exc_info=True,
+                        )
 
         # Fetch images (depends on wikidata, so must be after)
         if needs_images:
@@ -740,9 +736,11 @@ class AnimalRepository:
         """
         from daynimal.db.models import UserSettingsModel
 
-        setting = self.session.query(UserSettingsModel).filter(
-            UserSettingsModel.key == key
-        ).first()
+        setting = (
+            self.session.query(UserSettingsModel)
+            .filter(UserSettingsModel.key == key)
+            .first()
+        )
 
         return setting.value if setting else default
 
@@ -756,9 +754,11 @@ class AnimalRepository:
         """
         from daynimal.db.models import UserSettingsModel
 
-        setting = self.session.query(UserSettingsModel).filter(
-            UserSettingsModel.key == key
-        ).first()
+        setting = (
+            self.session.query(UserSettingsModel)
+            .filter(UserSettingsModel.key == key)
+            .first()
+        )
 
         if setting:
             setting.value = str(value)
