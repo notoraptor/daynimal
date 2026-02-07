@@ -17,48 +17,118 @@ class DaynimalApp:
 
     def __init__(self, page: ft.Page):
         self.page = page
-        self.page.title = "Daynimal - Animal du jour"
-        self.page.padding = 20
+        self.page.title = "Daynimal"
+        self.page.padding = 0
         self.page.scroll = ft.ScrollMode.AUTO
 
         # Application state
         self.current_animal = None
+        self.current_view = "today"
 
         # Build UI
         self.build()
 
     def build(self):
         """Build the user interface."""
-        # Header
-        self.header = ft.Text(
-            "🦁 Daynimal",
-            size=32,
-            weight=ft.FontWeight.BOLD,
-            color=ft.Colors.PRIMARY,
-        )
-
-        # Animal display container
-        self.animal_container = ft.Column(
+        # Main content container (will change based on selected tab)
+        self.content_container = ft.Column(
             controls=[],
             spacing=10,
             expand=True,
+            scroll=ft.ScrollMode.AUTO,
+        )
+
+        # Navigation bar
+        self.nav_bar = ft.NavigationBar(
+            destinations=[
+                ft.NavigationBarDestination(
+                    icon=ft.Icons.CALENDAR_TODAY,
+                    label="Aujourd'hui",
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.Icons.HISTORY,
+                    label="Historique",
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.Icons.SEARCH,
+                    label="Recherche",
+                ),
+                ft.NavigationBarDestination(
+                    icon=ft.Icons.BAR_CHART,
+                    label="Statistiques",
+                ),
+            ],
+            selected_index=0,
+            on_change=self.on_nav_change,
+        )
+
+        # Main layout
+        self.page.add(
+            ft.Column(
+                controls=[
+                    self.content_container,
+                    self.nav_bar,
+                ],
+                spacing=0,
+                expand=True,
+            )
+        )
+
+        # Show initial view (Today)
+        self.show_today_view()
+
+    def on_nav_change(self, e):
+        """Handle navigation bar changes."""
+        selected_index = e.control.selected_index
+
+        if selected_index == 0:
+            self.show_today_view()
+        elif selected_index == 1:
+            self.show_history_view()
+        elif selected_index == 2:
+            self.show_search_view()
+        elif selected_index == 3:
+            self.show_stats_view()
+
+    # ============================================
+    # TODAY VIEW
+    # ============================================
+
+    def show_today_view(self):
+        """Show the Today view."""
+        self.current_view = "today"
+
+        # Header
+        header = ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Text(
+                        "🦁 Animal du jour",
+                        size=28,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.PRIMARY,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            padding=20,
         )
 
         # Buttons
-        self.today_button = ft.Button(
+        today_button = ft.ElevatedButton(
             "Animal du jour",
             icon=ft.Icons.CALENDAR_TODAY,
-            on_click=self.show_today,
+            on_click=self.load_today_animal,
             style=ft.ButtonStyle(
                 color=ft.Colors.WHITE,
                 bgcolor=ft.Colors.PRIMARY,
             ),
         )
 
-        self.random_button = ft.Button(
+        random_button = ft.ElevatedButton(
             "Animal aléatoire",
             icon=ft.Icons.SHUFFLE,
-            on_click=self.show_random,
+            on_click=self.load_random_animal,
             style=ft.ButtonStyle(
                 color=ft.Colors.WHITE,
                 bgcolor=ft.Colors.BLUE,
@@ -66,64 +136,67 @@ class DaynimalApp:
         )
 
         button_row = ft.Row(
-            controls=[self.today_button, self.random_button],
+            controls=[today_button, random_button],
+            alignment=ft.MainAxisAlignment.CENTER,
             spacing=10,
         )
 
-        # Main layout
-        self.page.add(
-            ft.Column(
-                controls=[
-                    self.header,
-                    ft.Divider(),
-                    button_row,
-                    self.animal_container,
-                ],
-                spacing=20,
-                expand=True,
-            )
+        # Animal display area
+        self.today_animal_container = ft.Column(
+            controls=[
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.FAVORITE, size=80, color=ft.Colors.PRIMARY),
+                            ft.Text(
+                                "Bienvenue sur Daynimal !",
+                                size=24,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                            ft.Text(
+                                "Découvrez un animal chaque jour",
+                                size=16,
+                            ),
+                            ft.Text(
+                                "Cliquez sur 'Animal du jour' pour commencer",
+                                size=14,
+                                color=ft.Colors.BLUE,
+                            ),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=15,
+                    ),
+                    padding=40,
+                )
+            ],
+            spacing=10,
         )
 
-        # Show welcome message
-        self.animal_container.controls = [
+        # Update content
+        self.content_container.controls = [
+            header,
+            ft.Divider(),
+            ft.Container(content=button_row, padding=ft.padding.only(left=20, right=20, bottom=10)),
             ft.Container(
-                content=ft.Column(
-                    controls=[
-                        ft.Icon(ft.Icons.FAVORITE, size=80, color=ft.Colors.PRIMARY),
-                        ft.Text(
-                            "Bienvenue sur Daynimal !",
-                            size=24,
-                            weight=ft.FontWeight.BOLD,
-                        ),
-                        ft.Text(
-                            "Découvrez un animal chaque jour",
-                            size=16,
-                        ),
-                        ft.Text(
-                            "Cliquez sur 'Animal du jour' pour commencer",
-                            size=14,
-                            color=ft.Colors.BLUE,
-                        ),
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=15,
-                ),
-                padding=40,
-            )
+                content=self.today_animal_container,
+                padding=20,
+                expand=True,
+            ),
         ]
+        self.page.update()
 
-    async def show_today(self, e):
-        """Show today's animal."""
-        await self.load_animal("today")
+    async def load_today_animal(self, e):
+        """Load today's animal."""
+        await self.load_animal_for_today_view("today")
 
-    async def show_random(self, e):
-        """Show a random animal."""
-        await self.load_animal("random")
+    async def load_random_animal(self, e):
+        """Load a random animal."""
+        await self.load_animal_for_today_view("random")
 
-    async def load_animal(self, mode: str):
-        """Load and display an animal."""
+    async def load_animal_for_today_view(self, mode: str):
+        """Load and display an animal in the Today view."""
         # Show loading message in container
-        self.animal_container.controls = [
+        self.today_animal_container.controls = [
             ft.Container(
                 content=ft.Column(
                     controls=[
@@ -160,12 +233,12 @@ class DaynimalApp:
             animal = await asyncio.to_thread(fetch_animal)
             self.current_animal = animal
 
-            # Display animal
-            self.display_animal(animal)
+            # Display animal in Today view
+            self.display_animal_in_today_view(animal)
 
         except Exception as error:
             # Show error
-            self.animal_container.controls = [
+            self.today_animal_container.controls = [
                 ft.Container(
                     content=ft.Column(
                         controls=[
@@ -192,8 +265,8 @@ class DaynimalApp:
             # Update page after loading
             self.page.update()
 
-    def display_animal(self, animal):
-        """Display animal information."""
+    def display_animal_in_today_view(self, animal):
+        """Display animal information in the Today view."""
         controls = []
 
         # Title
@@ -415,8 +488,628 @@ class DaynimalApp:
         )
 
         # Update container
-        self.animal_container.controls = controls
+        self.today_animal_container.controls = controls
         self.page.update()
+
+    # ============================================
+    # HISTORY VIEW
+    # ============================================
+
+    def show_history_view(self):
+        """Show the History view."""
+        self.current_view = "history"
+
+        # Header
+        header = ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Text(
+                        "📚 Historique",
+                        size=28,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.PRIMARY,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            padding=20,
+        )
+
+        # History list container
+        self.history_list = ft.Column(
+            controls=[],
+            spacing=10,
+        )
+
+        # Update content
+        self.content_container.controls = [
+            header,
+            ft.Divider(),
+            ft.Container(
+                content=self.history_list,
+                padding=20,
+                expand=True,
+            ),
+        ]
+        self.page.update()
+
+        # Load history asynchronously
+        asyncio.create_task(self.load_history())
+
+    async def load_history(self):
+        """Load history from repository."""
+        # Show loading
+        self.history_list.controls = [
+            ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.ProgressRing(width=60, height=60),
+                        ft.Text("Chargement de l'historique...", size=18),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20,
+                ),
+                padding=40,
+            )
+        ]
+        self.page.update()
+        await asyncio.sleep(0.1)
+
+        try:
+            # Fetch history
+            def fetch_history():
+                with AnimalRepository() as repo:
+                    return repo.get_history(page=1, per_page=50)
+
+            history_items, total = await asyncio.to_thread(fetch_history)
+
+            if not history_items:
+                # Empty history
+                self.history_list.controls = [
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Icon(ft.Icons.HISTORY, size=80, color=ft.Colors.GREY_500),
+                                ft.Text(
+                                    "Aucun historique",
+                                    size=20,
+                                    weight=ft.FontWeight.BOLD,
+                                ),
+                                ft.Text(
+                                    "Consultez des animaux pour les voir apparaître ici",
+                                    size=14,
+                                    color=ft.Colors.GREY_500,
+                                ),
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=10,
+                        ),
+                        padding=40,
+                    )
+                ]
+            else:
+                # Display history items
+                controls = [
+                    ft.Text(
+                        f"{total} animal(aux) consulté(s)",
+                        size=16,
+                        color=ft.Colors.GREY_500,
+                    )
+                ]
+
+                for item in history_items:
+                    # Format datetime
+                    viewed_at = item.viewed_at.strftime("%d/%m/%Y %H:%M")
+
+                    card = ft.Card(
+                        content=ft.Container(
+                            content=ft.Column(
+                                controls=[
+                                    ft.Row(
+                                        controls=[
+                                            ft.Text(
+                                                item.taxon.canonical_name or item.taxon.scientific_name,
+                                                size=18,
+                                                weight=ft.FontWeight.BOLD,
+                                            ),
+                                        ],
+                                    ),
+                                    ft.Text(
+                                        item.taxon.scientific_name,
+                                        size=14,
+                                        italic=True,
+                                        color=ft.Colors.BLUE,
+                                    ),
+                                    ft.Row(
+                                        controls=[
+                                            ft.Icon(ft.Icons.HISTORY, size=16, color=ft.Colors.GREY_500),
+                                            ft.Text(
+                                                viewed_at,
+                                                size=12,
+                                                color=ft.Colors.GREY_500,
+                                            ),
+                                        ],
+                                        spacing=5,
+                                    ),
+                                ],
+                                spacing=5,
+                            ),
+                            padding=15,
+                        ),
+                    )
+                    controls.append(card)
+
+                self.history_list.controls = controls
+
+        except Exception as error:
+            # Show error
+            self.history_list.controls = [
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
+                            ft.Text(
+                                "Erreur lors du chargement",
+                                size=20,
+                                color=ft.Colors.ERROR,
+                            ),
+                            ft.Text(str(error), size=14),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=40,
+                )
+            ]
+
+        finally:
+            self.page.update()
+
+    # ============================================
+    # SEARCH VIEW
+    # ============================================
+
+    def show_search_view(self):
+        """Show the Search view."""
+        self.current_view = "search"
+
+        # Header
+        header = ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Text(
+                        "🔍 Recherche",
+                        size=28,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.PRIMARY,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            padding=20,
+        )
+
+        # Search field
+        self.search_field = ft.TextField(
+            label="Rechercher un animal",
+            hint_text="Nom scientifique ou vernaculaire",
+            prefix_icon=ft.Icons.SEARCH,
+            on_change=self.on_search_change,
+            autofocus=True,
+        )
+
+        # Results container
+        self.search_results = ft.Column(
+            controls=[
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.SEARCH, size=80, color=ft.Colors.GREY_500),
+                            ft.Text(
+                                "Recherchez un animal",
+                                size=20,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                            ft.Text(
+                                "Entrez un nom scientifique ou vernaculaire",
+                                size=14,
+                                color=ft.Colors.GREY_500,
+                            ),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=40,
+                )
+            ],
+            spacing=10,
+        )
+
+        # Update content
+        self.content_container.controls = [
+            header,
+            ft.Divider(),
+            ft.Container(content=self.search_field, padding=ft.padding.only(left=20, right=20, top=10)),
+            ft.Container(
+                content=self.search_results,
+                padding=20,
+                expand=True,
+            ),
+        ]
+        self.page.update()
+
+    def on_search_change(self, e):
+        """Handle search field changes."""
+        query = e.control.value.strip()
+
+        if not query:
+            # Reset to empty state
+            self.search_results.controls = [
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.SEARCH, size=80, color=ft.Colors.GREY_500),
+                            ft.Text(
+                                "Recherchez un animal",
+                                size=20,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                            ft.Text(
+                                "Entrez un nom scientifique ou vernaculaire",
+                                size=14,
+                                color=ft.Colors.GREY_500,
+                            ),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=40,
+                )
+            ]
+            self.page.update()
+            return
+
+        # Perform search asynchronously
+        asyncio.create_task(self.perform_search(query))
+
+    async def perform_search(self, query: str):
+        """Perform search in repository."""
+        # Show loading
+        self.search_results.controls = [
+            ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.ProgressRing(width=40, height=40),
+                        ft.Text("Recherche en cours...", size=16),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=10,
+                ),
+                padding=20,
+            )
+        ]
+        self.page.update()
+        await asyncio.sleep(0.1)
+
+        try:
+            # Search
+            def search():
+                with AnimalRepository() as repo:
+                    return repo.search(query, limit=20)
+
+            results = await asyncio.to_thread(search)
+
+            if not results:
+                # No results
+                self.search_results.controls = [
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Icon(ft.Icons.SEARCH, size=60, color=ft.Colors.GREY_500),
+                                ft.Text(
+                                    "Aucun résultat",
+                                    size=20,
+                                    weight=ft.FontWeight.BOLD,
+                                ),
+                                ft.Text(
+                                    f"Aucun animal trouvé pour '{query}'",
+                                    size=14,
+                                    color=ft.Colors.GREY_500,
+                                ),
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=10,
+                        ),
+                        padding=40,
+                    )
+                ]
+            else:
+                # Display results
+                controls = [
+                    ft.Text(
+                        f"{len(results)} résultat(s) trouvé(s)",
+                        size=16,
+                        color=ft.Colors.GREY_500,
+                    )
+                ]
+
+                for animal in results:
+                    # Get vernacular names
+                    vernacular = ""
+                    if animal.taxon.vernacular_names:
+                        first_lang = list(animal.taxon.vernacular_names.keys())[0]
+                        names = animal.taxon.vernacular_names[first_lang][:2]
+                        vernacular = ", ".join(names)
+                        if len(animal.taxon.vernacular_names[first_lang]) > 2:
+                            vernacular += "..."
+
+                    card = ft.Card(
+                        content=ft.Container(
+                            content=ft.Column(
+                                controls=[
+                                    ft.Text(
+                                        animal.taxon.canonical_name or animal.taxon.scientific_name,
+                                        size=18,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                    ft.Text(
+                                        animal.taxon.scientific_name,
+                                        size=14,
+                                        italic=True,
+                                        color=ft.Colors.BLUE,
+                                    ),
+                                    ft.Text(
+                                        vernacular if vernacular else "Pas de nom vernaculaire",
+                                        size=12,
+                                        color=ft.Colors.GREY_500,
+                                    ),
+                                ],
+                                spacing=5,
+                            ),
+                            padding=15,
+                        ),
+                    )
+                    controls.append(card)
+
+                self.search_results.controls = controls
+
+        except Exception as error:
+            # Show error
+            self.search_results.controls = [
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
+                            ft.Text(
+                                "Erreur lors de la recherche",
+                                size=20,
+                                color=ft.Colors.ERROR,
+                            ),
+                            ft.Text(str(error), size=14),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=40,
+                )
+            ]
+
+        finally:
+            self.page.update()
+
+    # ============================================
+    # STATS VIEW
+    # ============================================
+
+    def show_stats_view(self):
+        """Show the Statistics view."""
+        self.current_view = "stats"
+
+        # Header
+        header = ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Text(
+                        "📊 Statistiques",
+                        size=28,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.PRIMARY,
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            padding=20,
+        )
+
+        # Stats container
+        self.stats_container = ft.Column(
+            controls=[],
+            spacing=10,
+        )
+
+        # Update content
+        self.content_container.controls = [
+            header,
+            ft.Divider(),
+            ft.Container(
+                content=self.stats_container,
+                padding=20,
+                expand=True,
+            ),
+        ]
+        self.page.update()
+
+        # Load stats asynchronously
+        asyncio.create_task(self.load_stats())
+
+    async def load_stats(self):
+        """Load statistics from repository."""
+        # Show loading
+        self.stats_container.controls = [
+            ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.ProgressRing(width=60, height=60),
+                        ft.Text("Chargement des statistiques...", size=18),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=20,
+                ),
+                padding=40,
+            )
+        ]
+        self.page.update()
+        await asyncio.sleep(0.1)
+
+        try:
+            # Fetch stats
+            def fetch_stats():
+                with AnimalRepository() as repo:
+                    return repo.get_stats()
+
+            stats = await asyncio.to_thread(fetch_stats)
+
+            # Display stats as cards
+            controls = []
+
+            # Total taxa
+            controls.append(
+                ft.Card(
+                    content=ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Icon(ft.Icons.PETS, size=50, color=ft.Colors.PRIMARY),
+                                ft.Text(
+                                    f"{stats['total_taxa']:,}",
+                                    size=32,
+                                    weight=ft.FontWeight.BOLD,
+                                    color=ft.Colors.PRIMARY,
+                                ),
+                                ft.Text(
+                                    "Taxa totaux",
+                                    size=16,
+                                    color=ft.Colors.GREY_500,
+                                ),
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=5,
+                        ),
+                        padding=30,
+                    ),
+                )
+            )
+
+            # Species count
+            controls.append(
+                ft.Card(
+                    content=ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Icon(ft.Icons.FAVORITE, size=50, color=ft.Colors.BLUE),
+                                ft.Text(
+                                    f"{stats['species_count']:,}",
+                                    size=32,
+                                    weight=ft.FontWeight.BOLD,
+                                    color=ft.Colors.BLUE,
+                                ),
+                                ft.Text(
+                                    "Espèces",
+                                    size=16,
+                                    color=ft.Colors.GREY_500,
+                                ),
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=5,
+                        ),
+                        padding=30,
+                    ),
+                )
+            )
+
+            # Enriched count
+            controls.append(
+                ft.Card(
+                    content=ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Icon(ft.Icons.INFO, size=50, color=ft.Colors.GREEN_500),
+                                ft.Text(
+                                    f"{stats['enriched_count']:,}",
+                                    size=32,
+                                    weight=ft.FontWeight.BOLD,
+                                    color=ft.Colors.GREEN_500,
+                                ),
+                                ft.Text(
+                                    "Animaux enrichis",
+                                    size=16,
+                                    color=ft.Colors.GREY_500,
+                                ),
+                                ft.Text(
+                                    stats['enrichment_progress'],
+                                    size=14,
+                                    color=ft.Colors.GREY_500,
+                                ),
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=5,
+                        ),
+                        padding=30,
+                    ),
+                )
+            )
+
+            # Vernacular names
+            controls.append(
+                ft.Card(
+                    content=ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Icon(ft.Icons.TRANSLATE, size=50, color=ft.Colors.AMBER_500),
+                                ft.Text(
+                                    f"{stats['vernacular_names']:,}",
+                                    size=32,
+                                    weight=ft.FontWeight.BOLD,
+                                    color=ft.Colors.AMBER_500,
+                                ),
+                                ft.Text(
+                                    "Noms vernaculaires",
+                                    size=16,
+                                    color=ft.Colors.GREY_500,
+                                ),
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=5,
+                        ),
+                        padding=30,
+                    ),
+                )
+            )
+
+            self.stats_container.controls = controls
+
+        except Exception as error:
+            # Show error
+            self.stats_container.controls = [
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
+                            ft.Text(
+                                "Erreur lors du chargement",
+                                size=20,
+                                color=ft.Colors.ERROR,
+                            ),
+                            ft.Text(str(error), size=14),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=40,
+                )
+            ]
+
+        finally:
+            self.page.update()
 
 
 def main():
