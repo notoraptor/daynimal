@@ -47,7 +47,7 @@ class TaxonModel(Base):
     )
 
     # Status
-    is_synonym: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_synonym: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     # Enrichment tracking
     is_enriched: Mapped[bool] = mapped_column(Boolean, default=False, index=True)

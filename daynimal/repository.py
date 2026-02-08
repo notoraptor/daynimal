@@ -10,6 +10,7 @@ It handles:
 
 import json
 import logging
+import threading
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, UTC
@@ -63,6 +64,7 @@ class AnimalRepository:
 
     def __init__(self, session: Session | None = None):
         self.session = session or get_session()
+        self._session_lock = threading.Lock()
         self._wikidata: WikidataAPI | None = None
         self._wikipedia: WikipediaAPI | None = None
         self._commons: CommonsAPI | None = None
@@ -529,9 +531,10 @@ class AnimalRepository:
 
         # Mark as enriched
         if not taxon_model.is_enriched:
-            taxon_model.is_enriched = True
-            taxon_model.enriched_at = datetime.now(UTC)
-            self.session.commit()
+            with self._session_lock:
+                taxon_model.is_enriched = True
+                taxon_model.enriched_at = datetime.now(UTC)
+                self.session.commit()
 
         animal.is_enriched = True
 
@@ -636,36 +639,45 @@ class AnimalRepository:
             return []
 
     def _save_cache(self, taxon_id: int, source: str, data) -> None:
-        """Save data to enrichment cache."""
-        # Serialize data
+        """Save data to enrichment cache.
+
+        Thread-safe: uses a lock to prevent concurrent session access
+        from parallel API fetch threads.
+        """
+        # Serialize data (no session access, safe outside lock)
         if isinstance(data, list):
             json_data = json.dumps([self._to_dict(item) for item in data])
         else:
             json_data = json.dumps(self._to_dict(data))
 
-        # Check for existing cache
-        existing = (
-            self.session.query(EnrichmentCacheModel)
-            .filter(
-                EnrichmentCacheModel.taxon_id == taxon_id,
-                EnrichmentCacheModel.source == source,
-            )
-            .first()
-        )
+        with self._session_lock:
+            try:
+                # Check for existing cache
+                existing = (
+                    self.session.query(EnrichmentCacheModel)
+                    .filter(
+                        EnrichmentCacheModel.taxon_id == taxon_id,
+                        EnrichmentCacheModel.source == source,
+                    )
+                    .first()
+                )
 
-        if existing:
-            existing.data = json_data
-            existing.fetched_at = datetime.now(UTC)
-        else:
-            cache = EnrichmentCacheModel(
-                taxon_id=taxon_id,
-                source=source,
-                data=json_data,
-                fetched_at=datetime.now(UTC),
-            )
-            self.session.add(cache)
+                if existing:
+                    existing.data = json_data
+                    existing.fetched_at = datetime.now(UTC)
+                else:
+                    cache = EnrichmentCacheModel(
+                        taxon_id=taxon_id,
+                        source=source,
+                        data=json_data,
+                        fetched_at=datetime.now(UTC),
+                    )
+                    self.session.add(cache)
 
-        self.session.commit()
+                self.session.commit()
+            except Exception:
+                self.session.rollback()
+                raise
 
     def _to_dict(self, obj) -> dict:
         """Convert dataclass to dict, handling enums."""

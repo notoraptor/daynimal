@@ -17,8 +17,8 @@ Application Flet fonctionnelle avec 6 onglets :
 - Parametres (theme clair/sombre, credits)
 
 Infrastructure :
-- Base de donnees minimale : 127k especes, 153 MB apres VACUUM
-- Fichiers TSV compresses : 93 MB (pour distribution mobile)
+- Base de donnees minimale : 163K especes, 117 MB apres VACUUM
+- Fichiers TSV compresses : ~14-16 MB (pour distribution mobile, TAXREF inclus)
 - Chargement async, gestion d'erreurs, logging integre
 
 ---
@@ -185,10 +185,11 @@ Contrainte Google Play : APK < 150 MB, donc la DB doit etre telechargee separeme
 
 ---
 
-## Phase 2a : Stabilisation (1 semaine)
+## Phase 2a : Stabilisation et refactoring (2-3 semaines)
 
-Corriger la dette technique avant d'ajouter des features mobiles.
+Corriger la dette technique et restructurer `app.py` avant d'ajouter des features mobiles.
 Un bug de thread safety en desktop est genant ; sur mobile avec contraintes memoire, c'est un crash.
+Un monolithe de 2200 lignes est ingerable ; chaque feature ajoutee aggrave la dette.
 
 Revue de code : fevrier 2026 (verdict code 6.5/10)
 
@@ -196,33 +197,31 @@ Revue de code : fevrier 2026 (verdict code 6.5/10)
 
 - [x] `datetime.utcnow()` → `datetime.now(UTC)` (6 occurrences dans `models.py` et `attribution.py`)
 - [x] `print()` → `logger.warning()` dans `repository.py` (lignes 599, 612, 635)
-- [ ] **Engine SQLAlchemy recree a chaque session** — `db/session.py` (lignes 7-16)
-  - `get_session()` cree un nouveau engine a chaque appel au lieu d'un singleton
-  - Impact : fuite de ressources (connection pools), degradation de performance
-  - Fix : variable globale `_engine` avec lazy init, ou `@lru_cache` sur `get_engine()`
-- [ ] **Index manquant sur `is_synonym`** — `db/models.py` (ligne 46)
-  - Colonne frequemment filtree (3M+ lignes) sans index = full table scan
-  - Fix : ajouter `index=True` sur la colonne (`is_synonym: Mapped[bool] = mapped_column(Boolean, default=False, index=True)`)
-- [ ] **Thread safety dans `_enrich()`** — `repository.py` (lignes 483-659)
-  - Workers du `ThreadPoolExecutor` partagent la meme session SQLAlchemy (non thread-safe)
-  - `_save_cache()` fait commit sans try/except ni rollback
-  - Impact : race conditions, corruption potentielle de donnees
-  - Fix option A (recommande) : creer nouvelle session par thread dans `_fetch_and_cache_*()`
-  - Fix option B : utiliser `threading.Lock()` autour de `_save_cache()`
+- [x] ~~**Engine SQLAlchemy recree a chaque session**~~ — `db/session.py` : non critique apres analyse. `get_session()` n'est appele qu'une fois par processus CLI et une fois par vie d'app GUI (lazy init du Repository).
+- [x] **Index manquant sur `is_synonym`** — `db/models.py` : ajout `index=True` sur la colonne
+- [x] **Thread safety dans `_enrich()`** — `repository.py` : `threading.Lock` sur `_save_cache()` + rollback on error
 
 ### Refactoring app.py (2200 lignes, monolithe)
 
-- [ ] **Debouncing recherche** — `app.py` (lignes 1388-1467)
-  - `on_search_change` declenche une requete DB a chaque frappe clavier
-  - "guepard" = 7 requetes, race conditions, flickering des resultats
-  - Fix : attendre 300ms apres derniere frappe avant de chercher
-- [ ] **Extraire `_load_and_display_animal()`** — `app.py` (~200 lignes dupliquees)
+Le refactoring d'`app.py` est un prerequis pour toutes les features suivantes. Chaque feature
+ajoutee dans un monolithe de 2200 lignes aggrave la dette technique et rend les tests impossibles.
+
+**Extraction des vues en fichiers separes :**
+- [ ] Extraire chaque vue (Today, History, Favorites, Search, Stats, Settings) dans sa propre classe/fichier
+- [ ] Creer un systeme de composants reutilisables (affichage animal, loading, erreurs)
+- [ ] Extraire `_load_and_display_animal()` — `app.py` (~200 lignes dupliquees)
   - 3 methodes quasi-identiques (95% identiques) :
     - `load_animal_from_history` (lignes 225-296, 72 lignes)
     - `load_animal_from_favorite` (lignes 1214-1300, 87 lignes)
     - `load_animal_from_search` (lignes 1643-1732, 90 lignes)
   - Deja divergence : `load_animal_from_search` ajoute a l'historique, les autres non
   - Fix : extraire methode unique `_load_and_display_animal(taxon_id, source)`
+
+**Corrections ciblees :**
+- [ ] **Debouncing recherche** — `app.py` (lignes 1388-1467)
+  - `on_search_change` declenche une requete DB a chaque frappe clavier
+  - "guepard" = 7 requetes, race conditions, flickering des resultats
+  - Fix : attendre 300ms apres derniere frappe avant de chercher
 - [ ] **Settings synchrone** — `app.py` (lignes 2100-2103)
   - `self.repository.get_stats()` bloque le thread UI
   - Fix : utiliser `asyncio.to_thread()` comme les autres vues
@@ -273,15 +272,15 @@ Tests a ecrire en priorite :
 
 | Fichier | Problemes | Priorite |
 |---------|-----------|----------|
-| `db/session.py` | Engine recree a chaque appel | Critique |
-| `db/models.py` | ~~datetime.utcnow() x3~~, index manquant | Critique |
+| `db/session.py` | ~~Engine recree a chaque appel~~ | ~~Critique~~ Non critique |
+| `db/models.py` | ~~datetime.utcnow() x3~~, ~~index manquant~~ | Corrige |
 | `attribution.py` | ~~datetime.utcnow() x3~~ | Corrige |
-| `repository.py` | Thread safety, ~~print()~~, _save_cache sans rollback | Critique |
-| `app.py` | Debouncing, duplication x3, pagination, sync settings, resource leak | Important |
+| `repository.py` | ~~Thread safety~~, ~~print()~~, ~~_save_cache sans rollback~~ | Corrige |
+| `app.py` | **Extraction vues**, debouncing, duplication x3, sync settings, resource leak | **Critique** |
 | `main.py` | Double parsing history, mutation settings | Mineur |
 | `sources/*.py` | HTTP error handling inconsistant (pas de retry 429/503) | Mineur |
 
-**Duree estimee Phase 2a : 1 semaine**
+**Duree estimee Phase 2a : 2-3 semaines**
 
 ---
 
@@ -495,7 +494,7 @@ Taches premium specifiques :
 
 ---
 
-**Duree estimee totale Phase 2 : 7-8 semaines**
+**Duree estimee totale Phase 2 : 8-10 semaines**
 
 ---
 
@@ -530,13 +529,6 @@ Deplacees ici depuis la Phase 2 — a implementer apres validation du modele fre
 - **Export de donnees** : favoris en PDF, historique en CSV/JSON, rapport personnalise (statistiques + favoris)
 - **Statistiques avancees** : graphiques detailles, tendances, comparaisons
 - **Collections personnalisees illimitees** : creation, edition, partage
-
-### Refactoring architecture app.py
-Actuellement un monolithe de 2200 lignes (classe unique gerant 6 vues, tout le state, toutes les interactions API).
-Tester les vues individuellement est impossible.
-- [ ] Extraire chaque vue dans sa propre classe/fichier
-- [ ] Creer un systeme de composants reutilisables (affichage animal, loading, erreurs)
-- [ ] Ajouter des tests GUI (necessite framework de test Flet)
 
 ### Nouvelles features
 - **Parcours taxonomique** : arbre hierarchique interactif (Royaume > Phylum > Classe > ...), compteurs par branche
