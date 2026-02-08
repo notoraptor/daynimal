@@ -184,7 +184,7 @@ CD_NOM  REGNE     LB_NOM                          NOM_VERN
 
 ### Stratégie de Matching
 
-Le script `import_taxref_french.py` associe TAXREF avec GBIF :
+Le script `import_taxref_french_fast.py` associe TAXREF avec GBIF :
 
 1. **Extraction du nom canonique**
    - Supprime auteur/année : `Panthera leo (Linnaeus, 1758)` → `Panthera leo`
@@ -212,15 +212,11 @@ Après import dans une base avec ~127k espèces :
 **Note :** Pas 100% car TAXREF se concentre sur les espèces observées en France/Europe.
 
 **Import rapide avec TAXREF v18 :**
-- Temps d'import : ~30 secondes (vs 2-3 heures avec version non optimisée)
+- Temps d'import : ~30 secondes
 - Noms ajoutés : 49,269
 - Script : `import-taxref-french-fast` (bulk insert optimisé)
 
 ### Options du Script
-
-**⚠️ IMPORTANT : Toujours utiliser `import-taxref-french-fast`**
-
-Le script standard `import-taxref-french` est très lent (~2-3 heures). Utilisez toujours la version optimisée :
 
 ```bash
 # Prévisualisation sans modification
@@ -232,10 +228,6 @@ uv run import-taxref-french-fast --file data/TAXREFv18.txt
 # Aide
 uv run import-taxref-french-fast --help
 ```
-
-**Scripts disponibles :**
-- `import-taxref-french-fast` → **RECOMMANDÉ** - Optimisé avec bulk insert (~30s)
-- `import-taxref-french` → Version lente (conservée pour référence, ~2-3h)
 
 ---
 

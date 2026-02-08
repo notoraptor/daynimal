@@ -25,7 +25,6 @@ import-gbif-fast = "daynimal.db.import_gbif_fast:main"
 init-fts = "daynimal.db.init_fts:main"
 migrate-history = "daynimal.db.migrate_add_history:migrate"
 migrate-favorites = "daynimal.db.migrate_add_favorites:main"
-import-taxref-french = "daynimal.db.import_taxref_french:main"
 import-taxref-french-fast = "daynimal.db.import_taxref_french_fast:main"
 
 [build-system]
