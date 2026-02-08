@@ -206,29 +206,33 @@ Revue de code : fevrier 2026 (verdict code 6.5/10)
 Le refactoring d'`app.py` est un prerequis pour toutes les features suivantes. Chaque feature
 ajoutee dans un monolithe de 2200 lignes aggrave la dette technique et rend les tests impossibles.
 
-**Extraction des vues en fichiers separes :**
-- [ ] Extraire chaque vue (Today, History, Favorites, Search, Stats, Settings) dans sa propre classe/fichier
-- [ ] Creer un systeme de composants reutilisables (affichage animal, loading, erreurs)
-- [ ] Extraire `_load_and_display_animal()` — `app.py` (~200 lignes dupliquees)
-  - 3 methodes quasi-identiques (95% identiques) :
-    - `load_animal_from_history` (lignes 225-296, 72 lignes)
-    - `load_animal_from_favorite` (lignes 1214-1300, 87 lignes)
-    - `load_animal_from_search` (lignes 1643-1732, 90 lignes)
-  - Deja divergence : `load_animal_from_search` ajoute a l'historique, les autres non
-  - Fix : extraire methode unique `_load_and_display_animal(taxon_id, source)`
+**Progression : Phases 1-3 completees, app.py reduit de 2190 a 1949 lignes (-241)**
 
-**Corrections ciblees :**
-- [ ] **Debouncing recherche** — `app.py` (lignes 1388-1467)
-  - `on_search_change` declenche une requete DB a chaque frappe clavier
-  - "guepard" = 7 requetes, race conditions, flickering des resultats
-  - Fix : attendre 300ms apres derniere frappe avant de chercher
+Architecture modulaire creee dans `daynimal/ui/` :
+- `state.py` (AppState), `views/base.py` (BaseView), `components/widgets.py` (Loading, Error, EmptyState)
+- `components/animal_card.py` (AnimalCard reutilisable), `views/search_view.py` (SearchView)
+- `utils/debounce.py` (Debouncer 300ms, conserve mais non utilise dans SearchView)
+- 37 tests UI dans `tests/ui/` (100%)
+
+**Fait :**
+- [x] Infrastructure UI : AppState, BaseView, widgets reutilisables (Phase 1)
+- [x] SearchView extraite avec AnimalCard reutilisable (Phase 2)
+- [x] Corrections : race conditions, type annotations, thread safety AppState, protection page.update() (Phase 3)
+- [x] Recherche classique Enter/Button au lieu du debouncing automatique (Phase 3)
+- [x] Fuite de ressources Repository resolue (AppState.close_repository)
+
+**Reste a faire :**
+- [ ] Extraire `_load_and_display_animal()` — unifier 3 methodes dupliquees (~240 lignes)
+- [ ] Extraire HistoryView et FavoritesView (~300 lignes)
+- [ ] Extraire SettingsView (~150 lignes)
+- [ ] Extraire StatsView (~120 lignes)
+- [ ] Extraire TodayView + ImageCarousel + AnimalDisplay (~500 lignes)
+- [ ] Creer AppController, reduire app.py a ~50 lignes entry point (~600 lignes)
+
+**Corrections ciblees restantes :**
 - [ ] **Settings synchrone** — `app.py` (lignes 2100-2103)
   - `self.repository.get_stats()` bloque le thread UI
   - Fix : utiliser `asyncio.to_thread()` comme les autres vues
-- [ ] **Fuite de ressources Repository** — `app.py` (lignes 38-42, 468-469)
-  - Repository cree on-demand, fermeture depend des handlers cleanup (on_disconnect, on_close)
-  - Si force quit ou crash, connexions HTTP et DB restent ouvertes
-  - Fix : initialiser repository dans `__init__`, fermer dans `__del__` ou context manager
 
 ### Corrections mineures
 
@@ -249,7 +253,7 @@ Couverture actuelle : **~27%**
 | Schemas (schemas.py) | **88%** | Bon |
 | CLI (main.py) | **80%** | Bon |
 | Repository (repository.py) | **41%** | Insuffisant |
-| GUI (app.py) | **0%** | Critique |
+| GUI (app.py + ui/) | **37 tests UI** | En cours (SearchView, AnimalCard, widgets testes) |
 | Attribution (attribution.py) | **0%** | Risque legal |
 | DB Models (models.py) | **0%** | A risque |
 | Import/Migration scripts | **0%** | Acceptable (usage unique) |
@@ -276,7 +280,7 @@ Tests a ecrire en priorite :
 | `db/models.py` | ~~datetime.utcnow() x3~~, ~~index manquant~~ | Corrige |
 | `attribution.py` | ~~datetime.utcnow() x3~~ | Corrige |
 | `repository.py` | ~~Thread safety~~, ~~print()~~, ~~_save_cache sans rollback~~ | Corrige |
-| `app.py` | **Extraction vues**, debouncing, duplication x3, sync settings, resource leak | **Critique** |
+| `app.py` | **Extraction vues** (Search fait, 5 restantes), ~~debouncing~~, duplication x3, sync settings, ~~resource leak~~ | **Critique** |
 | `main.py` | Double parsing history, mutation settings | Mineur |
 | `sources/*.py` | HTTP error handling inconsistant (pas de retry 429/503) | Mineur |
 
