@@ -206,7 +206,7 @@ Revue de code : fevrier 2026 (verdict code 6.5/10)
 Le refactoring d'`app.py` est un prerequis pour toutes les features suivantes. Chaque feature
 ajoutee dans un monolithe de 2200 lignes aggrave la dette technique et rend les tests impossibles.
 
-**Progression : Phases 1-3 completees, app.py reduit de 2190 a 1949 lignes (-241)**
+**Progression : Phases 1-4 completees, app.py reduit de 2190 a 1830 lignes (-360)**
 
 Architecture modulaire creee dans `daynimal/ui/` :
 - `state.py` (AppState), `views/base.py` (BaseView), `components/widgets.py` (Loading, Error, EmptyState)
@@ -220,9 +220,9 @@ Architecture modulaire creee dans `daynimal/ui/` :
 - [x] Corrections : race conditions, type annotations, thread safety AppState, protection page.update() (Phase 3)
 - [x] Recherche classique Enter/Button au lieu du debouncing automatique (Phase 3)
 - [x] Fuite de ressources Repository resolue (AppState.close_repository)
+- [x] Extraire `_load_and_display_animal()` — unifier 3 methodes dupliquees (Phase 4 : -119 lignes)
 
 **Reste a faire :**
-- [ ] Extraire `_load_and_display_animal()` — unifier 3 methodes dupliquees (~240 lignes)
 - [ ] Extraire HistoryView et FavoritesView (~300 lignes)
 - [ ] Extraire SettingsView (~150 lignes)
 - [ ] Extraire StatsView (~120 lignes)

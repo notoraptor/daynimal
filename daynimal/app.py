@@ -231,9 +231,23 @@ class DaynimalApp:
                 print(f"ERROR: {error_msg}")
                 print(f"Traceback:\n{error_traceback}")
 
-    async def load_animal_from_history(self, taxon_id: int):
-        """Load an animal by taxon_id and display it in Today view."""
-        # Switch to Today view first
+    async def _load_and_display_animal(
+        self,
+        taxon_id: int,
+        source: str,
+        enrich: bool = True,
+        add_to_history: bool = False,
+    ):
+        """
+        Unified method to load and display an animal in Today view.
+
+        Args:
+            taxon_id: The ID of the taxon to load
+            source: Source of the request ("history", "favorite", "search") for logging
+            enrich: Whether to enrich the animal with external API data
+            add_to_history: Whether to add the animal to history after loading
+        """
+        # Switch to Today view
         self.nav_bar.selected_index = 0
         self.show_today_view()
 
@@ -259,24 +273,48 @@ class DaynimalApp:
             def fetch_animal():
                 if self.repository is None:
                     self.repository = AnimalRepository()
-                return self.repository.get_by_id(taxon_id)
+                return self.repository.get_by_id(taxon_id, enrich=enrich)
 
             animal = await asyncio.to_thread(fetch_animal)
-            self.current_animal = animal
-            self.current_image_index = 0  # Reset carousel
 
-            if self.debugger:
-                self.debugger.log_animal_load("history", animal.display_name)
+            if animal:
+                self.current_animal = animal
+                self.current_image_index = 0  # Reset carousel
 
-            # Display animal in Today view
-            self.display_animal_in_today_view(animal)
+                if self.debugger:
+                    self.debugger.log_animal_load(source, animal.display_name)
+
+                # Display animal in Today view
+                self.display_animal_in_today_view(animal)
+
+                # Add to history if requested (e.g., from search)
+                if add_to_history and self.repository:
+                    self.repository.add_to_history(taxon_id, command=source)
+            else:
+                # Animal not found
+                self.today_animal_container.controls = [
+                    ft.Container(
+                        content=ft.Column(
+                            controls=[
+                                ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
+                                ft.Text(
+                                    "Animal introuvable", size=20, color=ft.Colors.ERROR
+                                ),
+                            ],
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            spacing=10,
+                        ),
+                        padding=40,
+                    )
+                ]
+                self.page.update()
 
         except Exception as error:
-            error_msg = f"Error loading animal from history (ID {taxon_id}): {error}"
+            error_msg = f"Error loading animal from {source} (ID {taxon_id}): {error}"
             error_traceback = traceback.format_exc()
 
             if self.debugger:
-                self.debugger.log_error("load_animal_from_history", error)
+                self.debugger.log_error(f"load_animal_from_{source}", error)
                 self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
             else:
                 print(f"ERROR: {error_msg}")
@@ -302,6 +340,12 @@ class DaynimalApp:
                 )
             ]
             self.page.update()
+
+    async def load_animal_from_history(self, taxon_id: int):
+        """Load an animal by taxon_id and display it in Today view."""
+        await self._load_and_display_animal(
+            taxon_id=taxon_id, source="history", enrich=True, add_to_history=False
+        )
 
     def on_nav_change(self, e):
         """Handle navigation bar changes."""
@@ -1218,89 +1262,9 @@ class DaynimalApp:
 
     async def load_animal_from_favorite(self, taxon_id: int):
         """Load and display an animal from favorites."""
-        # Switch to today view
-        self.nav_bar.selected_index = 0
-        self.show_today_view()
-
-        # Show loading in today view
-        self.today_animal_container.controls = [
-            ft.Container(
-                content=ft.Column(
-                    controls=[
-                        ft.ProgressRing(width=60, height=60),
-                        ft.Text("Chargement de l'animal...", size=18),
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=20,
-                ),
-                padding=40,
-            )
-        ]
-        self.page.update()
-        await asyncio.sleep(0.1)
-
-        try:
-            # Fetch animal
-            def fetch_animal():
-                if self.repository is None:
-                    self.repository = AnimalRepository()
-                return self.repository.get_by_id(taxon_id, enrich=True)
-
-            animal = await asyncio.to_thread(fetch_animal)
-
-            if animal:
-                self.current_animal = animal
-                self.current_image_index = 0  # Reset carousel
-                self.display_animal_in_today_view(animal)
-            else:
-                self.today_animal_container.controls = [
-                    ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
-                                ft.Text(
-                                    "Animal introuvable", size=20, color=ft.Colors.ERROR
-                                ),
-                            ],
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=10,
-                        ),
-                        padding=40,
-                    )
-                ]
-
-        except Exception as error:
-            error_msg = f"Error in load_animal_from_favorite: {error}"
-            error_traceback = traceback.format_exc()
-
-            if self.debugger:
-                self.debugger.log_error("load_animal_from_favorite", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                print(f"ERROR: {error_msg}")
-                print(f"Traceback:\n{error_traceback}")
-
-            self.today_animal_container.controls = [
-                ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
-                            ft.Text(
-                                "Erreur lors du chargement",
-                                size=20,
-                                color=ft.Colors.ERROR,
-                            ),
-                            ft.Text(str(error), size=14),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=10,
-                    ),
-                    padding=40,
-                )
-            ]
-
-        finally:
-            self.page.update()
+        await self._load_and_display_animal(
+            taxon_id=taxon_id, source="favorite", enrich=True, add_to_history=False
+        )
 
     def on_favorite_toggle(self, e):
         """Toggle favorite status for an animal."""
@@ -1390,92 +1354,9 @@ class DaynimalApp:
 
     async def load_animal_from_search(self, taxon_id: int):
         """Load and display an animal from search results."""
-        # Switch to today view
-        self.nav_bar.selected_index = 0
-        self.show_today_view()
-
-        # Show loading in today view
-        self.today_animal_container.controls = [
-            ft.Container(
-                content=ft.Column(
-                    controls=[
-                        ft.ProgressRing(width=60, height=60),
-                        ft.Text("Chargement de l'animal...", size=18),
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=20,
-                ),
-                padding=40,
-            )
-        ]
-        self.page.update()
-        await asyncio.sleep(0.1)
-
-        try:
-            # Fetch animal
-            def fetch_animal():
-                if self.repository is None:
-                    self.repository = AnimalRepository()
-                return self.repository.get_by_id(taxon_id, enrich=True)
-
-            animal = await asyncio.to_thread(fetch_animal)
-
-            if animal:
-                self.current_animal = animal
-                self.current_image_index = 0  # Reset carousel
-                self.display_animal_in_today_view(animal)
-                # Add to history
-                if self.repository:
-                    self.repository.add_to_history(taxon_id, command="search")
-            else:
-                self.today_animal_container.controls = [
-                    ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
-                                ft.Text(
-                                    "Animal introuvable", size=20, color=ft.Colors.ERROR
-                                ),
-                            ],
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=10,
-                        ),
-                        padding=40,
-                    )
-                ]
-
-        except Exception as error:
-            error_msg = f"Error in load_animal_from_search: {error}"
-            error_traceback = traceback.format_exc()
-
-            if self.debugger:
-                self.debugger.log_error("load_animal_from_search", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                print(f"ERROR: {error_msg}")
-                print(f"Traceback:\n{error_traceback}")
-
-            self.today_animal_container.controls = [
-                ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
-                            ft.Text(
-                                "Erreur lors du chargement",
-                                size=20,
-                                color=ft.Colors.ERROR,
-                            ),
-                            ft.Text(str(error), size=14),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=10,
-                    ),
-                    padding=40,
-                )
-            ]
-
-        finally:
-            self.page.update()
+        await self._load_and_display_animal(
+            taxon_id=taxon_id, source="search", enrich=True, add_to_history=True
+        )
 
     # ============================================
     # STATS VIEW
