@@ -1,7 +1,5 @@
 """Tests for AppState."""
 
-import pytest
-
 from daynimal.repository import AnimalRepository
 from daynimal.schemas import AnimalInfo, Taxon
 from daynimal.ui.state import AppState

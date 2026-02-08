@@ -30,7 +30,7 @@ class AnimalCard(ft.Card):
         self,
         animal: AnimalInfo,
         on_click: Callable[[int], None],
-        metadata_icon: ft.Icons | None = None,
+        metadata_icon: str | None = None,
         metadata_text: str | None = None,
         metadata_icon_color: str | None = None,
         **kwargs,
@@ -57,22 +57,14 @@ class AnimalCard(ft.Card):
             )
         if metadata_text:
             metadata_controls.append(
-                ft.Text(
-                    metadata_text,
-                    size=12,
-                    color=ft.Colors.GREY_500,
-                )
+                ft.Text(metadata_text, size=12, color=ft.Colors.GREY_500)
             )
 
         # Add spacer and arrow
         metadata_controls.extend(
             [
                 ft.Container(expand=True),  # Spacer
-                ft.Icon(
-                    ft.Icons.ARROW_FORWARD,
-                    size=16,
-                    color=ft.Colors.GREY_400,
-                ),
+                ft.Icon(ft.Icons.ARROW_FORWARD, size=16, color=ft.Colors.GREY_400),
             ]
         )
 
@@ -99,10 +91,7 @@ class AnimalCard(ft.Card):
                         color=ft.Colors.BLUE,
                     ),
                     # Metadata row (timestamp, favorite, vernacular, etc.)
-                    ft.Row(
-                        controls=metadata_controls,
-                        spacing=5,
-                    ),
+                    ft.Row(controls=metadata_controls, spacing=5),
                 ],
                 spacing=5,
             ),
@@ -116,9 +105,7 @@ class AnimalCard(ft.Card):
 
 
 def create_history_card(
-    animal: AnimalInfo,
-    on_click: Callable[[int], None],
-    viewed_at_str: str,
+    animal: AnimalInfo, on_click: Callable[[int], None], viewed_at_str: str
 ) -> AnimalCard:
     """Create an animal card for History view.
 
@@ -140,8 +127,7 @@ def create_history_card(
 
 
 def create_favorite_card(
-    animal: AnimalInfo,
-    on_click: Callable[[int], None],
+    animal: AnimalInfo, on_click: Callable[[int], None]
 ) -> AnimalCard:
     """Create an animal card for Favorites view.
 
@@ -162,8 +148,7 @@ def create_favorite_card(
 
 
 def create_search_card(
-    animal: AnimalInfo,
-    on_click: Callable[[int], None],
+    animal: AnimalInfo, on_click: Callable[[int], None]
 ) -> AnimalCard:
     """Create an animal card for Search view.
 

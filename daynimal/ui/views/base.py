@@ -4,7 +4,6 @@ All views inherit from BaseView to ensure consistent interface and behavior.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 import flet as ft
 
@@ -18,7 +17,7 @@ class BaseView(ABC):
     - Common interface (build, refresh)
     - Helper methods for loading/error/empty states
     - Access to shared app state
-    - Unified logging
+    - Unified logging (with fallback to print)
 
     Subclasses must implement:
     - build(): Return the view's UI controls
@@ -65,7 +64,10 @@ class BaseView(ABC):
         from daynimal.ui.components.widgets import LoadingWidget
 
         self.container.controls = [LoadingWidget(message)]
-        self.page.update()
+        try:
+            self.page.update()
+        except Exception:
+            pass
 
     def show_error(self, title: str, details: str = ""):
         """Show error state.
@@ -77,7 +79,10 @@ class BaseView(ABC):
         from daynimal.ui.components.widgets import ErrorWidget
 
         self.container.controls = [ErrorWidget(title, details)]
-        self.page.update()
+        try:
+            self.page.update()
+        except Exception:
+            pass
 
     def show_empty_state(
         self,
@@ -101,19 +106,24 @@ class BaseView(ABC):
         self.container.controls = [
             EmptyStateWidget(icon, title, description, icon_size, icon_color)
         ]
-        self.page.update()
+        try:
+            self.page.update()
+        except Exception:
+            pass
 
     def log_info(self, message: str):
-        """Log info message (if debugger available).
+        """Log info message (with fallback to print).
 
         Args:
             message: Message to log.
         """
         if self.debugger:
             self.debugger.logger.info(message)
+        else:
+            print(f"[INFO] {message}")
 
     def log_error(self, context: str, error: Exception):
-        """Log error message (if debugger available).
+        """Log error message (with fallback to print).
 
         Args:
             context: Context where error occurred.
@@ -121,3 +131,5 @@ class BaseView(ABC):
         """
         if self.debugger:
             self.debugger.log_error(context, error)
+        else:
+            print(f"[ERROR] {context}: {error}")

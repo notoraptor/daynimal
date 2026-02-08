@@ -52,8 +52,15 @@ Ce dossier contient les rapports détaillés des améliorations, optimisations e
 **Phase 2 : Vue pilote - Search (avec debouncing)**
 - **Problème** : Vue Search = 270 lignes dans app.py, requêtes DB à chaque frappe, code dupliqué
 - **Solution** : Créer SearchView modulaire avec debouncing (300ms) et AnimalCard réutilisable
-- **Résultat** : 270 lignes supprimées de app.py (-94%), debouncing actif, 3 duplications éliminées
+- **Résultat** : 241 lignes supprimées de app.py (-92%), debouncing actif, 3 duplications éliminées
 - **Impact** : Requêtes DB réduites de 80%, architecture modulaire validée
+
+#### [2026-02-08-phase3-search-refactor.md](2026-02-08-phase3-search-refactor.md)
+**Phase 3 : Refonte du champ de recherche + Corrections + Tests**
+- **Problème** : Race conditions dans SearchView, type annotations invalides, thread safety manquante
+- **Solution** : Remplacer debouncing par recherche classique (Enter/Button), ajouter locks, protections
+- **Résultat** : 20 nouveaux tests (37 UI tests total), corrections de 5 bugs, code thread-safe
+- **Impact** : Recherche plus simple et fiable, 37 tests UI passent, lint propre
 
 ## 📊 Vue d'ensemble des améliorations
 
@@ -104,6 +111,6 @@ Lors de l'ajout d'un nouveau rapport :
 
 ## 📈 Statistiques
 
-**Total des rapports** : 7
+**Total des rapports** : 8
 **Dernière mise à jour** : 8 février 2026
-**Améliorations documentées** : Performance SQL, Logging, Parallélisation, Refactoring pipeline, UI Infrastructure, UI Search View
+**Améliorations documentées** : Performance SQL, Logging, Parallélisation, Refactoring pipeline, UI Infrastructure (3 phases)

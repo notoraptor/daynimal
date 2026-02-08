@@ -2,7 +2,7 @@
 
 **Objectif** : Refactorer `app.py` (2190 lignes) vers une architecture modulaire, maintenable et testable.
 
-**Progression** : Phase 2/9 complétée ✅
+**Progression** : Phase 3/10 complétée ✅
 
 ---
 
@@ -11,14 +11,15 @@
 | Phase | Description | Status | Gain (lignes) |
 |-------|-------------|--------|---------------|
 | **Phase 1** | Infrastructure (AppState, BaseView, widgets, debouncer) | ✅ **Complété** | +400 (nouveau code) |
-| **Phase 2** | Vue pilote - Search (avec debouncing) | ✅ **Complété** | -270 (app.py) |
-| **Phase 3** | Méthode unifiée `load_and_display_animal()` | ⏳ À faire | -240 estimé |
-| **Phase 4** | Vues History et Favorites | ⏳ À faire | -300 estimé |
-| **Phase 5** | Vue Settings | ⏳ À faire | -150 estimé |
-| **Phase 6** | Vue Stats | ⏳ À faire | -120 estimé |
-| **Phase 7** | Vue Today + composants | ⏳ À faire | -500 estimé |
-| **Phase 8** | Finalisation - AppController | ⏳ À faire | -600 estimé |
-| **Phase 9** | Cleanup et documentation | ⏳ À faire | N/A |
+| **Phase 2** | Vue pilote - Search (avec debouncing) | ✅ **Complété** | -241 (app.py) |
+| **Phase 3** | Refonte Search + Corrections + Tests | ✅ **Complété** | +20 tests, 5 bugs fixés |
+| **Phase 4** | Méthode unifiée `load_and_display_animal()` | ⏳ À faire | -240 estimé |
+| **Phase 5** | Vues History et Favorites | ⏳ À faire | -300 estimé |
+| **Phase 6** | Vue Settings | ⏳ À faire | -150 estimé |
+| **Phase 7** | Vue Stats | ⏳ À faire | -120 estimé |
+| **Phase 8** | Vue Today + composants | ⏳ À faire | -500 estimé |
+| **Phase 9** | Finalisation - AppController | ⏳ À faire | -600 estimé |
+| **Phase 10** | Cleanup et documentation | ⏳ À faire | N/A |
 
 **Total estimé** : 2190 lignes (app.py) → ~50 lignes (entry point) + ~1200 lignes (17 fichiers modulaires)
 
@@ -74,12 +75,12 @@ daynimal/ui/
 ### Corrections apportées
 1. **Debouncing actif** : 1 requête DB au lieu de 4-8 pour un mot tapé
 2. **AnimalCard réutilisable** : 3 duplications éliminées (History, Favorites, Search)
-3. **SearchView modulaire** : 270 lignes supprimées de app.py
+3. **SearchView modulaire** : 241 lignes supprimées de app.py
 
 ### Changements dans app.py
 - **Imports ajoutés** : AppState, SearchView
 - **Lazy init** : SearchView créée on-demand
-- **show_search_view()** : 270 lignes → 16 lignes (**94% de réduction**)
+- **show_search_view()** : ~260 lignes → 20 lignes (**92% de réduction**)
 - **Méthodes supprimées** : `on_search_change`, `perform_search`
 
 ### Tests
@@ -90,14 +91,56 @@ daynimal/ui/
 
 ---
 
-## Phase 3 : Méthode unifiée ⏳
+## Phase 3 : Refonte Search + Corrections ✅
+
+**Fichiers créés** : 2 fichiers de tests
+
+### Problèmes identifiés et corrigés
+
+1. **Race conditions** : Data race sur `_search_id` dans SearchView
+2. **Type annotation invalide** : `metadata_icon: ft.Icons | None` → `str | None`
+3. **Thread safety manquante** : `AppState.repository` sans lock
+4. **`page.update()` non protégé** : Peut crasher si page fermée
+5. **Logging incohérent** : Pas de fallback si `debugger` est `None`
+
+### Solution : Recherche classique (Enter/Button)
+
+**Remplacement du debouncing** :
+- ❌ Recherche automatique après 300ms (complexe, race conditions)
+- ✅ Recherche manuelle sur Enter ou clic bouton (simple, fiable)
+
+### Fichiers modifiés
+
+1. **`search_view.py`** : Refonte complète (debouncer → Enter/Button)
+2. **`animal_card.py`** : Fix type annotation
+3. **`state.py`** : Thread safety avec `threading.Lock`
+4. **`base.py`** : Protection `page.update()` + fallback logging
+5. **`pyproject.toml`** : Entry point GUI
+
+### Structure tests
+```
+tests/ui/
+├── test_search_view.py         # 10 tests
+└── test_animal_card.py         # 10 tests
+```
+
+### Tests
+- **37/37 tests UI passés** (17 existants + 20 nouveaux)
+- **117/117 tests existants passés** (non-régression)
+- **Lint propre** : `ruff check` sans erreurs
+
+**Documentation** : `docs/changes/2026-02-08-phase3-search-refactor.md`
+
+---
+
+## Phase 4 : Méthode unifiée ⏳
 
 **Objectif** : Éliminer la duplication des 3 méthodes `load_animal_from_*`.
 
 ### Méthodes à unifier
-1. `load_animal_from_search(taxon_id)` - ligne 1632 (~90 lignes)
-2. `load_animal_from_history(taxon_id)` - ligne 225 (~70 lignes)
-3. `load_animal_from_favorite(taxon_id)` - ligne 1210 (~85 lignes)
+1. `load_animal_from_search(taxon_id)` - ligne 1391 (~90 lignes)
+2. `load_animal_from_history(taxon_id)` - ligne 234 (~70 lignes)
+3. `load_animal_from_favorite(taxon_id)` - ligne 1219 (~85 lignes)
 
 **Total** : ~240 lignes (95% identiques)
 
@@ -126,7 +169,7 @@ async def load_and_display_animal(
 
 ---
 
-## Phase 4 : Vues History et Favorites ⏳
+## Phase 5 : Vues History et Favorites ⏳
 
 **Objectif** : Migrer History et Favorites vers architecture modulaire.
 
@@ -282,7 +325,7 @@ uv run pytest
 
 | Fichier | Avant | Après (Phase 2) | Après (Phase 8) |
 |---------|-------|-----------------|-----------------|
-| **app.py** | 2190 | 1920 (-270) | ~50 (-2140) |
+| **app.py** | 2190 | 1949 (-241) | ~50 (-2140) |
 | **UI modules** | 0 | 630 | ~1200 |
 | **Tests UI** | 0 | 17 tests | ~40 tests estimés |
 

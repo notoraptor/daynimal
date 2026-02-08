@@ -1,8 +1,8 @@
 # Résumé du refactoring : app.py → Architecture modulaire
 
 **Date** : 2026-02-08
-**Phases complétées** : Phase 1 et Phase 2 (sur 9)
-**Tests** : 117/117 passés ✅
+**Phases complétées** : Phase 1, 2 et 3 (sur 10)
+**Tests** : 117/117 passés ✅ + 20 nouveaux tests UI
 
 ---
 
@@ -75,7 +75,7 @@ daynimal/ui/views/
 
 1. **Debouncing actif** : 1 requête DB au lieu de 4-8 pour un mot tapé (réduction de ~80%)
 2. **AnimalCard réutilisable** : 3 duplications éliminées (History, Favorites, Search)
-3. **SearchView modulaire** : 270 lignes supprimées de app.py
+3. **SearchView modulaire** : 241 lignes supprimées de app.py
 
 ### Changements dans app.py
 
@@ -88,7 +88,7 @@ from daynimal.ui.views.search_view import SearchView
 self.app_state = AppState()
 self.search_view = None  # Lazy init
 
-# show_search_view() : 270 lignes → 16 lignes (-94%)
+# show_search_view() : ~260 lignes → 20 lignes (-92%)
 def show_search_view(self):
     if self.search_view is None:
         self.search_view = SearchView(...)
@@ -112,15 +112,59 @@ def show_search_view(self):
 
 ---
 
+## ✅ Phase 3 : Refonte du champ de recherche + Corrections (Complété)
+
+### Problèmes identifiés
+
+1. **Race conditions** : Data race sur `_search_id` dans SearchView
+2. **Type annotation invalide** : `metadata_icon: ft.Icons | None` (ft.Icons est un module)
+3. **Thread safety manquante** : `AppState.repository` sans lock
+4. **`page.update()` non protégé** : Peut crasher si page fermée
+5. **Logging incohérent** : Pas de fallback si `debugger` est `None`
+
+### Solution : Recherche classique (Enter/Button)
+
+**Remplacement du debouncing** :
+- ❌ Recherche automatique après 300ms (complexe, race conditions)
+- ✅ Recherche manuelle sur Enter ou clic bouton (simple, fiable)
+
+### Fichiers modifiés
+
+1. **`search_view.py`** : Refonte complète (debouncer → Enter/Button)
+2. **`animal_card.py`** : Fix type `metadata_icon: str | None`
+3. **`state.py`** : Thread safety avec `threading.Lock` + double-check locking
+4. **`base.py`** : Protection `page.update()` + fallback `print()` dans logging
+5. **`pyproject.toml`** : `daynimal-app` déplacé vers `[project.gui-scripts]`
+
+### Fichiers créés
+
+```
+tests/ui/
+├── test_search_view.py         # 10 tests
+└── test_animal_card.py         # 10 tests
+```
+
+### Tests
+
+- ✅ **37/37 tests UI passés** (17 existants + 20 nouveaux)
+- ✅ **117/117 tests existants passés** (non-régression)
+- ✅ **Lint propre** : `ruff check` sans erreurs
+
+### Documentation
+
+- `docs/changes/2026-02-08-phase3-search-refactor.md`
+
+---
+
 ## 📊 Résultats actuels
 
 ### Lignes de code
 
 | Fichier | Avant | Après Phase 2 | Réduction |
 |---------|-------|---------------|-----------|
-| **app.py** | 2190 | 1920 | -270 (-12%) |
+| **app.py** | 2190 | 1949 | -241 (-11%) |
 | **UI modules** | 0 | 630 | +630 |
-| **Tests UI** | 0 | 17 tests | +17 |
+| **Tests UI** | 0 | 37 tests | +37 |
 
 ### Performance
 
@@ -130,15 +174,17 @@ def show_search_view(self):
 
 ### Qualité
 
-- ✅ **100% de tests passés** (117 tests)
+- ✅ **100% de tests passés** (117 tests + 37 UI tests)
 - ✅ **Aucune régression** détectée
 - ✅ **Code DRY** : Widgets et AnimalCard réutilisables
+- ✅ **Thread-safe** : Repository avec lock
+- ✅ **Robuste** : Protection `page.update()`, fallback logging
 
 ---
 
 ## 🚀 Prochaines étapes
 
-### Phase 3 : Méthode unifiée (1 jour estimé)
+### Phase 4 : Méthode unifiée (1 jour estimé)
 
 **Objectif** : Éliminer 3 méthodes dupliquées (~240 lignes)
 
@@ -156,7 +202,7 @@ load_animal_from_favorite → load_and_display_animal(source="favorite")
 
 **Gain** : -240 lignes (10% de app.py)
 
-### Phase 4 : History et Favorites (2-3 jours estimés)
+### Phase 5 : History et Favorites (2-3 jours estimés)
 
 **Objectif** : Migrer 2 vues vers architecture modulaire
 
@@ -168,13 +214,13 @@ daynimal/ui/views/
 
 **Gain** : -300 lignes (14% de app.py)
 
-### Phases 5-9 : Remaining views + AppController
+### Phases 6-10 : Remaining views + AppController
 
-- Phase 5 : Settings (1 jour)
-- Phase 6 : Stats (1-2 jours)
-- Phase 7 : Today + composants (3-4 jours)
-- Phase 8 : AppController (1-2 jours)
-- Phase 9 : Cleanup + docs (1 jour)
+- Phase 6 : Settings (1 jour)
+- Phase 7 : Stats (1-2 jours)
+- Phase 8 : Today + composants (3-4 jours)
+- Phase 9 : AppController (1-2 jours)
+- Phase 10 : Cleanup + docs (1 jour)
 
 **Total estimé** : 2-3 semaines
 
@@ -186,6 +232,7 @@ daynimal/ui/views/
 
 - ✅ `docs/changes/2026-02-08-phase1-infrastructure-ui.md`
 - ✅ `docs/changes/2026-02-08-phase2-search-view.md`
+- ✅ `docs/changes/2026-02-08-phase3-search-refactor.md`
 - ✅ `docs/UI_REFACTORING_STATUS.md` (suivi global)
 - ✅ `REFACTORING_SUMMARY.md` (ce fichier)
 
@@ -203,6 +250,7 @@ daynimal/ui/views/
 - [UI Refactoring Status](docs/UI_REFACTORING_STATUS.md) - Suivi phase par phase
 - [Phase 1 : Infrastructure](docs/changes/2026-02-08-phase1-infrastructure-ui.md)
 - [Phase 2 : Search View](docs/changes/2026-02-08-phase2-search-view.md)
+- [Phase 3 : Search Refactor](docs/changes/2026-02-08-phase3-search-refactor.md)
 - [Changes README](docs/changes/README.md) - Index de tous les rapports
 
 ### Code source
@@ -222,7 +270,9 @@ daynimal/ui/                    # Nouveau module UI
 tests/ui/                       # Tests UI
 ├── test_state.py
 ├── test_widgets.py
-└── test_debouncer.py
+├── test_debouncer.py
+├── test_search_view.py
+└── test_animal_card.py
 ```
 
 ---
@@ -232,16 +282,17 @@ tests/ui/                       # Tests UI
 ### Ce qui fonctionne déjà
 
 ✅ **Infrastructure complète** : AppState, BaseView, widgets, debouncer
-✅ **SearchView modulaire** : Debouncing, états multiples, AnimalCard
-✅ **Tests complets** : 17 tests UI (100%), aucune régression
+✅ **SearchView modulaire** : Recherche classique (Enter/Button), états multiples, AnimalCard
+✅ **Tests complets** : 37 tests UI (100%), aucune régression
 ✅ **Architecture validée** : Refactoring progressif sans casser l'app
+✅ **Thread-safe** : Repository avec lock, protection page.update()
 
 ### Bénéfices immédiats
 
-⚡ **Performance** : Requêtes DB réduites de 80% dans Search
+⚡ **Simplicité** : Recherche classique sans race conditions
 🔧 **Maintenabilité** : Code modulaire et testable
 📦 **Réutilisabilité** : AnimalCard utilisable dans 3 vues
-🐛 **Correction** : Resource leak résolu
+🐛 **Corrections** : Resource leak, thread safety, type annotations
 
 ### Vision à long terme
 
@@ -254,4 +305,4 @@ tests/ui/                       # Tests UI
 
 **Dernière mise à jour** : 2026-02-08
 
-**Prêt pour Phase 3 !** 🚀
+**Prêt pour Phase 4 !** 🚀

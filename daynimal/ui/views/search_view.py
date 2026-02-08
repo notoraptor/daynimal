@@ -1,6 +1,7 @@
 """Search view for Daynimal app.
 
-This module provides the search interface with debounced search functionality.
+This module provides the search interface with a classic search field
+(submit on Enter or button click).
 """
 
 import asyncio
@@ -10,15 +11,14 @@ import flet as ft
 
 from daynimal.ui.components.animal_card import create_search_card
 from daynimal.ui.state import AppState
-from daynimal.ui.utils.debounce import Debouncer
 from daynimal.ui.views.base import BaseView
 
 
 class SearchView(BaseView):
-    """Search view with debounced search field and results list.
+    """Search view with search field and results list.
 
     Features:
-    - Debounced search (300ms delay)
+    - Search triggered by Enter key or search button
     - Empty state when no query
     - Loading indicator during search
     - Results as clickable cards
@@ -42,21 +42,22 @@ class SearchView(BaseView):
         """
         super().__init__(page, app_state, debugger)
         self.on_result_click = on_result_click
-        self.debouncer = Debouncer(delay=0.3)  # 300ms debounce
 
         # Create UI components
         self.search_field = ft.TextField(
             label="Rechercher un animal",
             hint_text="Nom scientifique ou vernaculaire",
             prefix_icon=ft.Icons.SEARCH,
-            on_change=self.on_search_change,
+            on_submit=self._on_submit,
             autofocus=True,
+            expand=True,
         )
 
-        self.results_container = ft.Column(
-            controls=[],
-            spacing=10,
+        self.search_button = ft.IconButton(
+            icon=ft.Icons.SEARCH, on_click=self._on_search_click, tooltip="Rechercher"
         )
+
+        self.results_container = ft.Column(controls=[], spacing=10)
 
     def build(self) -> ft.Control:
         """Build the search view UI.
@@ -69,11 +70,7 @@ class SearchView(BaseView):
             content=ft.Row(
                 controls=[
                     ft.Icon(ft.Icons.SEARCH, size=32),
-                    ft.Text(
-                        "Recherche",
-                        size=24,
-                        weight=ft.FontWeight.BOLD,
-                    ),
+                    ft.Text("Recherche", size=24, weight=ft.FontWeight.BOLD),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
             ),
@@ -83,14 +80,21 @@ class SearchView(BaseView):
         # Initial empty state
         self.show_empty_search_state()
 
+        # Search bar: TextField + button
+        search_bar = ft.Container(
+            content=ft.Row(
+                controls=[self.search_field, self.search_button],
+                spacing=5,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            padding=ft.Padding(left=20, right=20, top=10, bottom=0),
+        )
+
         # Assemble view
         self.container.controls = [
             header,
             ft.Divider(),
-            ft.Container(
-                content=self.search_field,
-                padding=ft.Padding(left=20, right=20, top=10, bottom=0),
-            ),
+            search_bar,
             ft.Container(content=self.results_container, padding=20, expand=True),
         ]
 
@@ -103,22 +107,17 @@ class SearchView(BaseView):
         """
         pass
 
-    def on_search_change(self, e):
-        """Handle search field changes (with debouncing).
+    def _on_submit(self, e):
+        """Handle Enter key in search field."""
+        query = self.search_field.value.strip()
+        if query:
+            asyncio.create_task(self.perform_search(query))
 
-        Args:
-            e: Change event from TextField.
-        """
-        query = e.control.value.strip()
-
-        if not query:
-            # Reset to empty state
-            self.show_empty_search_state()
-            self.page.update()
-            return
-
-        # Trigger debounced search
-        asyncio.create_task(self.debouncer.debounce(self.perform_search, query))
+    def _on_search_click(self, e):
+        """Handle search button click."""
+        query = self.search_field.value.strip()
+        if query:
+            asyncio.create_task(self.perform_search(query))
 
     def show_empty_search_state(self):
         """Show empty state (before any search)."""
@@ -128,9 +127,7 @@ class SearchView(BaseView):
                     controls=[
                         ft.Icon(ft.Icons.SEARCH, size=80, color=ft.Colors.GREY_500),
                         ft.Text(
-                            "Recherchez un animal",
-                            size=20,
-                            weight=ft.FontWeight.BOLD,
+                            "Recherchez un animal", size=20, weight=ft.FontWeight.BOLD
                         ),
                         ft.Text(
                             "Entrez un nom scientifique ou vernaculaire",
@@ -195,9 +192,7 @@ class SearchView(BaseView):
                                     color=ft.Colors.GREY_500,
                                 ),
                                 ft.Text(
-                                    "Aucun résultat",
-                                    size=20,
-                                    weight=ft.FontWeight.BOLD,
+                                    "Aucun résultat", size=20, weight=ft.FontWeight.BOLD
                                 ),
                                 ft.Text(
                                     f"Aucun animal trouvé pour '{query}'",

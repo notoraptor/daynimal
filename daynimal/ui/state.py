@@ -4,6 +4,7 @@ This module provides centralized state management for the Flet application,
 including repository lifecycle, current animal display, and caching.
 """
 
+import threading
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -16,7 +17,7 @@ class AppState:
     """Shared application state across all views.
 
     This class manages:
-    - Repository singleton (lazy initialization)
+    - Repository singleton (lazy initialization, thread-safe)
     - Currently displayed animal
     - Image carousel state
     - Statistics cache
@@ -26,6 +27,7 @@ class AppState:
     """
 
     _repository: Optional[AnimalRepository] = field(default=None, init=False)
+    _repo_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
     current_animal: Optional[AnimalInfo] = None
     current_image_index: int = 0
     cached_stats: Optional[dict] = None
@@ -33,13 +35,15 @@ class AppState:
 
     @property
     def repository(self) -> AnimalRepository:
-        """Get or create repository (lazy initialization).
+        """Get or create repository (lazy initialization, thread-safe).
 
         Returns:
             AnimalRepository: The singleton repository instance.
         """
         if self._repository is None:
-            self._repository = AnimalRepository()
+            with self._repo_lock:
+                if self._repository is None:
+                    self._repository = AnimalRepository()
         return self._repository
 
     def close_repository(self):
@@ -47,9 +51,10 @@ class AppState:
 
         Should be called during application shutdown (on_disconnect, on_close).
         """
-        if self._repository:
-            self._repository.close()
-            self._repository = None
+        with self._repo_lock:
+            if self._repository:
+                self._repository.close()
+                self._repository = None
 
     def reset_animal_display(self):
         """Reset animal display state (used when loading new animal)."""

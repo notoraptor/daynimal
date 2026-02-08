@@ -2,11 +2,7 @@
 
 import flet as ft
 
-from daynimal.ui.components.widgets import (
-    EmptyStateWidget,
-    ErrorWidget,
-    LoadingWidget,
-)
+from daynimal.ui.components.widgets import EmptyStateWidget, ErrorWidget, LoadingWidget
 
 
 def test_loading_widget_creation():
@@ -68,9 +64,7 @@ def test_error_widget_with_details():
 def test_empty_state_widget_creation():
     """Test EmptyStateWidget can be created."""
     widget = EmptyStateWidget(
-        icon=ft.Icons.INBOX,
-        title="Aucun résultat",
-        description="La liste est vide",
+        icon=ft.Icons.INBOX, title="Aucun résultat", description="La liste est vide"
     )
 
     assert isinstance(widget, ft.Container)

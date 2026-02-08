@@ -21,12 +21,14 @@ dev = [
 
 [project.scripts]
 daynimal = "daynimal.main:main"
-daynimal-app = "daynimal.app:main"
 generate-distribution = "daynimal.db.generate_distribution:main"
 build-db = "daynimal.db.build_db:main"
 init-fts = "daynimal.db.init_fts:main"
 migrate-history = "daynimal.db.migrate_add_history:migrate"
 migrate-favorites = "daynimal.db.migrate_add_favorites:main"
+
+[project.gui-scripts]
+daynimal-app = "daynimal.app:main"
 
 [build-system]
 requires = ["hatchling"]

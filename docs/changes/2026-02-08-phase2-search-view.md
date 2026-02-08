@@ -71,7 +71,7 @@ Migration de la vue Search vers l'architecture modulaire en utilisant SearchView
 - Callback `on_result_click(taxon_id)` fourni par app.py
 - Logging via debugger (si disponible)
 
-**Code éliminé** : ~270 lignes dans app.py (lignes 1365-1634)
+**Code éliminé** : ~241 lignes dans app.py
 
 ---
 
@@ -91,9 +91,9 @@ from daynimal.ui.views.search_view import SearchView
 - **État legacy conservé** : `self.repository`, `self.current_animal`, etc. (pour vues non migrées)
 
 #### `show_search_view()` remplacé
-**Avant** : 270 lignes (header, search field, results, on_search_change, perform_search)
+**Avant** : ~260 lignes (header, search field, results, on_search_change, perform_search)
 
-**Après** : 16 lignes
+**Après** : 20 lignes
 ```python
 def show_search_view(self):
     """Show the Search view (using modular SearchView)."""
@@ -117,7 +117,7 @@ def show_search_view(self):
     self.page.update()
 ```
 
-**Réduction** : 270 lignes → 16 lignes (**94% de réduction**)
+**Réduction** : ~260 lignes → 20 lignes (**92% de réduction**)
 
 #### Méthodes supprimées
 - `on_search_change(e)` : Remplacée par `SearchView.on_search_change`
@@ -198,7 +198,7 @@ Pour valider complètement cette phase, les tests manuels suivants sont requis :
 ## Bénéfices
 
 ### Code
-- **app.py** : 270 lignes supprimées (94% de réduction pour Search)
+- **app.py** : 241 lignes supprimées (92% de réduction pour Search)
 - **AnimalCard** : 1 composant réutilisable au lieu de 3 duplications
 - **SearchView** : 230 lignes modulaires et testables
 
@@ -222,9 +222,9 @@ Pour valider complètement cette phase, les tests manuels suivants sont requis :
 **Phase 3 : Méthode unifiée**
 - Créer `load_and_display_animal()` dans app.py ou AppController
 - Remplacer les 3 méthodes dupliquées :
-  - `load_animal_from_search` (ligne 1632)
-  - `load_animal_from_history` (ligne 225)
-  - `load_animal_from_favorite` (ligne 1210)
+  - `load_animal_from_search` (ligne 1391)
+  - `load_animal_from_history` (ligne 234)
+  - `load_animal_from_favorite` (ligne 1219)
 - Gain estimé : ~240 lignes supprimées
 
 **Phase 4 : Vues History et Favorites**

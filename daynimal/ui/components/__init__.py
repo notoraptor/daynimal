@@ -6,11 +6,7 @@ from daynimal.ui.components.animal_card import (
     create_history_card,
     create_search_card,
 )
-from daynimal.ui.components.widgets import (
-    EmptyStateWidget,
-    ErrorWidget,
-    LoadingWidget,
-)
+from daynimal.ui.components.widgets import EmptyStateWidget, ErrorWidget, LoadingWidget
 
 __all__ = [
     "LoadingWidget",
