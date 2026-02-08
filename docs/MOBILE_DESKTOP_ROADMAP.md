@@ -206,13 +206,28 @@ Revue de code : fevrier 2026 (verdict code 6.5/10)
 Le refactoring d'`app.py` est un prerequis pour toutes les features suivantes. Chaque feature
 ajoutee dans un monolithe de 2200 lignes aggrave la dette technique et rend les tests impossibles.
 
-**Progression : Phases 1-4 completees, app.py reduit de 2190 a 1830 lignes (-360)**
+**Progression : Phase 2a COMPLETEE - Architecture modulaire terminee !**
 
-Architecture modulaire creee dans `daynimal/ui/` :
-- `state.py` (AppState), `views/base.py` (BaseView), `components/widgets.py` (Loading, Error, EmptyState)
-- `components/animal_card.py` (AnimalCard reutilisable), `views/search_view.py` (SearchView)
-- `utils/debounce.py` (Debouncer 300ms, conserve mais non utilise dans SearchView)
-- 37 tests UI dans `tests/ui/` (100%)
+**app.py reduit de 2190 a 128 lignes (-94% / -2062 lignes)**
+
+Architecture modulaire complete dans `daynimal/ui/` :
+- **State** : `state.py` (AppState avec repository lifecycle)
+- **Base** : `views/base.py` (BaseView pour toutes les vues)
+- **Components** :
+  - `components/widgets.py` (LoadingWidget, ErrorWidget, EmptyStateWidget)
+  - `components/animal_card.py` (AnimalCard reutilisable)
+  - `components/image_carousel.py` (ImageCarousel avec navigation)
+  - `components/animal_display.py` (AnimalDisplay pour details)
+- **Views** (toutes etendent BaseView) :
+  - `views/search_view.py` (SearchView)
+  - `views/history_view.py` (HistoryView)
+  - `views/favorites_view.py` (FavoritesView)
+  - `views/settings_view.py` (SettingsView avec async operations)
+  - `views/stats_view.py` (StatsView avec cache)
+  - `views/today_view.py` (TodayView utilisant ImageCarousel et AnimalDisplay)
+- **Controller** : `ui/app_controller.py` (AppController orchestrant toutes les vues)
+- **Utils** : `utils/debounce.py` (Debouncer 300ms, conserve)
+- **Tests** : 37 tests UI dans `tests/ui/` (100%)
 
 **Fait :**
 - [x] Infrastructure UI : AppState, BaseView, widgets reutilisables (Phase 1)
@@ -221,13 +236,17 @@ Architecture modulaire creee dans `daynimal/ui/` :
 - [x] Recherche classique Enter/Button au lieu du debouncing automatique (Phase 3)
 - [x] Fuite de ressources Repository resolue (AppState.close_repository)
 - [x] Extraire `_load_and_display_animal()` — unifier 3 methodes dupliquees (Phase 4 : -119 lignes)
+- [x] Extraire HistoryView (~195 lignes)
+- [x] Extraire FavoritesView (~195 lignes)
+- [x] Extraire SettingsView (~260 lignes avec async operations)
+- [x] Extraire StatsView (~250 lignes avec cache)
+- [x] Extraire ImageCarousel (~195 lignes)
+- [x] Extraire AnimalDisplay (~205 lignes)
+- [x] Extraire TodayView (~320 lignes utilisant ImageCarousel et AnimalDisplay)
+- [x] Creer AppController (~330 lignes orchestrant 6 vues)
+- [x] Reduire app.py a 128 lignes entry point (-94%)
 
 **Reste a faire :**
-- [ ] Extraire HistoryView et FavoritesView (~300 lignes)
-- [ ] Extraire SettingsView (~150 lignes)
-- [ ] Extraire StatsView (~120 lignes)
-- [ ] Extraire TodayView + ImageCarousel + AnimalDisplay (~500 lignes)
-- [ ] Creer AppController, reduire app.py a ~50 lignes entry point (~600 lignes)
 
 **Corrections ciblees restantes :**
 - [ ] **Settings synchrone** — `app.py` (lignes 2100-2103)
