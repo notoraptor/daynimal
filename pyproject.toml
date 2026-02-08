@@ -26,6 +26,8 @@ init-fts = "daynimal.db.init_fts:main"
 migrate-history = "daynimal.db.migrate_add_history:migrate"
 migrate-favorites = "daynimal.db.migrate_add_favorites:main"
 import-taxref-french-fast = "daynimal.db.import_taxref_french_fast:main"
+export-taxref-tsv = "daynimal.db.export_taxref_tsv:main"
+import-taxref-tsv = "daynimal.db.import_taxref_tsv:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -6,7 +6,7 @@
 
 ## Etat actuel
 
-### Phase 1 Desktop : completee (2026-02-07)
+### Phase 1 Desktop : complétée (2026-02-07)
 
 Application Flet fonctionnelle avec 6 onglets :
 - Aujourd'hui (animal du jour + aleatoire, carousel d'images)
@@ -55,9 +55,28 @@ TAXREF_v18_2025.zip (58 MB)
 Ensuite : uv run init-fts  -->  index FTS5 dans la DB
 ```
 
+### Différences de filtrage entre modes
+
+Les deux modes appliquent un filtrage different sur le GBIF Backbone Taxonomy :
+
+| Critere | Mode **full** | Mode **minimal** |
+|---------|---------------|------------------|
+| **Rangs taxonomiques** | Tous (species, genus, family, order, class, phylum, subspecies, variety, etc.) | **Uniquement species** |
+| **Filtrage vernaculaire** | Non | **Oui** : supprime especes sans nom vernaculaire |
+| **Pipeline** | 1. Extraire Animalia (tous rangs)<br>2. Importer tout | 1. Extraire Animalia (rank='species' seulement)<br>2. Importer<br>3. **Supprimer especes sans noms** |
+| **Taxa resultants** | 4.4M (hierarchie complete) | 127K (especes avec noms uniquement) |
+| **Noms vernaculaires** | 1.16M (tous rangs) | 1.07M (especes seulement) |
+| **Taille finale** | 1.8 GB | 153 MB |
+
+**Exemple concret** :
+- Mode full : inclut `Felidae` (famille → "Cats", "Felins"), `Panthera` (genre → "Big cats"), `Panthera leo` (espece → "Lion")
+- Mode minimal : inclut **seulement** `Panthera leo` (espece avec noms vernaculaires)
+
+**Note** : VACUUM est applique automatiquement aux deux modes en fin d'import.
+
 ### Fichiers presents sur le disque (fevrier 2026)
 
-**Donnees brutes** (`data/`, gitignore) :
+**Données brutes** (`data/`, gitignore) :
 
 | Fichier | Taille | Lignes |
 |---------|--------|--------|
@@ -68,7 +87,7 @@ Ensuite : uv run init-fts  -->  index FTS5 dans la DB
 | `animalia_taxa_minimal.tsv` | 439 MB | 3 053 779 |
 | `animalia_vernacular_minimal.tsv` | 31 MB | 1 072 723 |
 
-**Bases de donnees** (racine, gitignore) :
+**Bases de données** (racine, gitignore) :
 
 | Fichier | Taille | Taxa | Vernaculaires | Noms FR |
 |---------|--------|------|---------------|---------|
@@ -78,7 +97,7 @@ Ensuite : uv run init-fts  -->  index FTS5 dans la DB
 Tables dans les deux DB : `taxa`, `vernacular_names`, `enrichment_cache`, `animal_history`, `taxa_fts` (FTS5).
 Tables supplementaires dans la full DB : `favorites`, `user_settings`.
 
-### Probleme identifie : noms TAXREF absents des TSV
+### Problème identifié : noms TAXREF absents des TSV
 
 Les TSV sont generes par `import-gbif-fast` **avant** l'import TAXREF.
 Les 49K noms francais TAXREF ne sont donc pas dans les fichiers de distribution mobile.
