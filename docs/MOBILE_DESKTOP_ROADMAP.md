@@ -29,30 +29,29 @@ Infrastructure :
 
 | Fichier | Source | Taille | Licence | Telechargement |
 |---------|--------|--------|---------|----------------|
-| `backbone.zip` | GBIF Backbone Taxonomy | **927 MB** | CC-BY 4.0 | Auto (par `import-gbif-fast`) |
+| `backbone.zip` | GBIF Backbone Taxonomy | **927 MB** | CC-BY 4.0 | Auto (par `generate-distribution`) |
 | `TAXREF_v18_2025.zip` | patrinat.fr (MNHN) | **58 MB** | Etalab 2.0 | Manuel |
 
 ### Pipeline de fabrication
 
+Le pipeline est separe en deux etapes :
+1. **generate-distribution** : sources brutes (GBIF + TAXREF) → fichiers TSV de distribution
+2. **build-db** : fichiers TSV → base de donnees SQLite
+
 ```
-backbone.zip (927 MB)
+backbone.zip (927 MB) + TAXREFv18.txt (optionnel)
     |
-    +-- import-gbif-fast --mode full --save-tsv
-    |       |-- data/animalia_taxa.tsv .............. 598 MB (4.4M lignes)
-    |       |-- data/animalia_vernacular.tsv ........ 32 MB  (1.1M lignes)
-    |       +-- daynimal.db ........................ 1.8 GB
+    +-- generate-distribution --mode full --taxref data/TAXREFv18.txt
+    |       |-- data/animalia_taxa.tsv .............. ~598 MB (4.4M lignes)
+    |       +-- data/animalia_vernacular.tsv ........ ~32 MB  (1.1M lignes, noms TAXREF inclus)
     |
-    +-- import-gbif-fast --mode minimal --save-tsv
-            |-- data/animalia_taxa_minimal.tsv ...... 439 MB (3M lignes)
-            |-- data/animalia_vernacular_minimal.tsv  31 MB  (1M lignes)
-            +-- daynimal_minimal.db ................ 153 MB (apres VACUUM)
+    +-- generate-distribution --mode minimal --taxref data/TAXREFv18.txt
+            |-- data/animalia_taxa_minimal.tsv ...... ~20 MB (166K+ lignes)
+            +-- data/animalia_vernacular_minimal.tsv  ~32 MB  (1M+ lignes, noms TAXREF inclus)
 
-TAXREF_v18_2025.zip (58 MB)
-    |
-    +-- import-taxref-french-fast --file data/TAXREFv18.txt
-            +-- +49K noms francais dans la DB (30 sec)
-
-Ensuite : uv run init-fts  -->  index FTS5 dans la DB
+Ensuite pour chaque mode :
+    build-db --taxa <taxa.tsv> --vernacular <vernacular.tsv> --db daynimal.db
+    init-fts
 ```
 
 ### Différences de filtrage entre modes
@@ -97,35 +96,30 @@ Les deux modes appliquent un filtrage different sur le GBIF Backbone Taxonomy :
 Tables dans les deux DB : `taxa`, `vernacular_names`, `enrichment_cache`, `animal_history`, `taxa_fts` (FTS5).
 Tables supplementaires dans la full DB : `favorites`, `user_settings`.
 
-### Problème identifié : noms TAXREF absents des TSV
+### Problème resolu : noms TAXREF integres dans les TSV
 
-Les TSV sont generes par `import-gbif-fast` **avant** l'import TAXREF.
-Les 49K noms francais TAXREF ne sont donc pas dans les fichiers de distribution mobile.
-
-| Source | DB full | DB minimale | TSV full | TSV minimal |
-|--------|---------|-------------|----------|-------------|
-| Noms FR (GBIF) | 44 491 | 43 606 | 44 491 | 43 606 |
-| Noms FR (TAXREF) | +49 286 | 0 | 0 | 0 |
-| **Total FR** | **93 777** | **43 606** | **44 491** | **43 606** |
-
-Solutions possibles (a decider en Phase 2b) :
-- **Option A** : Regenerer les TSV vernacular apres import TAXREF (exporter depuis la DB enrichie)
-- **Option B** : Distribuer un 3eme fichier TSV specifique aux noms TAXREF
-- **Option C** : Faire l'import TAXREF cote mobile (distribuer `TAXREFv18.txt`, +58 MB)
+Depuis le refactoring du pipeline (fevrier 2026), `generate-distribution` fusionne les noms
+TAXREF directement dans les fichiers de distribution via le flag `--taxref`. Les noms francais
+sont donc disponibles dans les TSV sans etape supplementaire.
 
 ### Distribution desktop
 
 Pas de fichiers pre-construits a distribuer. L'utilisateur execute le pipeline lui-meme :
 
 ```bash
-# 1. Telecharger et importer GBIF (auto-download de backbone.zip, 927 MB)
-uv run import-gbif-fast --mode full          # DB complete (1.8 GB, 4.4M taxa)
-# ou
-uv run import-gbif-fast --mode minimal       # DB legere (153 MB, 127K especes)
+# 1. Generer les fichiers de distribution (auto-download de backbone.zip si absent)
+uv run generate-distribution --mode minimal --taxref data/TAXREFv18.txt
+# ou mode full :
+# uv run generate-distribution --mode full --taxref data/TAXREFv18.txt
+# Sans TAXREF (noms FR limites a GBIF) :
+# uv run generate-distribution --mode minimal
 
-# 2. (Optionnel) Importer les noms francais TAXREF
-# Telecharger manuellement TAXREF_v18_2025.zip depuis patrinat.fr, decompresser dans data/
-uv run import-taxref-french-fast --file data/TAXREFv18.txt    # +49K noms FR, 30 sec
+# 2. Construire la DB SQLite
+uv run build-db --taxa data/animalia_taxa_minimal.tsv \
+                --vernacular data/animalia_vernacular_minimal.tsv
+# ou mode full :
+# uv run build-db --taxa data/animalia_taxa.tsv \
+#                 --vernacular data/animalia_vernacular.tsv
 
 # 3. Construire l'index de recherche FTS5
 uv run init-fts
@@ -303,9 +297,9 @@ Voir "Pipeline de donnees" plus haut pour les tailles et le probleme TAXREF.
 - [ ] Heberger sur GitHub Releases ou CDN
   - `animalia_taxa_minimal.tsv.gz` (~93 MB total compresse, avec ou sans TAXREF)
 
-Commande pour regenerer les TSV (sans TAXREF) :
+Commande pour regenerer les TSV :
 ```bash
-uv run import-gbif-fast --mode minimal --save-tsv
+uv run generate-distribution --mode minimal --taxref data/TAXREFv18.txt
 ```
 
 **Etape 2 : Premier lancement dans l'app mobile**

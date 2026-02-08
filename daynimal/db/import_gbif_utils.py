@@ -5,6 +5,7 @@ This module contains common functions and constants used by both
 the standard and fast GBIF importers.
 """
 
+import re
 from pathlib import Path
 
 import httpx
@@ -104,6 +105,22 @@ def download_backbone(dest_path: Path) -> Path:
     print("\nDownload complete.")
     partial_path.rename(dest_path)
     return dest_path
+
+
+def extract_canonical_name(scientific_name: str) -> str:
+    """Extract canonical name (genus + species only) from a scientific name.
+
+    Removes parenthetical authorities, year citations, and extra parts,
+    keeping only the first two words (genus + specific epithet).
+    """
+    name = re.sub(r"\([^)]*\)", "", scientific_name)
+    name = re.sub(r"\b\d{4}\b", "", name)
+    name = re.sub(r",\s*\d+", "", name)
+    name = " ".join(name.split())
+    parts = name.split()
+    if len(parts) >= 2:
+        return f"{parts[0]} {parts[1]}"
+    return name
 
 
 def parse_int(value: str) -> int | None:
