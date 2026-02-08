@@ -46,12 +46,12 @@ class BaseView(ABC):
         """
         pass
 
-    @abstractmethod
     async def refresh(self):
         """Refresh view data.
 
         Called when the view becomes active (e.g., user navigates to it).
         Should reload data and update UI.
+        Subclasses can override this to provide custom refresh behavior.
         """
         pass
 

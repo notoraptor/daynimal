@@ -6,10 +6,10 @@ from typing import Callable
 
 import flet as ft
 
-from daynimal.repository import AnimalRepository
 from daynimal.schemas import AnimalInfo
 from daynimal.ui.components.animal_display import AnimalDisplay
 from daynimal.ui.components.image_carousel import ImageCarousel
+from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
 
@@ -19,7 +19,7 @@ class TodayView(BaseView):
     def __init__(
         self,
         page: ft.Page,
-        repository: AnimalRepository | None = None,
+        app_state: AppState | None = None,
         on_favorite_toggle: Callable[[int, bool], None] | None = None,
         debugger=None,
     ):
@@ -28,12 +28,12 @@ class TodayView(BaseView):
 
         Args:
             page: Flet page instance
-            repository: Animal repository instance
+            app_state: Shared application state
             on_favorite_toggle: Callback when favorite button is clicked
                                 (receives taxon_id, is_currently_favorite)
             debugger: Optional debugger instance for logging
         """
-        super().__init__(page, repository, debugger)
+        super().__init__(page, app_state, debugger)
         self.on_favorite_toggle_callback = on_favorite_toggle
         self.today_animal_container = ft.Column(controls=[], spacing=10)
         self.current_animal: AnimalInfo | None = None
@@ -168,20 +168,13 @@ class TodayView(BaseView):
         try:
             # Fetch animal from repository in a separate thread
             def fetch_animal():
-                # Create repository if needed
-                if self.repository is None:
-                    self.repository = AnimalRepository()
-
+                repo = self.app_state.repository
                 if mode == "today":
-                    animal = self.repository.get_animal_of_the_day()
-                    self.repository.add_to_history(
-                        animal.taxon.taxon_id, command="today"
-                    )
+                    animal = repo.get_animal_of_the_day()
+                    repo.add_to_history(animal.taxon.taxon_id, command="today")
                 else:  # random
-                    animal = self.repository.get_random()
-                    self.repository.add_to_history(
-                        animal.taxon.taxon_id, command="random"
-                    )
+                    animal = repo.get_random()
+                    repo.add_to_history(animal.taxon.taxon_id, command="random")
                 return animal
 
             animal = await asyncio.to_thread(fetch_animal)
@@ -245,9 +238,7 @@ class TodayView(BaseView):
         first_divider_index = 3 if len(controls) > 3 else len(controls)
 
         # Favorite button
-        is_favorite = False
-        if self.repository:
-            is_favorite = self.repository.is_favorite(animal.taxon.taxon_id)
+        is_favorite = self.app_state.repository.is_favorite(animal.taxon.taxon_id) if self.app_state else False
 
         favorite_button = ft.IconButton(
             icon=ft.Icons.FAVORITE if is_favorite else ft.Icons.FAVORITE_BORDER,
@@ -301,7 +292,7 @@ class TodayView(BaseView):
         """Handle favorite button toggle."""
         if self.on_favorite_toggle_callback and self.current_animal:
             taxon_id = e.control.data
-            is_favorite = self.repository.is_favorite(taxon_id) if self.repository else False
+            is_favorite = self.app_state.repository.is_favorite(taxon_id) if self.app_state else False
 
             # Call the callback
             self.on_favorite_toggle_callback(taxon_id, is_favorite)

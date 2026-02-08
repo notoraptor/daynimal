@@ -6,7 +6,7 @@ from typing import Callable
 
 import flet as ft
 
-from daynimal.repository import AnimalRepository
+from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
 
@@ -16,7 +16,7 @@ class FavoritesView(BaseView):
     def __init__(
         self,
         page: ft.Page,
-        repository: AnimalRepository | None = None,
+        app_state: AppState | None = None,
         on_animal_click: Callable[[int], None] | None = None,
         debugger=None,
     ):
@@ -25,11 +25,11 @@ class FavoritesView(BaseView):
 
         Args:
             page: Flet page instance
-            repository: Animal repository instance
+            app_state: Shared application state
             on_animal_click: Callback when an animal is clicked (receives taxon_id)
             debugger: Optional debugger instance for logging
         """
-        super().__init__(page, repository, debugger)
+        super().__init__(page, app_state, debugger)
         self.on_animal_click = on_animal_click
         self.favorites_list = ft.Column(controls=[], spacing=10)
 
@@ -88,10 +88,7 @@ class FavoritesView(BaseView):
         try:
             # Fetch favorites
             def fetch_favorites():
-                # Create repository if needed
-                if self.repository is None:
-                    self.repository = AnimalRepository()
-                return self.repository.get_favorites(page=1, per_page=50)
+                return self.app_state.repository.get_favorites(page=1, per_page=50)
 
             favorites_items, total = await asyncio.to_thread(fetch_favorites)
 

@@ -5,7 +5,7 @@ import traceback
 
 import flet as ft
 
-from daynimal.repository import AnimalRepository
+from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
 
@@ -15,7 +15,7 @@ class StatsView(BaseView):
     def __init__(
         self,
         page: ft.Page,
-        repository: AnimalRepository | None = None,
+        app_state: AppState | None = None,
         debugger=None,
     ):
         """
@@ -23,10 +23,10 @@ class StatsView(BaseView):
 
         Args:
             page: Flet page instance
-            repository: Animal repository instance
+            app_state: Shared application state
             debugger: Optional debugger instance for logging
         """
-        super().__init__(page, repository, debugger)
+        super().__init__(page, app_state, debugger)
         self.stats_container = ft.Row(
             controls=[],
             spacing=15,
@@ -222,10 +222,7 @@ class StatsView(BaseView):
         try:
             # Fetch stats
             def fetch_stats():
-                # Create repository if needed
-                if self.repository is None:
-                    self.repository = AnimalRepository()
-                return self.repository.get_stats()
+                return self.app_state.repository.get_stats()
 
             stats = await asyncio.to_thread(fetch_stats)
 

@@ -6,7 +6,6 @@ import traceback
 import flet as ft
 
 from daynimal.debug import get_debugger
-from daynimal.repository import AnimalRepository
 from daynimal.ui.state import AppState
 from daynimal.ui.views.favorites_view import FavoritesView
 from daynimal.ui.views.history_view import HistoryView
@@ -35,23 +34,23 @@ class AppController:
         self.debugger = debugger or get_debugger()
 
         # Shared state
-        self.state = AppState(page)
+        self.state = AppState()
         self.current_view_name = "today"
 
         # Content container
         self.content_container = ft.Column(controls=[], expand=True, spacing=0)
 
-        # Initialize views (repository will be shared via state.get_repository())
+        # Initialize views (repository shared via AppState)
         self.today_view = TodayView(
             page=page,
-            repository=self.state.get_repository(),
+            app_state=self.state,
             on_favorite_toggle=self.on_favorite_toggle,
             debugger=self.debugger,
         )
 
         self.history_view = HistoryView(
             page=page,
-            repository=self.state.get_repository(),
+            app_state=self.state,
             on_animal_click=lambda taxon_id: asyncio.create_task(
                 self.load_animal_from_history(taxon_id)
             ),
@@ -60,7 +59,7 @@ class AppController:
 
         self.favorites_view = FavoritesView(
             page=page,
-            repository=self.state.get_repository(),
+            app_state=self.state,
             on_animal_click=lambda taxon_id: asyncio.create_task(
                 self.load_animal_from_favorite(taxon_id)
             ),
@@ -69,19 +68,19 @@ class AppController:
 
         self.search_view = SearchView(
             page=page,
-            repository=self.state.get_repository(),
-            on_animal_click=lambda taxon_id: asyncio.create_task(
+            app_state=self.state,
+            on_result_click=lambda taxon_id: asyncio.create_task(
                 self.load_animal_from_search(taxon_id)
             ),
             debugger=self.debugger,
         )
 
         self.stats_view = StatsView(
-            page=page, repository=self.state.get_repository(), debugger=self.debugger
+            page=page, app_state=self.state, debugger=self.debugger
         )
 
         self.settings_view = SettingsView(
-            page=page, repository=self.state.get_repository(), debugger=self.debugger
+            page=page, app_state=self.state, debugger=self.debugger
         )
 
         # Navigation bar
@@ -233,7 +232,7 @@ class AppController:
         try:
             # Fetch animal
             def fetch_animal():
-                repo = self.state.get_repository()
+                repo = self.state.repository
                 return repo.get_by_id(taxon_id, enrich=enrich)
 
             animal = await asyncio.to_thread(fetch_animal)
@@ -250,7 +249,7 @@ class AppController:
 
                 # Add to history if requested
                 if add_to_history:
-                    repo = self.state.get_repository()
+                    repo = self.state.repository
                     repo.add_to_history(taxon_id, command=source)
             else:
                 # Animal not found
@@ -306,7 +305,7 @@ class AppController:
     def on_favorite_toggle(self, taxon_id: int, is_favorite: bool):
         """Handle favorite toggle from any view."""
         try:
-            repo = self.state.get_repository()
+            repo = self.state.repository
 
             if is_favorite:
                 # Remove from favorites
