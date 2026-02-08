@@ -41,6 +41,20 @@ Ce dossier contient les rapports détaillés des améliorations, optimisations e
 - **Résultat** : DB minimale -26% (117 MB), DB full -40% (1.08 GB), noms FR +104%
 - **Impact** : 100 tests passent, aucune régression
 
+#### [2026-02-08-phase1-infrastructure-ui.md](2026-02-08-phase1-infrastructure-ui.md)
+**Phase 1 : Infrastructure UI - Refactoring app.py**
+- **Problème** : app.py = monolithe de 2190 lignes, code dupliqué, bugs (debouncing, resource leak)
+- **Solution** : Créer infrastructure modulaire (AppState, BaseView, widgets, debouncer)
+- **Résultat** : 7 fichiers créés, 17 tests (100%), widgets réutilisables, resource leak résolu
+- **Impact** : Fondations pour refactoring progressif, aucune régression (117/117 tests)
+
+#### [2026-02-08-phase2-search-view.md](2026-02-08-phase2-search-view.md)
+**Phase 2 : Vue pilote - Search (avec debouncing)**
+- **Problème** : Vue Search = 270 lignes dans app.py, requêtes DB à chaque frappe, code dupliqué
+- **Solution** : Créer SearchView modulaire avec debouncing (300ms) et AnimalCard réutilisable
+- **Résultat** : 270 lignes supprimées de app.py (-94%), debouncing actif, 3 duplications éliminées
+- **Impact** : Requêtes DB réduites de 80%, architecture modulaire validée
+
 ## 📊 Vue d'ensemble des améliorations
 
 ### Performance
@@ -63,6 +77,7 @@ Ce dossier contient les rapports détaillés des améliorations, optimisations e
 ### Documentation générale
 - [Guide API Flet](../FLET_API_GUIDE.md) - Référence des APIs Flet utilisées
 - [Roadmap Mobile/Desktop](../MOBILE_DESKTOP_ROADMAP.md) - Feuille de route
+- [UI Refactoring Status](../UI_REFACTORING_STATUS.md) - Progression du refactoring de app.py
 
 ### Mémoire et apprentissage
 - [Mémoire Auto](../../memory/MEMORY.md) - Leçons globales du projet
@@ -89,6 +104,6 @@ Lors de l'ajout d'un nouveau rapport :
 
 ## 📈 Statistiques
 
-**Total des rapports** : 5
+**Total des rapports** : 7
 **Dernière mise à jour** : 8 février 2026
-**Améliorations documentées** : Performance SQL, Logging, Parallélisation, Refactoring pipeline
+**Améliorations documentées** : Performance SQL, Logging, Parallélisation, Refactoring pipeline, UI Infrastructure, UI Search View

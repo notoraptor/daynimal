@@ -11,6 +11,8 @@ import traceback
 import flet as ft
 
 from daynimal.repository import AnimalRepository
+from daynimal.ui.state import AppState
+from daynimal.ui.views.search_view import SearchView
 
 # Try to import debugger (optional)
 try:
@@ -35,13 +37,20 @@ class DaynimalApp:
         if hasattr(page, "data") and isinstance(page.data, dict):
             self.debugger = page.data.get("debugger")
 
-        # Application state
+        # Application state (NEW: using AppState for modular views)
+        self.app_state = AppState()
+        self.app_state.current_view_name = "today"
+
+        # Legacy state (kept for non-migrated views)
         self.current_animal = None
         self.current_view = "today"
         self.repository = None
         self.current_image_index = 0  # For image carousel
         self.cached_stats = None  # Cached statistics
         self.stats_displayed = False  # Whether stats have been displayed
+
+        # Initialize modular views (NEW)
+        self.search_view = None  # Lazy init in show_search_view
 
         # Log app initialization
         if self.debugger:
@@ -1350,279 +1359,29 @@ class DaynimalApp:
             self.page.update()
 
     # ============================================
-    # SEARCH VIEW
+    # SEARCH VIEW (MODULAR)
     # ============================================
 
     def show_search_view(self):
-        """Show the Search view."""
+        """Show the Search view (using modular SearchView)."""
         self.current_view = "search"
+        self.app_state.current_view_name = "search"
 
-        # Header
-        header = ft.Container(
-            content=ft.Row(
-                controls=[
-                    ft.Text(
-                        "🔍 Recherche",
-                        size=28,
-                        weight=ft.FontWeight.BOLD,
-                        color=ft.Colors.PRIMARY,
-                    )
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-            ),
-            padding=20,
-        )
-
-        # Search field
-        self.search_field = ft.TextField(
-            label="Rechercher un animal",
-            hint_text="Nom scientifique ou vernaculaire",
-            prefix_icon=ft.Icons.SEARCH,
-            on_change=self.on_search_change,
-            autofocus=True,
-        )
-
-        # Results container
-        self.search_results = ft.Column(
-            controls=[
-                ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            ft.Icon(ft.Icons.SEARCH, size=80, color=ft.Colors.GREY_500),
-                            ft.Text(
-                                "Recherchez un animal",
-                                size=20,
-                                weight=ft.FontWeight.BOLD,
-                            ),
-                            ft.Text(
-                                "Entrez un nom scientifique ou vernaculaire",
-                                size=14,
-                                color=ft.Colors.GREY_500,
-                            ),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=10,
-                    ),
-                    padding=40,
-                )
-            ],
-            spacing=10,
-        )
-
-        # Update content
-        self.content_container.controls = [
-            header,
-            ft.Divider(),
-            ft.Container(
-                content=self.search_field,
-                padding=ft.Padding(left=20, right=20, top=10, bottom=0),
-            ),
-            ft.Container(content=self.search_results, padding=20, expand=True),
-        ]
-        self.page.update()
-
-    def on_search_change(self, e):
-        """Handle search field changes."""
-        query = e.control.value.strip()
-
-        if not query:
-            # Reset to empty state
-            self.search_results.controls = [
-                ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            ft.Icon(ft.Icons.SEARCH, size=80, color=ft.Colors.GREY_500),
-                            ft.Text(
-                                "Recherchez un animal",
-                                size=20,
-                                weight=ft.FontWeight.BOLD,
-                            ),
-                            ft.Text(
-                                "Entrez un nom scientifique ou vernaculaire",
-                                size=14,
-                                color=ft.Colors.GREY_500,
-                            ),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=10,
-                    ),
-                    padding=40,
-                )
-            ]
-            self.page.update()
-            return
-
-        # Perform search asynchronously
-        asyncio.create_task(self.perform_search(query))
-
-    async def perform_search(self, query: str):
-        """Perform search in repository."""
-        if self.debugger:
-            self.debugger.logger.debug(f"Search started: '{query}'")
-
-        # Show loading
-        self.search_results.controls = [
-            ft.Container(
-                content=ft.Column(
-                    controls=[
-                        ft.ProgressRing(width=40, height=40),
-                        ft.Text("Recherche en cours...", size=16),
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=10,
+        # Lazy initialize SearchView
+        if self.search_view is None:
+            self.search_view = SearchView(
+                page=self.page,
+                app_state=self.app_state,
+                on_result_click=lambda taxon_id: asyncio.create_task(
+                    self.load_animal_from_search(taxon_id)
                 ),
-                padding=20,
+                debugger=self.debugger,
             )
-        ]
+            self.search_view.build()
+
+        # Display SearchView
+        self.content_container.controls = [self.search_view.container]
         self.page.update()
-        await asyncio.sleep(0.1)
-
-        try:
-            # Search
-            def search():
-                # Create repository if needed
-                if self.repository is None:
-                    self.repository = AnimalRepository()
-                return self.repository.search(query, limit=20)
-
-            results = await asyncio.to_thread(search)
-
-            if self.debugger:
-                self.debugger.log_search(query, len(results))
-
-            if not results:
-                # No results
-                self.search_results.controls = [
-                    ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Icon(
-                                    ft.Icons.SEARCH, size=60, color=ft.Colors.GREY_500
-                                ),
-                                ft.Text(
-                                    "Aucun résultat", size=20, weight=ft.FontWeight.BOLD
-                                ),
-                                ft.Text(
-                                    f"Aucun animal trouvé pour '{query}'",
-                                    size=14,
-                                    color=ft.Colors.GREY_500,
-                                ),
-                            ],
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=10,
-                        ),
-                        padding=40,
-                    )
-                ]
-            else:
-                # Display results
-                controls = [
-                    ft.Text(
-                        f"{len(results)} résultat(s) trouvé(s)",
-                        size=16,
-                        color=ft.Colors.GREY_500,
-                    )
-                ]
-
-                for animal in results:
-                    # Get vernacular names
-                    vernacular = ""
-                    if animal.taxon.vernacular_names:
-                        first_lang = list(animal.taxon.vernacular_names.keys())[0]
-                        names = animal.taxon.vernacular_names[first_lang][:2]
-                        # Filter out None values
-                        names = [n for n in names if n is not None]
-                        if names:
-                            vernacular = ", ".join(names)
-                            if len(animal.taxon.vernacular_names[first_lang]) > 2:
-                                vernacular += "..."
-
-                    card = ft.Card(
-                        content=ft.Container(
-                            content=ft.Column(
-                                controls=[
-                                    ft.Row(
-                                        controls=[
-                                            ft.Text(
-                                                animal.taxon.canonical_name
-                                                or animal.taxon.scientific_name,
-                                                size=18,
-                                                weight=ft.FontWeight.BOLD,
-                                            )
-                                        ]
-                                    ),
-                                    ft.Text(
-                                        animal.taxon.scientific_name,
-                                        size=14,
-                                        italic=True,
-                                        color=ft.Colors.BLUE,
-                                    ),
-                                    ft.Row(
-                                        controls=[
-                                            ft.Text(
-                                                vernacular
-                                                if vernacular
-                                                else "Pas de nom vernaculaire",
-                                                size=12,
-                                                color=ft.Colors.GREY_500,
-                                            ),
-                                            ft.Container(expand=True),  # Spacer
-                                            ft.Icon(
-                                                ft.Icons.ARROW_FORWARD,
-                                                size=16,
-                                                color=ft.Colors.GREY_400,
-                                            ),
-                                        ],
-                                        spacing=5,
-                                    ),
-                                ],
-                                spacing=5,
-                            ),
-                            padding=15,
-                            data=animal.taxon.taxon_id,  # Store taxon_id for click handler
-                            on_click=self.on_search_result_click,
-                            ink=True,  # Add ink ripple effect on click
-                        )
-                    )
-                    controls.append(card)
-
-                self.search_results.controls = controls
-
-        except Exception as error:
-            # Log error with full traceback
-            error_msg = f"Error in perform_search: {error}"
-            error_traceback = traceback.format_exc()
-
-            if self.debugger:
-                self.debugger.log_error("perform_search", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                # Fallback: print to console if no debugger
-                print(f"ERROR: {error_msg}")
-                print(f"Traceback:\n{error_traceback}")
-
-            # Show error
-            self.search_results.controls = [
-                ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
-                            ft.Text(
-                                "Erreur lors de la recherche",
-                                size=20,
-                                color=ft.Colors.ERROR,
-                            ),
-                            ft.Text(str(error), size=14),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=10,
-                    ),
-                    padding=40,
-                )
-            ]
-
-        finally:
-            self.page.update()
 
     async def on_search_result_click(self, e):
         """Handle click on a search result."""
