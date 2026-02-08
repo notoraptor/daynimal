@@ -249,18 +249,18 @@ Architecture modulaire complete dans `daynimal/ui/` :
 **Reste a faire :**
 
 **Corrections ciblees restantes :**
-- [ ] **Settings synchrone** — `app.py` (lignes 2100-2103)
-  - `self.repository.get_stats()` bloque le thread UI
-  - Fix : utiliser `asyncio.to_thread()` comme les autres vues
+- [x] **Settings synchrone** — Resolu dans SettingsView (utilise `asyncio.to_thread()`)
 
 ### Corrections mineures
 
-- [ ] **CLI History double parsing** — `main.py` (lignes 194-286, 334-381)
-  - Argparse parse `--page` en int, reconvertit en string, puis `cmd_history()` re-parse en int
-  - Fix : passer `args.page` et `args.per_page` directement a `cmd_history()`
-- [ ] **Mutation globale settings** — `main.py` (lignes 353-354)
-  - `--db` flag mute `settings.database_url` globalement, peut polluer les tests
-  - Fix : passer database_url explicitement au repository
+- [x] **CLI History double parsing** — Resolu
+  - `cmd_history()` accepte maintenant `page: int, per_page: int` directement
+  - `main()` passe les valeurs parsees par argparse sans reconversion
+  - Tests mis a jour (34 tests CLI passent)
+- [x] **Mutation globale settings** — Resolu avec context manager
+  - Nouveau `temporary_database()` context manager sauvegarde/restaure settings
+  - Plus de pollution globale entre tests ou executions CLI
+  - Tests mis a jour pour verifier la restauration des settings
 
 ### Tests manquants
 

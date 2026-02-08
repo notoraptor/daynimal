@@ -293,7 +293,8 @@ class TestCmdHistory:
         mock_repository.get_history.return_value = ([sample_animal], 1)
         mock_repo_class.return_value.__enter__.return_value = mock_repository
 
-        output = capture_stdout(cmd_history, [])
+        # Call with default parameters (no arguments)
+        output = capture_stdout(cmd_history)
 
         # Verify the repository was called with defaults
         mock_repository.get_history.assert_called_once_with(page=1, per_page=10)
@@ -307,7 +308,8 @@ class TestCmdHistory:
         """Test history command with pagination."""
         mock_repo_class.return_value.__enter__.return_value = mock_repository
 
-        _ = capture_stdout(cmd_history, ["--page", "2", "--per-page", "5"])
+        # Call with explicit page and per_page parameters
+        _ = capture_stdout(lambda: cmd_history(page=2, per_page=5))
 
         # Verify the repository was called with correct parameters
         mock_repository.get_history.assert_called_once_with(page=2, per_page=5)
@@ -318,7 +320,8 @@ class TestCmdHistory:
         mock_repository.get_history.return_value = ([], 0)
         mock_repo_class.return_value.__enter__.return_value = mock_repository
 
-        output = capture_stdout(cmd_history, [])
+        # Call with default parameters
+        output = capture_stdout(cmd_history)
 
         # Verify appropriate message
         assert "No history" in output or "empty" in output.lower()
@@ -386,52 +389,48 @@ class TestMainCLI:
     @patch("daynimal.main.cmd_history")
     @patch("sys.argv", ["daynimal", "history"])
     def test_main_history_command(self, mock_cmd_history):
-        """Test that 'daynimal history' calls cmd_history."""
+        """Test that 'daynimal history' calls cmd_history with defaults."""
         main()
-        mock_cmd_history.assert_called_once_with([])
+        # cmd_history now receives named parameters directly from argparse
+        mock_cmd_history.assert_called_once_with(page=1, per_page=10)
 
     @patch("daynimal.main.cmd_history")
     @patch("sys.argv", ["daynimal", "history", "--page", "2"])
     def test_main_history_with_args(self, mock_cmd_history):
-        """Test that 'daynimal history --page 2' passes args to cmd_history."""
+        """Test that 'daynimal history --page 2' passes page to cmd_history."""
         main()
-        mock_cmd_history.assert_called_once_with(["--page", "2"])
+        # cmd_history now receives parsed integer values
+        mock_cmd_history.assert_called_once_with(page=2, per_page=10)
 
     @patch("daynimal.main.cmd_today")
     @patch("sys.argv", ["daynimal", "--db", "test.db"])
     def test_main_with_db_option(self, mock_cmd_today):
-        """Test that 'daynimal --db test.db' sets database and calls today."""
+        """Test that 'daynimal --db test.db' uses custom DB via context manager."""
         from daynimal.config import settings
 
         original_url = settings.database_url
         main()
 
-        # Verify database was set
-        assert "test.db" in settings.database_url
+        # Verify settings was restored after context manager (no global pollution)
+        assert settings.database_url == original_url
 
         # Verify command was called
         mock_cmd_today.assert_called_once()
 
-        # Restore original URL
-        settings.database_url = original_url
-
     @patch("daynimal.main.cmd_random")
     @patch("sys.argv", ["daynimal", "--db", "minimal.db", "random"])
     def test_main_with_db_option_and_command(self, mock_cmd_random):
-        """Test that 'daynimal --db minimal.db random' works."""
+        """Test that 'daynimal --db minimal.db random' uses custom DB via context manager."""
         from daynimal.config import settings
 
         original_url = settings.database_url
         main()
 
-        # Verify database was set
-        assert "minimal.db" in settings.database_url
+        # Verify settings was restored after context manager (no global pollution)
+        assert settings.database_url == original_url
 
         # Verify command was called
         mock_cmd_random.assert_called_once()
-
-        # Restore original URL
-        settings.database_url = original_url
 
     @patch("sys.argv", ["daynimal", "--db"])
     def test_main_db_without_path_shows_error(self):

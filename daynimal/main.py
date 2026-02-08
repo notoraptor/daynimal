@@ -5,11 +5,49 @@ A command-line tool to discover and learn about animals every day.
 """
 
 import argparse
+from contextlib import contextmanager
 
 from daynimal import AnimalInfo
 from daynimal.attribution import get_app_legal_notice
 from daynimal.repository import AnimalRepository
 from daynimal.config import settings
+
+
+@contextmanager
+def temporary_database(database_url: str | None = None):
+    """
+    Context manager to temporarily set database_url without polluting global state.
+
+    This allows CLI --db flag to work without permanently mutating the global settings,
+    which could pollute tests or other code using the same process.
+
+    Args:
+        database_url: Temporary database URL to use, or None to use current settings
+
+    Yields:
+        None
+
+    Example:
+        with temporary_database("sqlite:///custom.db"):
+            repo = AnimalRepository()
+            # Uses custom.db
+        # settings.database_url is restored
+    """
+    if database_url is None:
+        # No change needed
+        yield
+        return
+
+    # Save original value
+    original_url = settings.database_url
+
+    try:
+        # Temporarily set new value
+        settings.database_url = database_url
+        yield
+    finally:
+        # Always restore original value
+        settings.database_url = original_url
 
 
 def print_animal(animal: AnimalInfo):
@@ -191,40 +229,20 @@ def cmd_credits():
     print(get_app_legal_notice("full"))
 
 
-def cmd_history(args: list[str]):
+def cmd_history(page: int = 1, per_page: int = 10):
     """
     Show history of viewed animals.
+
+    Args:
+        page: Page number (>= 1)
+        per_page: Number of entries per page (>= 1)
 
     Usage:
         daynimal history                   Show last 10 entries
         daynimal history --page <n>        Show page n (10 entries per page)
         daynimal history --page <n> --per-page <m>  Show page n with m entries per page
     """
-    # Parse arguments
-    page = 1
-    per_page = 10
-
-    i = 0
-    while i < len(args):
-        if args[i] == "--page" and i + 1 < len(args):
-            try:
-                page = int(args[i + 1])
-                i += 2
-            except ValueError:
-                print(f"Error: --page requires an integer, got '{args[i + 1]}'")
-                return
-        elif args[i] == "--per-page" and i + 1 < len(args):
-            try:
-                per_page = int(args[i + 1])
-                i += 2
-            except ValueError:
-                print(f"Error: --per-page requires an integer, got '{args[i + 1]}'")
-                return
-        else:
-            print(f"Unknown argument: {args[i]}")
-            print("Usage: daynimal history [--page <n>] [--per-page <m>]")
-            return
-
+    # Validate arguments (argparse already does type checking)
     if page < 1:
         print("Error: page must be >= 1")
         return
@@ -349,36 +367,32 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
-    # Set database path if provided
-    if args.db:
-        settings.database_url = f"sqlite:///{args.db}"
+    # Prepare database URL if custom path provided
+    database_url = f"sqlite:///{args.db}" if args.db else None
 
-    # Route to appropriate command
-    # Default to 'today' if no command specified
-    command = args.command or "today"
+    # Use context manager to temporarily set database without polluting global state
+    with temporary_database(database_url):
+        # Route to appropriate command
+        # Default to 'today' if no command specified
+        command = args.command or "today"
 
-    if command == "today":
-        cmd_today()
-    elif command == "random":
-        cmd_random()
-    elif command == "search":
-        query = " ".join(args.query)
-        cmd_search(query)
-    elif command == "info":
-        identifier = " ".join(args.identifier)
-        cmd_info(identifier)
-    elif command == "stats":
-        cmd_stats()
-    elif command == "credits":
-        cmd_credits()
-    elif command == "history":
-        # Convert argparse args to list format expected by cmd_history
-        history_args = []
-        if args.page != 1:
-            history_args.extend(["--page", str(args.page)])
-        if args.per_page != 10:
-            history_args.extend(["--per-page", str(args.per_page)])
-        cmd_history(history_args)
+        if command == "today":
+            cmd_today()
+        elif command == "random":
+            cmd_random()
+        elif command == "search":
+            query = " ".join(args.query)
+            cmd_search(query)
+        elif command == "info":
+            identifier = " ".join(args.identifier)
+            cmd_info(identifier)
+        elif command == "stats":
+            cmd_stats()
+        elif command == "credits":
+            cmd_credits()
+        elif command == "history":
+            # Pass argparse values directly (no double parsing)
+            cmd_history(page=args.page, per_page=args.per_page)
 
 
 if __name__ == "__main__":
