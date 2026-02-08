@@ -8,13 +8,16 @@ Documentation technique et guides pour le projet Daynimal.
 **[changes/](changes/)** - Historique détaillé des améliorations et optimisations
 - Rapports techniques organisés par date (YYYY-MM-description.md)
 - [Index complet des rapports](changes/README.md)
-- Performance, bugs, nouvelles fonctionnalités
+- Performance, bugs, nouvelles fonctionnalités, refactoring
 
-### 📱 Guides Flet
+### 📱 Guides
 - **[FLET_API_GUIDE.md](FLET_API_GUIDE.md)** - Référence des APIs Flet utilisées dans le projet
   - Couleurs, icônes, composants confirmés
   - Patterns et bonnes pratiques
   - Erreurs courantes à éviter
+- **[TAXREF.md](TAXREF.md)** - Guide complet pour intégrer les noms français depuis TAXREF
+  - Téléchargement, pipeline, dépannage
+  - Licence et attribution
 
 ### 🗺️ Roadmap
 - **[MOBILE_DESKTOP_ROADMAP.md](MOBILE_DESKTOP_ROADMAP.md)** - Feuille de route du développement
@@ -65,6 +68,6 @@ Chaque rapport technique doit inclure :
 
 ## 📊 Statistiques
 
-**Guides** : 2 (Flet API, Roadmap)
-**Rapports de changements** : 4 (voir [changes/](changes/))
-**Dernière mise à jour** : 7 février 2026
+**Guides** : 3 (Flet API, TAXREF, Roadmap)
+**Rapports de changements** : 5 (voir [changes/](changes/))
+**Dernière mise à jour** : 8 février 2026

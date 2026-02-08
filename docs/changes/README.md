@@ -27,6 +27,20 @@ Ce dossier contient les rapports détaillés des améliorations, optimisations e
 - **Résultat** : Réduction de ~33% du temps d'enrichissement
 - **Impact** : Chargement plus rapide des données externes
 
+#### [2026-02-08-refactor-distribution-pipeline.md](2026-02-08-refactor-distribution-pipeline.md)
+**Plan de refactoring du pipeline de distribution**
+- **Problème** : Scripts mélangés (extraction, filtrage, import) et noms TAXREF absents des TSV
+- **Solution** : Séparer en `generate-distribution` + `build-db`, intégrer TAXREF dans les TSV
+- **Résultat** : Pipeline clair en deux étapes, noms TAXREF fusionnés dès la génération
+- **Impact** : Fichiers de distribution mobile 6x plus légers, +104% de noms français
+
+#### [2026-02-08-refactor-distribution-pipeline-results.md](2026-02-08-refactor-distribution-pipeline-results.md)
+**Résultats du refactoring du pipeline de distribution**
+- **Problème** : Mesurer l'impact réel du refactoring
+- **Solution** : Génération et comparaison des nouvelles DBs (full et minimal)
+- **Résultat** : DB minimale -26% (117 MB), DB full -40% (1.08 GB), noms FR +104%
+- **Impact** : 100 tests passent, aucune régression
+
 ## 📊 Vue d'ensemble des améliorations
 
 ### Performance
@@ -75,6 +89,6 @@ Lors de l'ajout d'un nouveau rapport :
 
 ## 📈 Statistiques
 
-**Total des rapports** : 3
-**Dernière mise à jour** : 7 février 2026
-**Améliorations documentées** : Performance SQL, Logging, Parallélisation, UI
+**Total des rapports** : 5
+**Dernière mise à jour** : 8 février 2026
+**Améliorations documentées** : Performance SQL, Logging, Parallélisation, Refactoring pipeline

@@ -1,12 +1,12 @@
 # TAXREF - Noms Vernaculaires Français
 
-Guide complet pour importer les noms français depuis TAXREF, le référentiel taxonomique officiel français.
+Guide complet pour intégrer les noms français depuis TAXREF, le référentiel taxonomique officiel français.
 
 ---
 
-## 📋 Table des Matières
+## Table des Matières
 
-1. [Démarrage Rapide](#démarrage-rapide-5-étapes)
+1. [Démarrage Rapide](#démarrage-rapide)
 2. [Qu'est-ce que TAXREF ?](#quest-ce-que-taxref-)
 3. [Licence et Attribution](#licence-et-attribution)
 4. [Documentation Technique](#documentation-technique)
@@ -16,18 +16,18 @@ Guide complet pour importer les noms français depuis TAXREF, le référentiel t
 
 ---
 
-## Démarrage Rapide (5 étapes)
+## Démarrage Rapide
 
 ### Ce que vous allez obtenir
-- 🇫🇷 **~45 000 noms français** pour les animaux
-- ⏱️ **Temps requis :** 10-15 minutes
-- ✅ **Couverture française :** 0.4% → 35%
+- **~45 000 noms français** pour les animaux
+- **Temps requis :** 10-15 minutes
+- **Couverture française :** 0.4% -> 35%
 
 ### Étapes
 
-#### 1. Télécharger TAXREF (5 min)
+#### 1. Télécharger TAXREF
 
-**⚠️ IMPORTANT : Organisation des fichiers**
+**Organisation des fichiers :**
 - Placez le fichier TAXREF téléchargé dans le dossier **`data/`** (créez-le si nécessaire)
 - Les fichiers extraits du ZIP peuvent aller dans **`tmp/`** (optionnel)
 - Ces dossiers sont dans `.gitignore` et ne seront jamais commités
@@ -36,7 +36,7 @@ Guide complet pour importer les noms français depuis TAXREF, le référentiel t
 
 Visitez : https://www.patrinat.fr/fr/page-temporaire-de-telechargement-des-referentiels-de-donnees-lies-linpn-7353
 
-Téléchargez **"TAXREF_v18_2025.zip"** (~100 MB) et extrayez **"TAXREFv18.txt"**
+Téléchargez **"TAXREF_v18_2025.zip"** (~100 MB) et extrayez **"TAXREFv18.txt"** dans `data/`.
 
 **Alternative avec ligne de commande :**
 ```bash
@@ -46,47 +46,42 @@ mkdir -p data
 # Windows PowerShell
 Invoke-WebRequest -Uri "https://assets.patrinat.fr/files/referentiel/TAXREF_v18_2025.zip" -OutFile "data/TAXREF_v18_2025.zip"
 Expand-Archive -Path "data/TAXREF_v18_2025.zip" -DestinationPath "tmp/"
+Copy-Item "tmp/TAXREFv18.txt" "data/"
 
 # Linux/Mac
 wget https://assets.patrinat.fr/files/referentiel/TAXREF_v18_2025.zip -O data/TAXREF_v18_2025.zip
 unzip data/TAXREF_v18_2025.zip -d tmp/
+cp tmp/TAXREFv18.txt data/
 ```
 
-#### 2. Prévisualiser (1 min)
+#### 2. Générer les fichiers de distribution avec TAXREF
+
+Les noms TAXREF sont fusionnés directement dans les fichiers de distribution TSV via le flag `--taxref` :
 
 ```bash
-cd C:\data\git\daynimal
-uv run import-taxref-french-fast --file data/TAXREFv18.txt --dry-run
+uv run generate-distribution --mode minimal --taxref data/TAXREFv18.txt
 ```
 
-Vous verrez :
-```
-[INFO] Found 156,432 animal taxa with French names in TAXREF
-[OK] Will add: panthera leo -> lion
-[OK] Will add: acinonyx jubatus -> guépard
-[DRY RUN] Would add 49,269 French vernacular names
-```
+Cela génère :
+- `data/animalia_taxa_minimal.tsv` (~23 MB, 163K espèces)
+- `data/animalia_vernacular_minimal.tsv` (~33 MB, 1.1M noms dont ~45K noms TAXREF)
 
-#### 3. Importer (~30 secondes)
+#### 3. Construire la base de données
 
 ```bash
-uv run import-taxref-french-fast --file data/TAXREFv18.txt
+uv run build-db --taxa data/animalia_taxa_minimal.tsv \
+                --vernacular data/animalia_vernacular_minimal.tsv
 ```
 
-Attendez :
-```
-[SUCCESS] Added 49,269 French names!
-```
+#### 4. Construire l'index FTS5
 
-#### 4. Reconstruire l'index FTS5 (2-3 min)
-
-**IMPORTANT :** Obligatoire pour que les nouveaux noms soient cherchables !
+**IMPORTANT :** Obligatoire pour que les noms français soient cherchables !
 
 ```bash
 uv run init-fts
 ```
 
-#### 5. Tester 🎉
+#### 5. Tester
 
 ```bash
 uv run daynimal search guépard
@@ -104,23 +99,21 @@ uv run daynimal-app  # Interface graphique
 
 | Aspect | Détails |
 |--------|---------|
-| 🔢 Nombre de taxons | ~600 000 (faune, flore, fonge) |
-| 🇫🇷 Noms français | Pour la majorité des espèces animales |
-| 🌍 Couverture | Mondiale (pas seulement France) |
-| 🔄 Mise à jour | Annuelle (v17 = décembre 2023) |
-| 💰 Coût | Gratuit et open data |
-| 📄 Format | CSV/texte (tab-separated) |
+| Nombre de taxons | ~600 000 (faune, flore, fonge) |
+| Noms français | Pour la majorité des espèces animales |
+| Couverture | Mondiale (pas seulement France) |
+| Mise à jour | Annuelle (v18 = janvier 2025) |
+| Coût | Gratuit et open data |
+| Format | CSV/texte (tab-separated) |
 
 ### Pourquoi TAXREF + GBIF ?
 
 | Critère | GBIF | TAXREF | GBIF + TAXREF |
 |---------|------|--------|---------------|
-| Couverture mondiale | ✅ | ⚠️ | ✅ |
-| Noms français | ⚠️ Limité | ✅ Excellent | ✅ |
-| Noms multilingues | ✅ | ⚠️ | ✅ |
-| Qualité (France) | ✅ | ✅ | ✅✅ |
-
-**Résultat :** La meilleure couverture possible !
+| Couverture mondiale | Oui | Limitée | Oui |
+| Noms français | Limité | Excellent | Oui |
+| Noms multilingues | Oui | Limité | Oui |
+| Qualité (France) | Oui | Oui | Excellente |
 
 ---
 
@@ -130,19 +123,19 @@ uv run daynimal-app  # Interface graphique
 
 TAXREF est distribué sous **Licence Ouverte / Open License Etalab 2.0**, compatible avec **CC-BY 4.0**.
 
-✅ **Autorisé :**
+**Autorisé :**
 - Usage commercial
 - Modification
 - Redistribution
 
-⚠️ **Obligation :**
+**Obligation :**
 - **Attribution requise**
 
 ### Attribution Requise
 
 **Format texte :**
 ```
-Noms vernaculaires français issus de TAXREF v17,
+Noms vernaculaires français issus de TAXREF v18,
 Muséum national d'Histoire naturelle,
 sous licence Etalab Open License 2.0.
 https://inpn.mnhn.fr/
@@ -151,7 +144,7 @@ https://inpn.mnhn.fr/
 **Format HTML :**
 ```html
 Noms vernaculaires français issus de
-<a href="https://inpn.mnhn.fr/programme/referentiel-taxonomique-taxref">TAXREF v17</a>,
+<a href="https://inpn.mnhn.fr/programme/referentiel-taxonomique-taxref">TAXREF v18</a>,
 Muséum national d'Histoire naturelle,
 sous licence <a href="https://github.com/etalab/licence-ouverte/blob/master/LO.md">Etalab Open License 2.0</a>.
 ```
@@ -184,60 +177,37 @@ CD_NOM  REGNE     LB_NOM                          NOM_VERN
 
 ### Stratégie de Matching
 
-Le script `import_taxref_french_fast.py` associe TAXREF avec GBIF :
+Le script `generate_distribution.py` (avec le flag `--taxref`) associe TAXREF avec GBIF :
 
 1. **Extraction du nom canonique**
-   - Supprime auteur/année : `Panthera leo (Linnaeus, 1758)` → `Panthera leo`
+   - Supprime auteur/année : `Panthera leo (Linnaeus, 1758)` -> `Panthera leo`
    - Garde Genre + Espèce uniquement
 
-2. **Recherche dans GBIF**
+2. **Recherche dans les taxa GBIF extraits**
    - Match exact sur `canonical_name`
-   - Sinon LIKE sur `scientific_name`
-   - Filtre : `rank='species'` uniquement
+   - Filtre : `rank='species'` uniquement (mode minimal)
 
-3. **Ajout du nom français**
-   - Insère dans `vernacular_names` avec `language='fr'`
+3. **Fusion dans le fichier vernaculaire TSV**
+   - Ajoute les noms TAXREF avec `language='fr'`
    - Évite automatiquement les doublons
 
 ### Statistiques Attendues
 
-Après import dans une base avec ~127k espèces :
+Après construction de la base minimale avec TAXREF :
 
-| Métrique | Avant | Après | Gain |
-|----------|-------|-------|------|
-| Espèces avec nom français | ~500 | ~49 000 | **98x** |
-| Total noms vernaculaires | ~1M | ~1.05M | +5% |
-| Couverture française | 0.4% | 38% | **95x** |
+| Métrique | Sans TAXREF | Avec TAXREF | Gain |
+|----------|-------------|-------------|------|
+| Noms français | ~44 000 (GBIF) | ~89 000 (GBIF + TAXREF) | **+104%** |
+| Total noms vernaculaires | ~1.07M | ~1.12M | +5% |
+| Taille DB (après VACUUM) | ~120 MB | ~117 MB | -2% |
 
-**Note :** Pas 100% car TAXREF se concentre sur les espèces observées en France/Europe.
-
-**Import rapide avec TAXREF v18 :**
-- Temps d'import : ~30 secondes
-- Noms ajoutés : 49,269
-- Script : `import-taxref-french-fast` (bulk insert optimisé)
-
-### Options du Script
-
-```bash
-# Prévisualisation sans modification
-uv run import-taxref-french-fast --file data/TAXREFv18.txt --dry-run
-
-# Import réel (~30 secondes)
-uv run import-taxref-french-fast --file data/TAXREFv18.txt
-
-# Aide
-uv run import-taxref-french-fast --help
-```
+**Note :** Pas 100% de couverture car TAXREF se concentre sur les espèces observées en France/Europe.
 
 ---
 
 ## Dépannage
 
-### ❌ "File not found"
-
-```bash
-[ERROR] File not found: TAXREFv18.txt
-```
+### "File not found" pour le fichier TAXREF
 
 **Solution :** Vérifier que le fichier est dans le dossier `data/`
 ```bash
@@ -245,13 +215,13 @@ uv run import-taxref-french-fast --help
 ls data/TAXREFv18.txt
 
 # Utiliser le chemin relatif (recommandé)
-uv run import-taxref-french-fast --file data/TAXREFv18.txt
+uv run generate-distribution --mode minimal --taxref data/TAXREFv18.txt
 
 # OU le chemin absolu
-uv run import-taxref-french-fast --file "C:\\data\\git\\daynimal\\data\\TAXREFv18.txt"
+uv run generate-distribution --mode minimal --taxref "C:\data\git\daynimal\data\TAXREFv18.txt"
 ```
 
-### ❌ "Failed to parse TAXREF file"
+### Fichier TAXREF corrompu ou illisible
 
 **Causes possibles :**
 - Fichier corrompu
@@ -264,21 +234,21 @@ uv run import-taxref-french-fast --file "C:\\data\\git\\daynimal\\data\\TAXREFv1
 3. Extraire `TAXREFv18.txt` du ZIP si nécessaire
 4. Placer dans le dossier `data/` du projet
 
-### ❌ La recherche ne trouve pas les noms français
+### La recherche ne trouve pas les noms français
 
-**Cause :** Index FTS5 pas reconstruit
+**Cause :** Index FTS5 pas construit ou pas reconstruit
 
 **Solution :**
 ```bash
-uv run init-fts  # Reconstruire l'index
+uv run init-fts  # Construire/reconstruire l'index
 uv run daynimal-app  # Relancer l'app
 ```
 
-### ℹ️ "No match found for X TAXREF taxa"
+### Certains noms TAXREF ne sont pas importés
 
 **C'est normal !** Cela signifie :
-- Ces espèces TAXREF ne sont pas dans GBIF
-- Ou elles sont hors de votre base minimale
+- Ces espèces TAXREF ne sont pas dans le GBIF Backbone
+- Ou elles sont hors de votre base minimale (mode minimal = species uniquement)
 
 Le script match automatiquement ce qui est possible et ignore le reste.
 
@@ -295,10 +265,14 @@ TAXREF sort une nouvelle version chaque année (v18, v19, etc.).
 # 1. Télécharger la nouvelle version dans data/
 # (depuis https://www.patrinat.fr/)
 
-# 2. Importer (les doublons sont automatiquement évités)
-uv run import-taxref-french-fast --file data/TAXREFv19.txt
+# 2. Regénérer les fichiers de distribution avec la nouvelle version
+uv run generate-distribution --mode minimal --taxref data/TAXREFv19.txt
 
-# 3. Reconstruire l'index
+# 3. Reconstruire la DB
+uv run build-db --taxa data/animalia_taxa_minimal.tsv \
+                --vernacular data/animalia_vernacular_minimal.tsv
+
+# 4. Reconstruire l'index
 uv run init-fts
 ```
 
@@ -330,32 +304,12 @@ Pour savoir quelle version vous utilisez :
 ### Support
 
 - **Support TAXREF :** inpn@mnhn.fr
-- **Issues Daynimal :** https://github.com/yourusername/daynimal/issues
-
-### Alternatives et Compléments
-
-**Autres sources de noms français :**
-
-1. **Wikidata** (déjà intégré dans Daynimal)
-   - Noms multilingues dont français
-   - Moins exhaustif que TAXREF
-
-2. **Wikipédia français**
-   - Articles en français
-   - Extraction automatique via API
-
-3. **Canadensys** (faune canadienne)
-   - Bilingue français/anglais
-   - https://data.canadensys.net/
+- **Issues Daynimal :** https://github.com/notoraptor/daynimal/issues
 
 ### Citation
 
 **GARGOMINY O. et al., 2025.** TAXREF v18, référentiel taxonomique pour la France.
 Muséum national d'Histoire naturelle. https://inpn.mnhn.fr/
-
-**Note de version :**
-- Version actuelle : **v18** (janvier 2025)
-- Version précédente mentionnée dans docs : v17 (décembre 2023)
 
 ---
 
@@ -369,13 +323,14 @@ mkdir -p data
 # https://www.patrinat.fr/fr/page-temporaire-de-telechargement-des-referentiels-de-donnees-lies-linpn-7353
 # Placer le fichier dans data/TAXREFv18.txt
 
-# 2. Prévisualiser
-uv run import-taxref-french-fast --file data/TAXREFv18.txt --dry-run
+# 2. Générer les fichiers de distribution (intègre TAXREF)
+uv run generate-distribution --mode minimal --taxref data/TAXREFv18.txt
 
-# 3. Importer (~30 secondes)
-uv run import-taxref-french-fast --file data/TAXREFv18.txt
+# 3. Construire la base de données
+uv run build-db --taxa data/animalia_taxa_minimal.tsv \
+                --vernacular data/animalia_vernacular_minimal.tsv
 
-# 4. Reconstruire l'index (OBLIGATOIRE)
+# 4. Construire l'index FTS5 (OBLIGATOIRE)
 uv run init-fts
 
 # 5. Tester
@@ -383,10 +338,10 @@ uv run daynimal search guépard
 uv run daynimal-app
 ```
 
-**Temps total : 5-10 minutes**
-**Résultat : 49 000+ noms français dans votre base !** 🇫🇷🎉
+**Temps total : 10-15 minutes**
+**Résultat : ~89 000 noms français dans votre base !**
 
 **Organisation des fichiers :**
-- `data/` → Fichiers TAXREF bruts (gitignored)
-- `tmp/` → Fichiers temporaires/extraits (gitignored)
-- `daynimal.db` → Base de données SQLite
+- `data/` -> Fichiers TAXREF et TSV de distribution (gitignored)
+- `tmp/` -> Fichiers temporaires/extraits (gitignored)
+- `daynimal.db` -> Base de données SQLite

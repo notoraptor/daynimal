@@ -27,24 +27,21 @@ cd daynimal
 uv sync
 ```
 
-3. Import GBIF taxonomy data:
+3. Generate distribution files and build database:
 ```bash
-# Fast import with mode selection (~500MB download)
-# Full mode: ~1.5M taxa | Minimal mode: 127K species (recommended)
-uv run import-gbif-fast --mode minimal
+# Step 1: Generate TSV files from GBIF (~500MB download)
+# Optional: add --taxref for ~49K French names (see docs/TAXREF.md)
+uv run generate-distribution --mode minimal --taxref data/TAXREFv18.txt
+# Without TAXREF (French names limited to GBIF):
+# uv run generate-distribution --mode minimal
+
+# Step 2: Build SQLite database from TSV files
+uv run build-db --taxa data/animalia_taxa_minimal.tsv \
+                --vernacular data/animalia_vernacular_minimal.tsv
 ```
 
 4. Initialize FTS5 search index (recommended):
 ```bash
-uv run init-fts
-```
-
-5. (Optional) Import French vernacular names from TAXREF:
-```bash
-# Download TAXREF v18 from https://www.patrinat.fr/ and place in data/ folder
-uv run import-taxref-french-fast --file data/TAXREFv18.txt
-
-# Rebuild FTS5 index to include French names
 uv run init-fts
 ```
 

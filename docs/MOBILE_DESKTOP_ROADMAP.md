@@ -1,6 +1,6 @@
 # Roadmap : Application Mobile/Desktop
 
-**Derniere mise a jour** : 2026-02-07
+**Derniere mise a jour** : 2026-02-08
 
 ---
 
@@ -62,10 +62,12 @@ Les deux modes appliquent un filtrage different sur le GBIF Backbone Taxonomy :
 |---------|---------------|------------------|
 | **Rangs taxonomiques** | Tous (species, genus, family, order, class, phylum, subspecies, variety, etc.) | **Uniquement species** |
 | **Filtrage vernaculaire** | Non | **Oui** : supprime especes sans nom vernaculaire |
-| **Pipeline** | 1. Extraire Animalia (tous rangs)<br>2. Importer tout | 1. Extraire Animalia (rank='species' seulement)<br>2. Importer<br>3. **Supprimer especes sans noms** |
-| **Taxa resultants** | 4.4M (hierarchie complete) | 127K (especes avec noms uniquement) |
-| **Noms vernaculaires** | 1.16M (tous rangs) | 1.07M (especes seulement) |
-| **Taille finale** | 1.8 GB | 153 MB |
+| **Integration TAXREF** | Oui (45,707 noms FR ajoutes) | Oui (45,175 noms FR ajoutes) |
+| **Pipeline** | 1. Extraire Animalia (tous rangs)<br>2. Fusionner TAXREF<br>3. Importer tout | 1. Extraire Animalia (rank='species' seulement)<br>2. Fusionner TAXREF<br>3. **Cleanup : supprimer especes sans noms** |
+| **Taxa resultants** | 4.43M (hierarchie complete) | 163K (especes avec noms uniquement) |
+| **Noms vernaculaires** | 1.16M (tous rangs) | 1.12M (especes seulement) |
+| **Noms francais** | 90K (GBIF + TAXREF) | 89K (GBIF + TAXREF) |
+| **Taille DB finale** | 1.08 GB (apres VACUUM) | 117 MB (apres VACUUM) |
 
 **Exemple concret** :
 - Mode full : inclut `Felidae` (famille → "Cats", "Felins"), `Panthera` (genre → "Big cats"), `Panthera leo` (espece → "Lion")
@@ -73,28 +75,32 @@ Les deux modes appliquent un filtrage different sur le GBIF Backbone Taxonomy :
 
 **Note** : VACUUM est applique automatiquement aux deux modes en fin d'import.
 
-### Fichiers presents sur le disque (fevrier 2026)
+### Fichiers presents sur le disque (fevrier 2026 - apres refactoring)
 
 **Données brutes** (`data/`, gitignore) :
 
-| Fichier | Taille | Lignes |
-|---------|--------|--------|
-| `backbone.zip` | 927 MB | - |
-| `TAXREF_v18_2025.zip` | 58 MB | - |
-| `animalia_taxa.tsv` | 598 MB | 4 432 185 |
-| `animalia_vernacular.tsv` | 32 MB | 1 112 887 |
-| `animalia_taxa_minimal.tsv` | 439 MB | 3 053 779 |
-| `animalia_vernacular_minimal.tsv` | 31 MB | 1 072 723 |
+| Fichier | Taille | Lignes | Notes |
+|---------|--------|--------|-------|
+| `backbone.zip` | 927 MB | - | Source GBIF |
+| `TAXREFv18.txt` | 303 MB | - | Source TAXREF decompressee |
+| `animalia_taxa.tsv` | 597 MB | 4,432,185 | Mode full |
+| `animalia_vernacular.tsv` | 33 MB | 1,158,594 | Mode full (GBIF + TAXREF) |
+| `animalia_taxa_minimal.tsv` | 23 MB | 163,434 | Mode minimal (apres cleanup) |
+| `animalia_vernacular_minimal.tsv` | 33 MB | 1,117,898 | Mode minimal (GBIF + TAXREF) |
 
 **Bases de données** (racine, gitignore) :
 
-| Fichier | Taille | Taxa | Vernaculaires | Noms FR |
-|---------|--------|------|---------------|---------|
-| `daynimal.db` (full) | 1.8 GB | 4 432 185 | 1 162 173 | 93 777 |
-| `daynimal_minimal.db` | 153 MB | 127 762 | 1 072 723 | 43 606 |
+| Fichier | Taille | Taxa | Vernaculaires | Noms FR | Notes |
+|---------|--------|------|---------------|---------|-------|
+| `daynimal.db` (full) | 1.08 GB | 4,432,185 | 1,158,594 | 90,198 | GBIF + TAXREF, VACUUM |
+| `daynimal_minimal.db` | 117 MB | 163,434 | 1,117,898 | 88,781 | Especes avec noms, VACUUM |
 
-Tables dans les deux DB : `taxa`, `vernacular_names`, `enrichment_cache`, `animal_history`, `taxa_fts` (FTS5).
-Tables supplementaires dans la full DB : `favorites`, `user_settings`.
+**Ameliorations apres refactoring :**
+- DB minimal : **-26% taille** (117 MB vs 159 MB), **+68% noms FR** (88K vs 53K)
+- DB full : **-40% taille** (1.08 GB vs 1.8 GB), noms TAXREF integres des la generation
+- Taxa minimal : cleanup correct (163K especes avec noms vs 3M avant)
+
+Tables dans les deux DB : `taxa`, `vernacular_names`, `enrichment_cache`, `animal_history`, `favorites`, `user_settings`, `taxa_fts` (FTS5).
 
 ### Problème resolu : noms TAXREF integres dans les TSV
 
@@ -130,9 +136,9 @@ uv run migrate-favorites
 ```
 
 Espace disque necessaire :
-- Telechargement : 985 MB (backbone.zip 927 MB + TAXREF 58 MB)
-- Fichiers intermediaires TSV : ~630 MB (full) ou ~470 MB (minimal), supprimables apres import
-- DB finale : **1.8 GB** (full) ou **153 MB** (minimal)
+- Telechargement : 985 MB (backbone.zip 927 MB + TAXREF 303 MB decompressee)
+- Fichiers intermediaires TSV : ~630 MB (full) ou ~56 MB (minimal), supprimables apres import
+- DB finale : **1.08 GB** (full) ou **117 MB** (minimal)
 
 ### Distribution mobile
 
@@ -143,33 +149,39 @@ Fichiers a heberger (GitHub Releases ou CDN) :
 
 | Fichier | Taille (non compresse) | Taille (gzip, estimee) |
 |---------|----------------------|----------------------|
-| `animalia_taxa_minimal.tsv.gz` | 439 MB | ~80-85 MB |
-| `animalia_vernacular_minimal.tsv.gz` | 31 MB | ~8-10 MB |
-| **Total** | **470 MB** | **~93 MB** |
+| `animalia_taxa_minimal.tsv.gz` | 23 MB | ~5-6 MB |
+| `animalia_vernacular_minimal.tsv.gz` | 33 MB | ~8-10 MB |
+| **Total** | **56 MB** | **~14-16 MB** |
+
+**Note** : Les TSV incluent deja les noms TAXREF (45K noms FR integres).
 
 Pipeline au premier lancement de l'app mobile :
 ```
-Telecharge TSV.gz (~93-110 MB)
-  -> Decompresse (~470 MB temporaires)
-    -> Importe dans SQLite (~153 MB)
+Telecharge TSV.gz (~14-16 MB) ← 6x plus petit qu'avant !
+  -> Decompresse (~56 MB temporaires)
+    -> Importe dans SQLite (~117 MB)
       -> Construit index FTS5
         -> Supprime les TSV decompresses
-          -> Pret (~200 MB total sur appareil : APK + DB + cache)
+          -> Pret (~150-180 MB total sur appareil : APK + DB + cache)
 ```
 
 Contrainte Google Play : APK < 150 MB, donc la DB doit etre telechargee separement (obligatoire).
 
 ### Resume des tailles
 
-| Scenario | Fichiers | Taille |
-|----------|----------|--------|
-| Desktop : telechargement brut | backbone.zip + TAXREF | **985 MB** |
-| Desktop : DB finale (full) | daynimal.db + FTS5 | **1.8 GB** |
-| Desktop : DB finale (minimal) | daynimal_minimal.db + FTS5 | **153 MB** |
-| Mobile : telechargement (sans TAXREF) | 2 TSV.gz | **~93 MB** |
-| Mobile : telechargement (avec TAXREF) | 2 TSV.gz + export TAXREF | **~100-110 MB** |
-| Mobile : DB sur appareil | SQLite + FTS5 | **~153 MB** |
-| Mobile : espace total | APK + DB + cache images | **~200 MB** |
+| Scenario | Fichiers | Taille (avant) | Taille (apres) | Gain |
+|----------|----------|----------------|----------------|------|
+| Desktop : telechargement brut | backbone.zip + TAXREF | 985 MB | 985 MB | - |
+| Desktop : DB finale (full) | daynimal.db + FTS5 | 1.8 GB | **1.08 GB** | **-40%** |
+| Desktop : DB finale (minimal) | daynimal_minimal.db + FTS5 | 159 MB | **117 MB** | **-26%** |
+| Mobile : telechargement TSV | 2 TSV.gz (avec TAXREF) | ~93 MB | **~14-16 MB** | **-83%** 🎉 |
+| Mobile : DB sur appareil | SQLite + FTS5 | ~153 MB | **~117 MB** | **-23%** |
+| Mobile : espace total | APK + DB + cache images | ~200 MB | **~150-180 MB** | **-15%** |
+
+**Ameliorations cles pour mobile :**
+- Telechargement initial 6x plus rapide (14 MB vs 93 MB)
+- Moins d'espace disque requis (117 MB vs 153 MB)
+- Noms francais TAXREF deja integres (89K noms vs 44K avant)
 
 ---
 
@@ -286,28 +298,27 @@ Les API clients (`sources/*.py`) ont une gestion d'erreurs inconsistante qui pos
 
 ### Distribution DB mobile (prerequis)
 
-Voir "Pipeline de donnees" plus haut pour les tailles et le probleme TAXREF.
+Voir "Pipeline de donnees" plus haut pour les tailles.
+
+**Note :** Depuis le refactoring de fevrier 2026, les TSV de distribution incluent deja les noms TAXREF (89K noms FR). Il suffit de les compresser et heberger.
 
 **Etape 1 : Preparer les fichiers de distribution**
-- [ ] Decider : inclure les noms TAXREF dans la distribution mobile ou non
-  - Si oui : creer un script d'export des vernacular depuis la DB enrichie (apres import TAXREF)
-  - Les TSV actuels ne contiennent que les noms GBIF (43K FR au lieu de 93K)
-- [ ] Regenerer les TSV si necessaire
-- [ ] Compresser en `.gz` (`gzip animalia_taxa_minimal.tsv`, etc.)
+- [ ] Compresser les TSV existants en `.gz`
 - [ ] Heberger sur GitHub Releases ou CDN
-  - `animalia_taxa_minimal.tsv.gz` (~93 MB total compresse, avec ou sans TAXREF)
 
-Commande pour regenerer les TSV :
+Commande pour regenerer les TSV (si necessaire) :
 ```bash
 uv run generate-distribution --mode minimal --taxref data/TAXREFv18.txt
+gzip data/animalia_taxa_minimal.tsv
+gzip data/animalia_vernacular_minimal.tsv
 ```
 
 **Etape 2 : Premier lancement dans l'app mobile**
 - [ ] Creer fonction `download_and_setup_db()` :
-  1. Verifier espace disponible (~200 MB necessaires)
-  2. Telecharger TSV.gz (~93-110 MB)
-  3. Decompresser (~470 MB temporaires)
-  4. Importer dans SQLite (creer `daynimal.db` ~153 MB)
+  1. Verifier espace disponible (~150 MB necessaires)
+  2. Telecharger TSV.gz (~14-16 MB)
+  3. Decompresser (~56 MB temporaires)
+  4. Importer dans SQLite (creer `daynimal.db` ~117 MB)
   5. Construire index FTS5
   6. Supprimer les TSV decompresses
 - [ ] Creer ecran de premier lancement avec progress bar
@@ -315,9 +326,9 @@ uv run generate-distribution --mode minimal --taxref data/TAXREFv18.txt
 
 Tailles de reference :
 - APK Flet : ~30-40 MB
-- Telechargement premier lancement : ~93-110 MB
-- DB SQLite apres import : ~153 MB (vernacular 47%, FTS5 27%, taxa 26%)
-- App totale sur appareil : ~200 MB (APK + DB + cache)
+- Telechargement premier lancement : ~14-16 MB (TSV.gz avec TAXREF)
+- DB SQLite apres import : ~117 MB (apres VACUUM)
+- App totale sur appareil : ~150-180 MB (APK + DB + cache)
 - Contrainte Google Play : APK < 150 MB (donc DB telechargee separement, obligatoire)
 
 ### Cache d'images (4 jours)
@@ -550,8 +561,8 @@ Tester les vues individuellement est impossible.
 ### Strategie de base de donnees
 
 **Distribution mobile** :
-1. Telecharger TSV compresses (~93 MB) au premier lancement
-2. Creer DB SQLite locale (~153 MB avec FTS5)
+1. Telecharger TSV compresses (~14-16 MB, TAXREF inclus) au premier lancement
+2. Creer DB SQLite locale (~117 MB avec FTS5)
 3. Enrichissement a la demande (Wikidata, Wikipedia, Commons)
 4. Cache local des animaux consultes
 
@@ -561,8 +572,8 @@ Pattern premier lancement :
 ```python
 if not database_exists():
     show_setup_screen()
-    download_tsv_files()       # ~93 MB
-    decompress_and_import()    # Creer DB locale
+    download_tsv_files()       # ~14-16 MB
+    decompress_and_import()    # Creer DB locale (~117 MB)
     create_fts_index()
 ```
 
