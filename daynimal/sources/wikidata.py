@@ -79,8 +79,10 @@ class WikidataAPI(DataSource[WikidataEntity]):
             "languages": "en|fr",
         }
 
-        response = self.client.get(WIKIDATA_API, params=params)
-        response.raise_for_status()
+        response = self._request_with_retry("get", WIKIDATA_API, params=params)
+        if response is None or not response.is_success:
+            return None
+
         data = response.json()
 
         entities = data.get("entities", {})
@@ -117,8 +119,10 @@ class WikidataAPI(DataSource[WikidataEntity]):
             "limit": limit,
         }
 
-        response = self.client.get(WIKIDATA_API, params=params)
-        response.raise_for_status()
+        response = self._request_with_retry("get", WIKIDATA_API, params=params)
+        if response is None or not response.is_success:
+            return []
+
         data = response.json()
 
         results = []
@@ -138,13 +142,14 @@ class WikidataAPI(DataSource[WikidataEntity]):
         }} LIMIT 1
         """
 
-        response = self.client.get(
+        response = self._request_with_retry(
+            "get",
             WIKIDATA_SPARQL,
             params={"query": query, "format": "json"},
             headers={"Accept": "application/sparql-results+json"},
         )
 
-        if response.status_code != 200:
+        if response is None or not response.is_success:
             # Fallback to search API
             return self._search_taxon_qid(scientific_name)
 
@@ -169,8 +174,10 @@ class WikidataAPI(DataSource[WikidataEntity]):
             "limit": 5,
         }
 
-        response = self.client.get(WIKIDATA_API, params=params)
-        response.raise_for_status()
+        response = self._request_with_retry("get", WIKIDATA_API, params=params)
+        if response is None or not response.is_success:
+            return None
+
         data = response.json()
 
         for item in data.get("search", []):
@@ -189,8 +196,8 @@ class WikidataAPI(DataSource[WikidataEntity]):
             "format": "json",
         }
 
-        response = self.client.get(WIKIDATA_API, params=params)
-        if response.status_code != 200:
+        response = self._request_with_retry("get", WIKIDATA_API, params=params)
+        if response is None or not response.is_success:
             return False
 
         data = response.json()

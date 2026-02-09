@@ -67,8 +67,10 @@ class CommonsAPI(DataSource[CommonsImage]):
             "iiurlwidth": 800,  # Get thumbnail
         }
 
-        response = self.client.get(COMMONS_API, params=params)
-        response.raise_for_status()
+        response = self._request_with_retry("get", COMMONS_API, params=params)
+        if response is None or not response.is_success:
+            return None
+
         data = response.json()
 
         pages = data.get("query", {}).get("pages", {})
@@ -118,8 +120,10 @@ class CommonsAPI(DataSource[CommonsImage]):
             "iiurlwidth": 800,
         }
 
-        response = self.client.get(COMMONS_API, params=params)
-        response.raise_for_status()
+        response = self._request_with_retry("get", COMMONS_API, params=params)
+        if response is None or not response.is_success:
+            return []
+
         data = response.json()
 
         pages = data.get("query", {}).get("pages", {})
@@ -158,8 +162,10 @@ class CommonsAPI(DataSource[CommonsImage]):
             "iiurlwidth": 800,
         }
 
-        response = self.client.get(COMMONS_API, params=params)
-        response.raise_for_status()
+        response = self._request_with_retry("get", COMMONS_API, params=params)
+        if response is None or not response.is_success:
+            return []
+
         data = response.json()
 
         pages = data.get("query", {}).get("pages", {})
@@ -196,8 +202,10 @@ class CommonsAPI(DataSource[CommonsImage]):
             "iiurlwidth": 800,
         }
 
-        response = self.client.get(COMMONS_API, params=params)
-        response.raise_for_status()
+        response = self._request_with_retry("get", COMMONS_API, params=params)
+        if response is None or not response.is_success:
+            return []
+
         data = response.json()
 
         pages = data.get("query", {}).get("pages", {})

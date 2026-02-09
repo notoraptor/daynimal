@@ -345,10 +345,10 @@ Architecture modulaire complete dans `daynimal/ui/` :
 | `repository.py` | ~~Thread safety~~, ~~print()~~, ~~_save_cache sans rollback~~, ~~Tests 41%~~ | ~~Corrigé~~ **✅ Complété** |
 | `app.py` | ~~Extraction vues~~, ~~debouncing~~, ~~duplication x3~~, ~~sync settings~~, ~~resource leak~~ | **✅ Complété** |
 | `main.py` | ~~Double parsing history~~, ~~mutation settings~~ | **✅ Complété** |
-| `sources/*.py` | HTTP error handling inconsistant (pas de retry 429/503) | Mineur |
+| `sources/*.py` | ~~HTTP error handling inconsistant (pas de retry 429/503)~~ | **✅ Complété** |
 
 **Durée Phase 2a :**
-- **✅ Tests critiques : Complétés** (438 tests, 55% couverture globale, tous les sources 93-100%, main.py 99%, base.py 98%)
+- **✅ Tests critiques : Complétés** (455 tests, 55% couverture globale, tous les sources 93-100%, main.py 99%, base.py 98%)
 - **✅ Extraction vues app.py : Complétée** (app.py réduit de 2190 à 128 lignes)
 - **✅ Phase 2a terminée**
 
@@ -356,14 +356,16 @@ Architecture modulaire complete dans `daynimal/ui/` :
 
 ## Phase 2b : Features essentielles mobile (2-3 semaines)
 
-### Robustesse HTTP (prerequis mobile)
-Les API clients (`sources/*.py`) ont une gestion d'erreurs inconsistante qui pose probleme sur mobile (connexions instables) :
-- Wikidata gere gracieusement les erreurs (fallback), Wikipedia et Commons crashent sur 4xx/5xx
-- Pas de retry sur 429 (rate limit) ou 503 (service unavailable)
-- Pas de degradation gracieuse quand les APIs sont inaccessibles
-- [ ] Harmoniser la gestion d'erreurs HTTP dans les 3 clients API
-- [ ] Ajouter retry avec backoff exponentiel (1s, 2s, 4s) pour 429 et 503
-- [ ] Degradation gracieuse : retourner `None` au lieu de crasher quand API down
+### Robustesse HTTP (prerequis mobile) ✅
+~~Les API clients (`sources/*.py`) ont une gestion d'erreurs inconsistante qui pose probleme sur mobile (connexions instables) :~~
+- ~~Wikidata gere gracieusement les erreurs (fallback), Wikipedia et Commons crashent sur 4xx/5xx~~
+- ~~Pas de retry sur 429 (rate limit) ou 503 (service unavailable)~~
+- ~~Pas de degradation gracieuse quand les APIs sont inaccessibles~~
+- [x] Harmoniser la gestion d'erreurs HTTP dans les 3 clients API
+- [x] Ajouter retry avec backoff exponentiel (1s, 2s, 4s) pour 429 et 503
+- [x] Degradation gracieuse : retourner `None` au lieu de crasher quand API down
+
+**Implementation :** `retry_with_backoff()` dans `sources/base.py` + `_request_with_retry()` dans `DataSource`. 13 appels HTTP harmonises dans les 3 APIs. 17 tests dans `tests/test_http_resilience.py`.
 
 ### Distribution DB mobile (prerequis)
 

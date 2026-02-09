@@ -21,6 +21,10 @@ class MockResponse:
         self._json_data = json_data
         self.status_code = status_code
 
+    @property
+    def is_success(self) -> bool:
+        return 200 <= self.status_code < 300
+
     def json(self):
         return self._json_data
 

@@ -77,8 +77,10 @@ class WikipediaAPI(DataSource[WikipediaArticle]):
                 "redirects": "1",
             }
 
-        response = self.client.get(api_url, params=params)
-        response.raise_for_status()
+        response = self._request_with_retry("get", api_url, params=params)
+        if response is None or not response.is_success:
+            return None
+
         data = response.json()
 
         pages = data.get("query", {}).get("pages", {})
@@ -136,8 +138,10 @@ class WikipediaAPI(DataSource[WikipediaArticle]):
             "format": "json",
         }
 
-        response = self.client.get(api_url, params=params)
-        response.raise_for_status()
+        response = self._request_with_retry("get", api_url, params=params)
+        if response is None or not response.is_success:
+            return []
+
         data = response.json()
 
         results = []
@@ -169,8 +173,10 @@ class WikipediaAPI(DataSource[WikipediaArticle]):
             "inprop": "url",
         }
 
-        response = self.client.get(api_url, params=params)
-        response.raise_for_status()
+        response = self._request_with_retry("get", api_url, params=params)
+        if response is None or not response.is_success:
+            return None
+
         data = response.json()
 
         pages = data.get("query", {}).get("pages", {})
@@ -211,8 +217,10 @@ class WikipediaAPI(DataSource[WikipediaArticle]):
             "format": "json",
         }
 
-        response = self.client.get(api_url, params=params)
-        response.raise_for_status()
+        response = self._request_with_retry("get", api_url, params=params)
+        if response is None or not response.is_success:
+            return None
+
         data = response.json()
 
         search_results = data.get("query", {}).get("search", [])
