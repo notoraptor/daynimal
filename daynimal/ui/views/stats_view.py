@@ -12,12 +12,7 @@ from daynimal.ui.views.base import BaseView
 class StatsView(BaseView):
     """View for displaying database statistics with responsive cards."""
 
-    def __init__(
-        self,
-        page: ft.Page,
-        app_state: AppState | None = None,
-        debugger=None,
-    ):
+    def __init__(self, page: ft.Page, app_state: AppState | None = None, debugger=None):
         """
         Initialize StatsView.
 

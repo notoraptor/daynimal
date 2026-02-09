@@ -103,12 +103,7 @@ class AppController:
         """Build the app UI."""
         # Main layout
         layout = ft.Column(
-            controls=[
-                self.content_container,
-                self.nav_bar,
-            ],
-            expand=True,
-            spacing=0,
+            controls=[self.content_container, self.nav_bar], expand=True, spacing=0
         )
 
         # Show initial view

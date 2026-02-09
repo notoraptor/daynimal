@@ -115,9 +115,7 @@ class ImageCarousel:
                 controls=[
                     ft.Icon(ft.Icons.IMAGE, size=60, color=ft.Colors.GREY_500),
                     ft.Text(
-                        "Aucune image disponible",
-                        size=16,
-                        weight=ft.FontWeight.BOLD,
+                        "Aucune image disponible", size=16, weight=ft.FontWeight.BOLD
                     ),
                     ft.Text(
                         "Cet animal n'a pas encore d'image dans Wikimedia Commons",

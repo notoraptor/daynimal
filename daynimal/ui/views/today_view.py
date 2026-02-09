@@ -238,7 +238,11 @@ class TodayView(BaseView):
         first_divider_index = 3 if len(controls) > 3 else len(controls)
 
         # Favorite button
-        is_favorite = self.app_state.repository.is_favorite(animal.taxon.taxon_id) if self.app_state else False
+        is_favorite = (
+            self.app_state.repository.is_favorite(animal.taxon.taxon_id)
+            if self.app_state
+            else False
+        )
 
         favorite_button = ft.IconButton(
             icon=ft.Icons.FAVORITE if is_favorite else ft.Icons.FAVORITE_BORDER,
@@ -292,7 +296,11 @@ class TodayView(BaseView):
         """Handle favorite button toggle."""
         if self.on_favorite_toggle_callback and self.current_animal:
             taxon_id = e.control.data
-            is_favorite = self.app_state.repository.is_favorite(taxon_id) if self.app_state else False
+            is_favorite = (
+                self.app_state.repository.is_favorite(taxon_id)
+                if self.app_state
+                else False
+            )
 
             # Call the callback
             self.on_favorite_toggle_callback(taxon_id, is_favorite)

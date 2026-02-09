@@ -171,7 +171,7 @@ class FavoritesView(BaseView):
                             data=item.taxon.taxon_id,  # Store taxon_id for click handler
                             on_click=self._on_favorite_item_click,
                             ink=True,  # Add ink ripple effect on click
-                        ),
+                        )
                     )
                     controls.append(card)
 

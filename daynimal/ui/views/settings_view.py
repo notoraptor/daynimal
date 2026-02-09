@@ -12,12 +12,7 @@ from daynimal.ui.views.base import BaseView
 class SettingsView(BaseView):
     """View for app settings, preferences, and credits."""
 
-    def __init__(
-        self,
-        page: ft.Page,
-        app_state: AppState | None = None,
-        debugger=None,
-    ):
+    def __init__(self, page: ft.Page, app_state: AppState | None = None, debugger=None):
         """
         Initialize SettingsView.
 
@@ -121,7 +116,8 @@ class SettingsView(BaseView):
                             weight=ft.FontWeight.BOLD,
                         ),
                         ft.Text(
-                            "📚 GBIF - Global Biodiversity Information Facility", size=12
+                            "📚 GBIF - Global Biodiversity Information Facility",
+                            size=12,
                         ),
                         ft.Text(
                             "   Taxonomie : CC-BY 4.0",
