@@ -18,9 +18,6 @@
 - `daynimal.db.generate_distribution` — Generate distribution TSV files from raw sources (GBIF + TAXREF).
 - `daynimal.db.import_gbif_utils` — GBIF Backbone Taxonomy - Shared utilities for import scripts.
 - `daynimal.db.init_fts` — Initialize FTS5 (Full-Text Search) table for fast animal search.
-- `daynimal.db.migrate_add_favorites` — Migration script to add favorites table.
-- `daynimal.db.migrate_add_history` — Migration script to add animal_history table to existing databases.
-- `daynimal.db.migrate_add_user_settings` — Migration script to add user_settings table.
 - `daynimal.db.models`
 - `daynimal.db.session`
 
@@ -71,8 +68,6 @@
 - daynimal.db.build_db
 - daynimal.db.generate_distribution
 - daynimal.db.init_fts
-- daynimal.db.migrate_add_favorites
-- daynimal.db.migrate_add_user_settings
 - debug.debug_filter
 - debug.run_app_debug
 - debug.view_logs
@@ -106,10 +101,6 @@
 
 ### daynimal.db.init_fts
 - depends on `daynimal.config`
-- depends on `daynimal.db.session`
-
-### daynimal.db.migrate_add_history
-- depends on `daynimal.db.models`
 - depends on `daynimal.db.session`
 
 ### daynimal.db.session
@@ -226,21 +217,20 @@
 
 ## 4. External Dependencies
 - flet (used 14 times)
-- pathlib (used 11 times)
-- argparse (used 9 times)
-- sqlalchemy (used 9 times)
+- pathlib (used 9 times)
 - typing (used 9 times)
 - asyncio (used 8 times)
+- sqlalchemy (used 8 times)
+- argparse (used 7 times)
 - datetime (used 6 times)
-- sys (used 6 times)
 - traceback (used 6 times)
 - dataclasses (used 4 times)
+- sys (used 4 times)
 - abc (used 2 times)
 - csv (used 2 times)
 - httpx (used 2 times)
 - logging (used 2 times)
 - re (used 2 times)
-- sqlite3 (used 2 times)
 - subprocess (used 2 times)
 - threading (used 2 times)
 - ast (used 1 times)
@@ -476,53 +466,6 @@ def rebuild_fts()  # Rebuild the FTS5 table (useful after importing new taxa).
 def main()  # Main entry point for CLI command.
 ```
 - calls: `argparse.ArgumentParser`, `init_fts`
-
-### Module: daynimal.db.migrate_add_favorites
-> Migration script to add favorites table.
-> 
-> This script adds the favorites table to existing databases
-> to support marking animals as favorites.
-> 
-> Usage:
->     python -m daynimal.db.migrate_add_favorites
->     # Or with custom DB:
->     python -m daynimal.db.migrate_add_favorites --db path/to/daynimal.db
-```python
-def migrate_add_favorites(db_path)  # Add favorites table to database.
-```
-- calls: `Path`, `print`, `sqlite3.connect`, `sys.exit`
-```python
-def main()  # Main entry point for migration script.
-```
-- calls: `argparse.ArgumentParser`, `migrate_add_favorites`
-
-### Module: daynimal.db.migrate_add_history
-> Migration script to add animal_history table to existing databases.
-> 
-> Run this if you already have a daynimal.db from before the history feature was added.
-```python
-def migrate()  # Create the animal_history table if it doesn't exist.
-```
-- calls: `Base.metadata.create_all`, `get_engine`, `print`, `text`
-
-### Module: daynimal.db.migrate_add_user_settings
-> Migration script to add user_settings table.
-> 
-> This script adds the user_settings table to existing databases
-> to support app preferences like theme selection.
-> 
-> Usage:
->     python -m daynimal.db.migrate_add_user_settings
->     # Or with custom DB:
->     python -m daynimal.db.migrate_add_user_settings --db path/to/daynimal.db
-```python
-def migrate_add_user_settings(db_path)  # Add user_settings table to database.
-```
-- calls: `Path`, `print`, `sqlite3.connect`, `sys.exit`
-```python
-def main()  # Main entry point for migration script.
-```
-- calls: `argparse.ArgumentParser`, `migrate_add_user_settings`
 
 ### Module: daynimal.db.models
 ```python
