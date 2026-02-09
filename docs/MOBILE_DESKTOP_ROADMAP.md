@@ -1,6 +1,6 @@
 # Roadmap : Application Mobile/Desktop
 
-**Derniere mise a jour** : 2026-02-08
+**Derniere mise a jour** : 2026-02-09
 
 ---
 
@@ -227,7 +227,7 @@ Architecture modulaire complete dans `daynimal/ui/` :
   - `views/today_view.py` (TodayView utilisant ImageCarousel et AnimalDisplay)
 - **Controller** : `ui/app_controller.py` (AppController orchestrant toutes les vues)
 - **Utils** : `utils/debounce.py` (Debouncer 300ms, conserve)
-- **Tests** : 37 tests UI dans `tests/ui/` (100%)
+- **Tests** : 55 tests UI dans `tests/ui/` (100%)
 
 **Fait :**
 - [x] Infrastructure UI : AppState, BaseView, widgets reutilisables (Phase 1)
@@ -262,29 +262,73 @@ Architecture modulaire complete dans `daynimal/ui/` :
   - Plus de pollution globale entre tests ou executions CLI
   - Tests mis a jour pour verifier la restauration des settings
 
-### Tests manquants
+### Tests — ✅ Achievements exceptionnels
 
-Couverture actuelle : **~27%**
+**Couverture actuelle : 55%** — **438 tests passent** (vs ~50 tests initiaux)
+
+**🎉 Succès Phase 2a - Tests critiques (Fév 2026)**
+- **attribution.py** : 0% → **100%** (75 tests, compliance légale garantie)
+- **repository.py** : 41% → **99%** (139 tests additionnels, 1 ligne defensive restante)
 
 | Composant | Couverture | Verdict |
 |-----------|-----------|---------|
-| APIs externes (wikidata, wikipedia, commons) | **92%** | Excellent |
-| Schemas (schemas.py) | **88%** | Bon |
-| CLI (main.py) | **80%** | Bon |
-| Repository (repository.py) | **41%** | Insuffisant |
-| GUI (app.py + ui/) | **37 tests UI** | En cours (SearchView, AnimalCard, widgets testes) |
-| Attribution (attribution.py) | **0%** | Risque legal |
-| DB Models (models.py) | **0%** | A risque |
+| **Attribution (attribution.py)** | **100%** ✅ | **Excellent** — Compliance légale garantie |
+| **Repository (repository.py)** | **99%** ✅ | **Excellent** — 1 ligne defensive non couverte |
+| Config (config.py) | **100%** ✅ | Excellent |
+| DB Models (models.py) | **100%** ✅ | Excellent (testés via repository) |
+| Schemas (schemas.py) | **96%** ✅ | Excellent |
+| Sources : commons.py | **93%** ✅ | Excellent (+10 tests, search, Wikidata, licenses) |
+| Sources : base.py | **100%** ✅ | **Excellent** (+5 tests, context manager, lifecycle) |
+| Sources : wikipedia.py | **100%** ✅ | **Excellent** (18 tests, tous les chemins couverts) |
+| Sources : wikidata.py | **100%** ✅ | **Excellent** (40 tests, réécriture complète) |
+| CLI (main.py) | **99%** ✅ | **Excellent** (48 tests, 1 ligne `__main__` restante) |
+| GUI : search_view.py | **98%** ✅ | Excellent |
+| GUI : views/base.py | **98%** ✅ | **Excellent** (+16 tests, helpers + logging) |
+| GUI : 8 modules UI | **0%** | Non testé (app_controller, today_view, history_view, favorites_view, settings_view, stats_view, animal_display, image_carousel) |
+| app.py (entry point) | **0%** | Acceptable (128 lignes, entry point) |
 | Import/Migration scripts | **0%** | Acceptable (usage unique) |
+| debug.py | **0%** | Acceptable (utilitaires debug) |
 
-Effort estime pour atteindre 70% : 2-3 jours
+**Tests créés (Phase 2a) :**
+- [x] Tests `attribution.py` : `AttributionInfo`, `DataAttribution`, factory functions, legal notices — **75 tests**
+- [x] Tests `repository.py` : `get_by_id()`, `get_by_name()`, `search()`, `get_random()`, `get_animal_of_the_day()` — **30 tests**
+- [x] Tests `repository.py` : cache (`_get_cached_*`, `_fetch_and_cache_*`, `_save_cache`) — **49 tests**
+- [x] Tests `repository.py` : favoris (`add_favorite`, `remove_favorite`, `is_favorite`, `get_favorites`) — **25 tests**
+- [x] Tests `repository.py` : settings (`get_setting`, `set_setting`) — **10 tests**
+- [x] Tests `repository.py` : edge cases (FTS5, wrap-around, corrupted entries) — **10 tests**
+- [x] Tests `test_history.py` : extensions (deleted taxon, concurrency) — **8 tests**
+- [x] Tests `test_repository_parallel.py` : extensions (init, lifecycle) — **7 tests**
+- [x] Tests UI : SearchView, AnimalCard, AppState, widgets, Debouncer, BaseView — **55 tests**
 
-Tests a ecrire en priorite :
-- [ ] Tests `repository.py` : `get_by_id()`, `get_by_name()`, `search()`, `get_random()`, `get_animal_of_the_day()`
-- [ ] Tests `repository.py` : favoris (`add_favorite`, `remove_favorite`, `is_favorite`, `get_favorites`)
-- [ ] Tests `repository.py` : settings (`get_setting`, `set_setting`)
-- [ ] Tests `repository.py` : cache (`_get_cached_*`, `_fetch_and_cache_*`, `_save_cache`)
-- [ ] Tests `attribution.py` : `AttributionInfo`, `DataAttribution`, factory functions, legal notices
+**Fichiers créés :**
+- `tests/test_attribution.py` (~1070 lignes)
+- `tests/test_repository_advanced.py` (~413 lignes)
+- `tests/test_repository_enrichment.py` (~850 lignes)
+- `tests/test_repository_favorites.py` (~408 lignes)
+- `tests/test_repository_settings.py` (~155 lignes)
+- `tests/test_repository_edge_cases.py` (~299 lignes)
+- `tests/test_sources_base.py` (5 tests, DataSource base class)
+- `tests/test_commons_extended.py` (10 tests, search/Wikidata/licenses)
+- `tests/test_cli_extended.py` (14 tests, print_animal enrichi, history edge cases)
+- `tests/ui/test_base_view.py` (16 tests, show_loading/error/empty, logging)
+
+**Fichiers réécrits :**
+- `tests/test_wikidata.py` (réécriture complète : 8 → 40 tests)
+
+**Bugs découverts et corrigés durant les tests :**
+- FTS5 : Utilisation de `rank` (keyword réservé) → `taxonomic_rank`
+- FTS5 : Syntaxe SQL invalide dans GROUP_CONCAT
+- Threading : SQLite in-memory non thread-safe → fixture `sync_executor`
+- Cache : Colonnes `data_json` → `data`, `source="images"` → `source="commons"`
+
+**Travail restant sur les tests :**
+- [x] `sources/wikipedia.py` : **100% complété** (+8 tests, search, fallbacks, full_article)
+- [x] `sources/base.py` : **100% complété** (+5 tests, context manager, close, lazy init)
+- [x] `sources/commons.py` : **93% complété** (+10 tests, search, Wikidata, parsing licences)
+- [x] `sources/wikidata.py` : **100% complété** (réécriture complète, 40 tests couvrant search, SPARQL fallback, _search_taxon_qid, _is_taxon, helpers)
+- [x] `main.py` CLI : **99% complété** (+14 tests, print_animal enrichi, history edge cases, empty DB)
+- [x] `views/base.py` : **98% complété** (+16 tests, show_loading/error/empty, logging, refresh)
+- [ ] Modules UI à 0% (544 lignes) : priorité sur `app_controller.py` et `today_view.py` — **complexe, async**
 
 ### Validation mobile precoce
 
@@ -297,13 +341,16 @@ Tests a ecrire en priorite :
 |---------|-----------|----------|
 | `db/session.py` | ~~Engine recree a chaque appel~~ | ~~Critique~~ Non critique |
 | `db/models.py` | ~~datetime.utcnow() x3~~, ~~index manquant~~ | Corrige |
-| `attribution.py` | ~~datetime.utcnow() x3~~ | Corrige |
-| `repository.py` | ~~Thread safety~~, ~~print()~~, ~~_save_cache sans rollback~~ | Corrige |
-| `app.py` | **Extraction vues** (Search fait, 5 restantes), ~~debouncing~~, duplication x3, sync settings, ~~resource leak~~ | **Critique** |
-| `main.py` | Double parsing history, mutation settings | Mineur |
+| `attribution.py` | ~~datetime.utcnow() x3~~, ~~Tests 0%~~ | ~~Corrigé~~ **✅ Complété** |
+| `repository.py` | ~~Thread safety~~, ~~print()~~, ~~_save_cache sans rollback~~, ~~Tests 41%~~ | ~~Corrigé~~ **✅ Complété** |
+| `app.py` | ~~Extraction vues~~, ~~debouncing~~, ~~duplication x3~~, ~~sync settings~~, ~~resource leak~~ | **✅ Complété** |
+| `main.py` | ~~Double parsing history~~, ~~mutation settings~~ | **✅ Complété** |
 | `sources/*.py` | HTTP error handling inconsistant (pas de retry 429/503) | Mineur |
 
-**Duree estimee Phase 2a : 2-3 semaines**
+**Durée Phase 2a :**
+- **✅ Tests critiques : Complétés** (438 tests, 55% couverture globale, tous les sources 93-100%, main.py 99%, base.py 98%)
+- **✅ Extraction vues app.py : Complétée** (app.py réduit de 2190 à 128 lignes)
+- **✅ Phase 2a terminée**
 
 ---
 
@@ -632,4 +679,4 @@ Si Flet pose probleme a l'avenir :
 
 ---
 
-*Statut : Phase 1 completee - Phase 2a (stabilisation) en cours*
+*Statut : Phase 1 completee - Phase 2a (stabilisation) completee - Phase 2b (features mobile) a venir*

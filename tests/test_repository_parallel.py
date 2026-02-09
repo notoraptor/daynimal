@@ -259,3 +259,169 @@ def test_enrichment_flag_set(mock_taxon_model, animal_info):
         assert animal_info.is_enriched
         assert mock_taxon_model.enriched_at is not None
         assert mock_session.commit.called
+
+
+# =============================================================================
+# SECTION 2: Repository initialization and lifecycle (7 tests)
+# =============================================================================
+
+
+def test_repository_init_with_session():
+    """Repository accepte une session en paramètre."""
+    mock_session = MagicMock()
+
+    repo = AnimalRepository(session=mock_session)
+
+    assert repo.session == mock_session
+
+
+def test_repository_init_without_session():
+    """Repository crée une session par défaut si aucune fournie."""
+    with patch("daynimal.repository.get_session") as mock_get_session:
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        repo = AnimalRepository()
+
+        assert repo.session == mock_session
+        assert mock_get_session.called
+
+
+def test_repository_lazy_api_initialization():
+    """APIs créées lazily (pas à l'init)."""
+    mock_session = MagicMock()
+
+    repo = AnimalRepository(session=mock_session)
+
+    # APIs should be None initially
+    assert repo._wikidata is None
+    assert repo._wikipedia is None
+    assert repo._commons is None
+
+
+def test_repository_context_manager():
+    """Repository supporte le context manager."""
+    mock_session = MagicMock()
+    mock_session.close = MagicMock()
+
+    with AnimalRepository(session=mock_session) as repo:
+        assert repo.session == mock_session
+
+    # Session should be closed after context
+    # (depending on implementation, this may or may not close the session)
+    # Just verify no exception is raised
+
+
+def test_close_idempotent():
+    """close() peut être appelé plusieurs fois sans erreur."""
+    mock_session = MagicMock()
+    mock_session.close = MagicMock()
+
+    repo = AnimalRepository(session=mock_session)
+
+    # Close multiple times
+    repo.close()
+    repo.close()
+    repo.close()
+
+    # Should not raise exception
+
+
+def test_parallel_timing_with_no_cache():
+    """Parallel timing sans cache (fetch complet)."""
+    mock_session = MagicMock()
+    mock_session.commit = MagicMock()
+
+    taxon = TaxonModel(
+        taxon_id=1,
+        scientific_name="Test species",
+        canonical_name="Test species",
+        rank="species",
+        kingdom="Animalia",
+        is_enriched=False,
+    )
+
+    animal = AnimalInfo(
+        taxon=Taxon(
+            taxon_id=1,
+            scientific_name="Test species",
+            canonical_name="Test species",
+            rank="species",
+            kingdom="Animalia",
+        )
+    )
+
+    with (
+        patch.object(AnimalRepository, "_get_cached_wikidata", return_value=None),
+        patch.object(AnimalRepository, "_get_cached_wikipedia", return_value=None),
+        patch.object(AnimalRepository, "_get_cached_images", return_value=[]),
+        patch.object(AnimalRepository, "_fetch_and_cache_wikidata") as mock_wd,
+        patch.object(AnimalRepository, "_fetch_and_cache_wikipedia") as mock_wp,
+        patch.object(AnimalRepository, "_fetch_and_cache_images") as mock_img,
+    ):
+        # Add delays to simulate real API calls
+        def slow_fetch(*args):
+            time.sleep(0.05)
+            return None
+
+        mock_wd.side_effect = slow_fetch
+        mock_wp.side_effect = slow_fetch
+        mock_img.return_value = []
+
+        repo = AnimalRepository(session=mock_session)
+
+        start = time.time()
+        repo._enrich(animal, taxon)
+        duration = time.time() - start
+
+        # With parallel: ~0.05s (not 0.10s)
+        # Allow some overhead
+        assert duration < 0.10
+
+
+def test_parallel_api_variations():
+    """Test variations de temps d'API parallèles."""
+    mock_session = MagicMock()
+    mock_session.commit = MagicMock()
+
+    taxon = TaxonModel(
+        taxon_id=1,
+        scientific_name="Test",
+        canonical_name="Test",
+        rank="species",
+        kingdom="Animalia",
+        is_enriched=False,
+    )
+
+    animal = AnimalInfo(
+        taxon=Taxon(
+            taxon_id=1,
+            scientific_name="Test",
+            canonical_name="Test",
+            rank="species",
+            kingdom="Animalia",
+        )
+    )
+
+    with (
+        patch.object(AnimalRepository, "_get_cached_wikidata", return_value=None),
+        patch.object(AnimalRepository, "_get_cached_wikipedia", return_value=None),
+        patch.object(AnimalRepository, "_get_cached_images", return_value=[]),
+        patch.object(AnimalRepository, "_fetch_and_cache_wikidata") as mock_wd,
+        patch.object(AnimalRepository, "_fetch_and_cache_wikipedia") as mock_wp,
+        patch.object(AnimalRepository, "_fetch_and_cache_images") as mock_img,
+    ):
+        # Wikidata slow, Wikipedia fast
+        mock_wd.side_effect = lambda *args: (time.sleep(0.08), None)[1]
+        mock_wp.side_effect = lambda *args: (time.sleep(0.02), None)[1]
+        mock_img.return_value = []
+
+        repo = AnimalRepository(session=mock_session)
+
+        start = time.time()
+        repo._enrich(animal, taxon)
+        duration = time.time() - start
+
+        # Should take ~0.08s (slowest of parallel calls), not 0.10s
+        assert duration < 0.12  # Allow overhead
+        assert duration >= 0.08  # Should be at least the slowest call

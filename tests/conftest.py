@@ -154,3 +154,326 @@ def session():
     # Cleanup
     session.close()
     Base.metadata.drop_all(engine)
+
+
+@pytest.fixture
+def populated_session(session):
+    """
+    Provide a session populated with diverse taxa for repository testing.
+
+    Creates 50 taxa with:
+    - 30 species (10 enriched, 20 not enriched)
+    - 10 genus, 5 family, 5 order
+    - Vernacular names in en, fr, es
+    - Non-contiguous IDs (gaps)
+    - Some synonyms
+    """
+    from daynimal.db.models import TaxonModel, VernacularNameModel
+
+    taxa = []
+
+    # Species (30 total: IDs 1-30)
+    for i in range(1, 31):
+        is_enriched = i <= 10  # First 10 are enriched
+        taxon = TaxonModel(
+            taxon_id=i,
+            scientific_name=f"Species {i}",
+            canonical_name=f"Species {i}",
+            rank="species",
+            kingdom="Animalia",
+            phylum="Chordata",
+            class_="Mammalia",
+            order="Carnivora",
+            family="Felidae",
+            genus="Felis",
+            is_enriched=is_enriched,
+            is_synonym=False,
+        )
+        taxa.append(taxon)
+
+        # Add vernacular names
+        for lang, name in [("en", f"Species {i} English"), ("fr", f"Espèce {i}"), ("es", f"Especie {i}")]:
+            vn = VernacularNameModel(
+                taxon_id=i,
+                name=name,
+                language=lang,
+            )
+            session.add(vn)
+
+    # Genus (10 total: IDs 50-59, gaps from 30-50)
+    for i in range(50, 60):
+        taxon = TaxonModel(
+            taxon_id=i,
+            scientific_name=f"Genus{i}",
+            canonical_name=f"Genus{i}",
+            rank="genus",
+            kingdom="Animalia",
+            phylum="Chordata",
+            class_="Mammalia",
+            order="Carnivora",
+            family="Felidae",
+            is_enriched=False,
+            is_synonym=False,
+        )
+        taxa.append(taxon)
+
+        vn = VernacularNameModel(
+            taxon_id=i,
+            name=f"Genus {i} common",
+            language="en",
+        )
+        session.add(vn)
+
+    # Family (5 total: IDs 100-104)
+    for i in range(100, 105):
+        taxon = TaxonModel(
+            taxon_id=i,
+            scientific_name=f"Family{i}",
+            canonical_name=f"Family{i}",
+            rank="family",
+            kingdom="Animalia",
+            phylum="Chordata",
+            class_="Mammalia",
+            order="Carnivora",
+            is_enriched=False,
+            is_synonym=False,
+        )
+        taxa.append(taxon)
+
+    # Order (5 total: IDs 200-204)
+    for i in range(200, 205):
+        taxon = TaxonModel(
+            taxon_id=i,
+            scientific_name=f"Order{i}",
+            canonical_name=f"Order{i}",
+            rank="order",
+            kingdom="Animalia",
+            phylum="Chordata",
+            class_="Mammalia",
+            is_enriched=False,
+            is_synonym=False,
+        )
+        taxa.append(taxon)
+
+    # Add a few synonyms (IDs 300-302)
+    for i in range(300, 303):
+        taxon = TaxonModel(
+            taxon_id=i,
+            scientific_name=f"Synonym {i}",
+            canonical_name=f"Synonym {i}",
+            rank="species",
+            kingdom="Animalia",
+            phylum="Chordata",
+            class_="Mammalia",
+            order="Carnivora",
+            family="Felidae",
+            genus="Felis",
+            is_enriched=False,
+            is_synonym=True,
+            accepted_id=1,  # Synonym of taxon 1
+        )
+        taxa.append(taxon)
+
+    # Add all taxa
+    for taxon in taxa:
+        session.add(taxon)
+
+    session.commit()
+
+    return session
+
+
+@pytest.fixture
+def session_with_fts(populated_session):
+    """
+    Provide a session with FTS5 initialized for full-text search testing.
+
+    Note: This fixture may be skipped if SQLite doesn't have FTS5 support.
+    """
+    from sqlalchemy import text
+
+    try:
+        # Test if FTS5 is available
+        populated_session.execute(text("CREATE VIRTUAL TABLE test_fts USING fts5(content)"))
+        populated_session.execute(text("DROP TABLE test_fts"))
+
+        # FTS5 available, create taxa_fts table
+        # Note: 'rank' is a reserved FTS5 keyword, so we use 'taxonomic_rank'
+        populated_session.execute(text("""
+            CREATE VIRTUAL TABLE taxa_fts USING fts5(
+                taxon_id UNINDEXED,
+                scientific_name,
+                canonical_name,
+                vernacular_names,
+                taxonomic_rank UNINDEXED
+            )
+        """))
+
+        # Populate FTS table
+        # Match the real init_fts.py implementation
+        populated_session.execute(text("""
+            INSERT INTO taxa_fts(taxon_id, scientific_name, canonical_name, vernacular_names, taxonomic_rank)
+            SELECT
+                t.taxon_id,
+                t.scientific_name,
+                COALESCE(t.canonical_name, t.scientific_name),
+                COALESCE(GROUP_CONCAT(v.name, ' '), ''),
+                t.rank
+            FROM taxa t
+            LEFT JOIN vernacular_names v ON t.taxon_id = v.taxon_id
+            GROUP BY t.taxon_id
+        """))
+
+        populated_session.commit()
+
+        return populated_session
+
+    except Exception:
+        pytest.skip("FTS5 not available in SQLite")
+
+
+@pytest.fixture
+def session_without_fts(populated_session):
+    """
+    Provide a session without FTS5 (for testing fallback).
+
+    This is simply the populated_session without FTS5 table created.
+    """
+    return populated_session
+
+
+@pytest.fixture
+def mock_enrichment_data():
+    """
+    Provide mock enrichment data (Wikidata, Wikipedia, Commons) for testing.
+
+    Returns a dict with WikidataEntity, WikipediaArticle, and CommonsImage objects.
+    """
+    from daynimal.schemas import (
+        WikidataEntity,
+        WikipediaArticle,
+        CommonsImage,
+        ConservationStatus,
+        License,
+    )
+
+    wikidata = WikidataEntity(
+        qid="Q144",
+        labels={"en": "Dog", "fr": "Chien"},
+        descriptions={"en": "Domesticated canine", "fr": "Canidé domestique"},
+        iucn_status=ConservationStatus.LEAST_CONCERN,
+        habitat=["Terrestrial"],
+        diet=["Omnivore"],
+        lifespan="10-13 years",
+        mass="10-30 kg",
+        length="60-110 cm",
+        image_url="https://commons.wikimedia.org/wiki/File:Dog.jpg",
+    )
+
+    wikipedia = WikipediaArticle(
+        title="Dog",
+        language="en",
+        page_id=4269567,
+        summary="The dog is a domesticated descendant of the wolf.",
+        url="https://en.wikipedia.org/wiki/Dog",
+    )
+
+    images = [
+        CommonsImage(
+            filename="Dog1.jpg",
+            url="https://upload.wikimedia.org/wikipedia/commons/Dog1.jpg",
+            thumbnail_url="https://upload.wikimedia.org/wikipedia/commons/thumb/Dog1.jpg",
+            width=800,
+            height=600,
+            author="John Photographer",
+            license=License.CC_BY_SA,
+            description="A dog",
+        ),
+        CommonsImage(
+            filename="Dog2.jpg",
+            url="https://upload.wikimedia.org/wikipedia/commons/Dog2.jpg",
+            thumbnail_url="https://upload.wikimedia.org/wikipedia/commons/thumb/Dog2.jpg",
+            width=1024,
+            height=768,
+            author="Jane Photographer",
+            license=License.CC_BY,
+            description="Another dog",
+        ),
+    ]
+
+    return {
+        "wikidata": wikidata,
+        "wikipedia": wikipedia,
+        "images": images,
+    }
+
+
+@pytest.fixture
+def repo_with_cache(populated_session, mock_enrichment_data):
+    """
+    Provide a repository with pre-populated enrichment cache.
+
+    Taxon ID 1 has cached Wikidata, Wikipedia, and images.
+    """
+    from daynimal.db.models import EnrichmentCacheModel
+    from daynimal.repository import AnimalRepository
+    import json
+
+    repo = AnimalRepository(session=populated_session)
+
+    # Add cache entries for taxon 1
+    wikidata_cache = EnrichmentCacheModel(
+        taxon_id=1,
+        source="wikidata",
+        data=json.dumps(repo._to_dict(mock_enrichment_data["wikidata"])),
+    )
+    populated_session.add(wikidata_cache)
+
+    wikipedia_cache = EnrichmentCacheModel(
+        taxon_id=1,
+        source="wikipedia",
+        data=json.dumps(repo._to_dict(mock_enrichment_data["wikipedia"])),
+    )
+    populated_session.add(wikipedia_cache)
+
+    images_cache = EnrichmentCacheModel(
+        taxon_id=1,
+        source="commons",  # Fixed: _get_cached_images() searches for "commons"
+        data=json.dumps([repo._to_dict(img) for img in mock_enrichment_data["images"]]),
+    )
+    populated_session.add(images_cache)
+
+    populated_session.commit()
+
+    return repo
+
+
+@pytest.fixture
+def sync_executor():
+    """
+    Patch ThreadPoolExecutor to execute tasks synchronously in the same thread.
+
+    This is necessary for tests that use SQLite in-memory databases, which cannot
+    be accessed from different threads. The patch makes executor.submit() execute
+    the function immediately instead of in a separate thread.
+    """
+    from unittest.mock import MagicMock, patch
+    from concurrent.futures import Future
+
+    def immediate_submit(fn, *args, **kwargs):
+        """Execute function immediately and return a completed Future."""
+        future = Future()
+        try:
+            result = fn(*args, **kwargs)
+            future.set_result(result)
+        except Exception as e:
+            future.set_exception(e)
+        return future
+
+    mock_executor = MagicMock()
+    mock_executor.submit = immediate_submit
+    mock_executor.__enter__ = MagicMock(return_value=mock_executor)
+    mock_executor.__exit__ = MagicMock(return_value=False)
+
+    with patch("daynimal.repository.ThreadPoolExecutor", return_value=mock_executor):
+        yield

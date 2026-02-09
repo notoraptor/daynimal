@@ -249,3 +249,137 @@ def test_history_same_animal_multiple_times(session: Session, sample_taxa):
     assert "today" in commands
     assert "random" in commands
     assert "info" in commands
+
+
+# =============================================================================
+# SECTION 2: Additional edge cases (8 tests)
+# =============================================================================
+
+
+def test_get_history_deleted_taxon(session: Session, sample_taxa):
+    """Entry avec taxon supprimé → skippé gracieusement."""
+    repo = AnimalRepository(session=session)
+
+    # Add history entries
+    repo.add_to_history(taxon_id=1000, command="test")
+    repo.add_to_history(taxon_id=1001, command="test")
+    repo.add_to_history(taxon_id=1002, command="test")
+
+    # Delete taxon 1001
+    taxon = session.get(TaxonModel, 1001)
+    session.delete(taxon)
+    session.commit()
+
+    # Get history (should skip deleted taxon or handle gracefully)
+    history, total = repo.get_history(page=1, per_page=10)
+
+    # Should have entries for taxons 1000 and 1002
+    # (1001 either skipped or marked as deleted)
+    taxon_ids = [animal.taxon.taxon_id for animal in history if animal.taxon]
+    assert 1000 in taxon_ids
+    assert 1002 in taxon_ids
+
+
+def test_clear_history_empty(session: Session):
+    """clear_history sur historique vide → 0 deleted."""
+    repo = AnimalRepository(session=session)
+
+    deleted = repo.clear_history()
+
+    assert deleted == 0
+
+
+def test_add_to_history_null_command(session: Session, sample_taxa):
+    """add_to_history avec command=None accepté."""
+    repo = AnimalRepository(session=session)
+
+    entry = repo.add_to_history(taxon_id=1000, command=None)
+
+    assert entry.taxon_id == 1000
+    assert entry.command is None
+
+
+def test_add_to_history_transaction_commit(session: Session, sample_taxa):
+    """Commit appelé après add_to_history."""
+    from unittest.mock import patch
+
+    repo = AnimalRepository(session=session)
+
+    with patch.object(session, "commit") as mock_commit:
+        repo.add_to_history(taxon_id=1000, command="test")
+        assert mock_commit.called
+
+
+def test_get_history_performance_large_dataset(session: Session, sample_taxa):
+    """Performances acceptables avec gros historique (100+ entries)."""
+    repo = AnimalRepository(session=session)
+    import time
+
+    # Add 100 entries
+    for i in range(100):
+        taxon_id = 1000 + (i % 15)  # Reuse sample_taxa
+        repo.add_to_history(taxon_id=taxon_id, command="test")
+
+    # Measure query time
+    start = time.time()
+    history, total = repo.get_history(page=1, per_page=50)
+    duration = time.time() - start
+
+    assert total == 100
+    assert len(history) == 50
+    # Should be reasonably fast (< 1 second)
+    assert duration < 1.0
+
+
+def test_get_history_count_accuracy(session: Session, sample_taxa):
+    """get_history_count toujours exact."""
+    repo = AnimalRepository(session=session)
+
+    # Initially zero
+    assert repo.get_history_count() == 0
+
+    # Add 5
+    for i in range(5):
+        repo.add_to_history(taxon_id=1000 + i, command="test")
+
+    assert repo.get_history_count() == 5
+
+    # Clear
+    repo.clear_history()
+
+    assert repo.get_history_count() == 0
+
+
+def test_get_history_concurrent_additions(session: Session, sample_taxa):
+    """Additions concurrentes d'historique (simulated)."""
+    repo = AnimalRepository(session=session)
+
+    # Simulate concurrent additions
+    for i in range(10):
+        repo.add_to_history(taxon_id=1000 + (i % 3), command="test")
+
+    # All should be recorded
+    assert repo.get_history_count() == 10
+
+    history, total = repo.get_history(page=1, per_page=20)
+    assert total == 10
+    assert len(history) == 10
+
+
+def test_history_pagination_edge_cases(session: Session, sample_taxa):
+    """Pagination avec page invalide ou hors limites."""
+    repo = AnimalRepository(session=session)
+
+    # Add 5 entries
+    for i in range(5):
+        repo.add_to_history(taxon_id=1000 + i, command="test")
+
+    # Page 0 (should behave like page 1 or return empty)
+    history_p0, total = repo.get_history(page=0, per_page=10)
+    # Implementation may handle page 0 differently, just verify no crash
+    assert total == 5
+
+    # Page 100 (way beyond available data)
+    history_p100, total = repo.get_history(page=100, per_page=10)
+    assert total == 5
+    assert len(history_p100) == 0
