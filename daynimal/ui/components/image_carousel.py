@@ -1,10 +1,13 @@
 """Image carousel component for displaying animal images with navigation."""
 
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import flet as ft
 
 from daynimal.schemas import CommonsImage
+
+if TYPE_CHECKING:
+    from daynimal.image_cache import ImageCacheService
 
 
 class ImageCarousel:
@@ -21,6 +24,7 @@ class ImageCarousel:
         on_index_change: Callable[[int], None] | None = None,
         animal_display_name: str = "",
         animal_taxon_id: int = 0,
+        image_cache: "ImageCacheService | None" = None,
     ):
         """
         Initialize ImageCarousel.
@@ -31,12 +35,14 @@ class ImageCarousel:
             on_index_change: Callback when image index changes (receives new index)
             animal_display_name: Display name of the animal (for error messages)
             animal_taxon_id: Taxon ID of the animal (for error messages)
+            image_cache: Optional ImageCacheService for local image loading
         """
         self.images = images
         self.current_index = current_index
         self.on_index_change = on_index_change
         self.animal_display_name = animal_display_name
         self.animal_taxon_id = animal_taxon_id
+        self.image_cache = image_cache
 
     def build(self) -> ft.Control:
         """Build the carousel UI."""
@@ -50,6 +56,17 @@ class ImageCarousel:
         current_image = self.images[self.current_index]
         total_images = len(self.images)
 
+        # Resolve image source: prefer local cache, fallback to URL
+        image_src = current_image.url
+        if self.image_cache:
+            # Try thumbnail first, then original
+            for url in [current_image.thumbnail_url, current_image.url]:
+                if url:
+                    local_path = self.image_cache.get_local_path(url)
+                    if local_path:
+                        image_src = str(local_path)
+                        break
+
         # Image carousel container
         carousel_content = ft.Column(
             controls=[
@@ -62,7 +79,7 @@ class ImageCarousel:
                 ),
                 # Image
                 ft.Image(
-                    src=current_image.url,
+                    src=image_src,
                     width=400,
                     height=300,
                     fit="contain",

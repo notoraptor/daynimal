@@ -283,6 +283,7 @@ class TodayView(BaseView):
             on_index_change=self._on_image_index_change,
             animal_display_name=animal.display_name,
             animal_taxon_id=animal.taxon.taxon_id,
+            image_cache=self.app_state.image_cache,
         )
         controls.append(carousel.build())
 

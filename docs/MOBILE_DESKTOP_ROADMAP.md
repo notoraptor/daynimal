@@ -100,7 +100,7 @@ Les deux modes appliquent un filtrage different sur le GBIF Backbone Taxonomy :
 - DB full : **-40% taille** (1.08 GB vs 1.8 GB), noms TAXREF integres des la generation
 - Taxa minimal : cleanup correct (163K especes avec noms vs 3M avant)
 
-Tables dans les deux DB : `taxa`, `vernacular_names`, `enrichment_cache`, `animal_history`, `favorites`, `user_settings`, `taxa_fts` (FTS5).
+Tables dans les deux DB : `taxa`, `vernacular_names`, `enrichment_cache`, `animal_history`, `favorites`, `user_settings`, `image_cache`, `taxa_fts` (FTS5).
 
 ### Problème resolu : noms TAXREF integres dans les TSV
 
@@ -264,7 +264,7 @@ Architecture modulaire complete dans `daynimal/ui/` :
 
 ### Tests — ✅ Achievements exceptionnels
 
-**Couverture actuelle : 55%** — **468 tests passent** (vs ~50 tests initiaux)
+**Couverture actuelle : 55%** — **482 tests passent** (vs ~50 tests initiaux)
 
 **🎉 Succès Phase 2a - Tests critiques (Fév 2026)**
 - **attribution.py** : 0% → **100%** (75 tests, compliance légale garantie)
@@ -311,6 +311,7 @@ Architecture modulaire complete dans `daynimal/ui/` :
 - `tests/test_commons_extended.py` (10 tests, search/Wikidata/licenses)
 - `tests/test_cli_extended.py` (14 tests, print_animal enrichi, history edge cases)
 - `tests/ui/test_base_view.py` (16 tests, show_loading/error/empty, logging)
+- `tests/test_image_cache.py` (14 tests, ImageCacheService complet)
 
 **Fichiers réécrits :**
 - `tests/test_wikidata.py` (réécriture complète : 8 → 40 tests)
@@ -402,29 +403,25 @@ Tailles de reference :
 - App totale sur appareil : ~150-180 MB (APK + DB + cache)
 - Contrainte Google Play : APK < 150 MB (donc DB telechargee separement, obligatoire)
 
-### Cache d'images (4 jours)
-- [ ] Service `ImageCache` (telechargement, stockage local)
-- [ ] Strategie de cache (LRU, taille max 500 MB configurable, purge)
-- [ ] Indicateur de telechargement
-- [ ] Mode donnees : haute qualite vs economique
-- [ ] Tests
+### Cache d'images ✅
+- [x] Service `ImageCacheService` (`daynimal/image_cache.py`) : telechargement, stockage local, purge LRU
+- [x] Strategie de cache LRU (taille max 500 MB configurable, purge automatique)
+- [x] Mode donnees : HD (originales) vs economique (thumbnails uniquement), configurable via `DAYNIMAL_IMAGE_CACHE_HD`
+- [x] Integration enrichissement : images telechargees automatiquement lors de `_fetch_and_cache_images()`
+- [x] Integration UI : `ImageCarousel` utilise le chemin local si disponible, fallback URL
+- [x] Gestion cache dans Settings : affichage taille + bouton "Vider le cache"
+- [x] 14 tests unitaires (`tests/test_image_cache.py`)
+
+**Implementation :**
+- Modele `ImageCacheModel` dans `db/models.py` (url, local_path, size_bytes, last_accessed_at, is_thumbnail)
+- Stockage : `{cache_dir}/{hash[:2]}/{sha256(url)}.ext` (sous-dossiers par prefixe hash)
+- Settings : `image_cache_dir`, `image_cache_max_size_mb`, `image_cache_hd` (overridable via env `DAYNIMAL_*`)
+- Table creee automatiquement au demarrage (compatible DB existantes)
 
 Chemins par plateforme :
 - Desktop : `~/.daynimal/cache/images/`
 - Android : `/data/data/com.daynimal/cache/images/`
 - iOS : `Library/Caches/images/`
-
-Table a creer :
-```sql
-CREATE TABLE image_cache (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    url TEXT NOT NULL UNIQUE,
-    local_path TEXT NOT NULL,
-    size_bytes INTEGER NOT NULL,
-    downloaded_at DATETIME NOT NULL
-);
-CREATE INDEX ix_image_cache_url ON image_cache(url);
-```
 
 ### Mode hors ligne (3 jours)
 - [ ] Detection de connectivite

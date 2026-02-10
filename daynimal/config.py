@@ -24,6 +24,11 @@ class Settings(BaseSettings):
         "https://github.com/notoraptor/daynimal/releases/download/v1.0.0"
     )
 
+    # Image cache
+    image_cache_dir: Path = Path("~/.daynimal/cache/images").expanduser()
+    image_cache_max_size_mb: int = 500
+    image_cache_hd: bool = True
+
     class Config:
         env_prefix = "DAYNIMAL_"
         env_file = ".env"

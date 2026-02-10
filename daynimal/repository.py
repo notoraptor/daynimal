@@ -34,6 +34,7 @@ from daynimal.schemas import (
     WikipediaArticle,
     CommonsImage,
 )
+from daynimal.image_cache import ImageCacheService
 from daynimal.sources.wikidata import WikidataAPI
 from daynimal.sources.wikipedia import WikipediaAPI
 from daynimal.sources.commons import CommonsAPI
@@ -68,6 +69,7 @@ class AnimalRepository:
         self._wikidata: WikidataAPI | None = None
         self._wikipedia: WikipediaAPI | None = None
         self._commons: CommonsAPI | None = None
+        self.image_cache = ImageCacheService(session=self.session)
 
     @property
     def wikidata(self) -> WikidataAPI:
@@ -95,6 +97,7 @@ class AnimalRepository:
             self._wikipedia.close()
         if self._commons:
             self._commons.close()
+        self.image_cache.close()
         self.session.close()
 
     def __enter__(self):
@@ -632,6 +635,10 @@ class AnimalRepository:
 
             if images:
                 self._save_cache(taxon_id, "commons", images)
+                try:
+                    self.image_cache.cache_images(images)
+                except Exception as e:
+                    logger.warning(f"Error caching images locally: {e}")
 
             return images
         except Exception as e:

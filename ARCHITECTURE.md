@@ -8,6 +8,7 @@
 - `daynimal.attribution` — Attribution management for legal compliance.
 - `daynimal.config`
 - `daynimal.debug` — Debug utilities for Daynimal Flet app.
+- `daynimal.image_cache` — Image cache service for downloading and serving images locally.
 - `daynimal.main` — Daynimal CLI - Daily Animal Discovery
 - `daynimal.repository` — Animal Repository - aggregates data from local DB and external APIs.
 - `daynimal.schemas`
@@ -15,6 +16,7 @@
 ### daynimal/db
 - `daynimal.db.__init__`
 - `daynimal.db.build_db` — Build a SQLite database from distribution TSV files.
+- `daynimal.db.first_launch` — First-launch setup: download distribution from GitHub Releases, build minimal DB.
 - `daynimal.db.generate_distribution` — Generate distribution TSV files from raw sources (GBIF + TAXREF).
 - `daynimal.db.import_gbif_utils` — GBIF Backbone Taxonomy - Shared utilities for import scripts.
 - `daynimal.db.init_fts` — Initialize FTS5 (Full-Text Search) table for fast animal search.
@@ -51,6 +53,7 @@
 - `daynimal.ui.views.history_view` — History view for displaying animal viewing history.
 - `daynimal.ui.views.search_view` — Search view for Daynimal app.
 - `daynimal.ui.views.settings_view` — Settings view for app configuration and credits.
+- `daynimal.ui.views.setup_view` — Setup view for first-launch database installation.
 - `daynimal.ui.views.stats_view` — Statistics view for displaying database statistics.
 - `daynimal.ui.views.today_view` — Today view for displaying the animal of the day or random animals.
 
@@ -84,9 +87,12 @@
 - depends on `daynimal.schemas`
 
 ### daynimal.app
+- depends on `daynimal.db.first_launch`
 - depends on `daynimal.debug`
 - depends on `daynimal.repository`
 - depends on `daynimal.ui.app_controller`
+- depends on `daynimal.ui.state`
+- depends on `daynimal.ui.views.setup_view`
 
 ### daynimal.attribution
 - depends on `daynimal.schemas`
@@ -100,6 +106,11 @@
 - depends on `daynimal.db.models`
 - depends on `daynimal.db.session`
 
+### daynimal.db.first_launch
+- depends on `daynimal.config`
+- depends on `daynimal.db.build_db`
+- depends on `daynimal.db.init_fts`
+
 ### daynimal.db.generate_distribution
 - depends on `daynimal.db.import_gbif_utils`
 
@@ -110,15 +121,23 @@
 ### daynimal.db.session
 - depends on `daynimal.config`
 
+### daynimal.image_cache
+- depends on `daynimal.config`
+- depends on `daynimal.db.models`
+- depends on `daynimal.schemas`
+- depends on `daynimal.sources.base`
+
 ### daynimal.main
 - depends on `daynimal.__init__`
 - depends on `daynimal.attribution`
 - depends on `daynimal.config`
+- depends on `daynimal.db.first_launch`
 - depends on `daynimal.repository`
 
 ### daynimal.repository
 - depends on `daynimal.db.models`
 - depends on `daynimal.db.session`
+- depends on `daynimal.image_cache`
 - depends on `daynimal.schemas`
 - depends on `daynimal.sources.commons`
 - depends on `daynimal.sources.wikidata`
@@ -170,9 +189,11 @@
 - depends on `daynimal.schemas`
 
 ### daynimal.ui.components.image_carousel
+- depends on `daynimal.image_cache`
 - depends on `daynimal.schemas`
 
 ### daynimal.ui.state
+- depends on `daynimal.image_cache`
 - depends on `daynimal.repository`
 - depends on `daynimal.schemas`
 
@@ -204,6 +225,10 @@
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.base`
 
+### daynimal.ui.views.setup_view
+- depends on `daynimal.db.first_launch`
+- depends on `daynimal.ui.views.base`
+
 ### daynimal.ui.views.stats_view
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.base`
@@ -220,23 +245,25 @@
 - depends on `daynimal.debug`
 
 ## 4. External Dependencies
-- flet (used 14 times)
-- pathlib (used 10 times)
-- typing (used 9 times)
+- flet (used 15 times)
+- pathlib (used 12 times)
+- typing (used 10 times)
+- asyncio (used 9 times)
+- sqlalchemy (used 9 times)
 - argparse (used 8 times)
-- asyncio (used 8 times)
-- sqlalchemy (used 8 times)
-- datetime (used 7 times)
+- datetime (used 8 times)
 - traceback (used 6 times)
 - dataclasses (used 4 times)
+- httpx (used 4 times)
+- logging (used 4 times)
 - sys (used 4 times)
-- logging (used 3 times)
+- hashlib (used 3 times)
+- json (used 3 times)
 - re (used 3 times)
 - subprocess (used 3 times)
 - abc (used 2 times)
 - csv (used 2 times)
-- httpx (used 2 times)
-- json (used 2 times)
+- gzip (used 2 times)
 - threading (used 2 times)
 - time (used 2 times)
 - ast (used 1 times)
@@ -244,12 +271,12 @@
 - concurrent (used 1 times)
 - contextlib (used 1 times)
 - enum (used 1 times)
-- gzip (used 1 times)
-- hashlib (used 1 times)
 - io (used 1 times)
 - os (used 1 times)
 - pydantic_settings (used 1 times)
 - random (used 1 times)
+- shutil (used 1 times)
+- sqlite3 (used 1 times)
 - unicodedata (used 1 times)
 - zipfile (used 1 times)
 
@@ -265,7 +292,11 @@ class DaynimalApp  # Main application class for Daynimal Flet app.
     def __init__(self, page)
     # calls: hasattr, isinstance, self.build, self.debugger.logger.info
     def build(self)  # Build the user interface.
-    # calls: AppController, self._load_theme, self.app_controller.build, self.page.add, self.page.update
+    # calls: AppState, SetupView, resolve_database, self._build_main_app, self._load_theme, self.page.add, self.page.update, self.setup_view.build
+    def _build_main_app(self)  # Build the main application UI (after DB is available).
+    # calls: AppController, self.app_controller.build, self.page.add, self.page.controls.clear
+    def _on_setup_complete(self)  # Called when first-launch setup finishes successfully.
+    # calls: resolve_database, self._build_main_app, self.page.update
     def _load_theme(self)  # Load theme setting from database and apply to page.
     # calls: AnimalRepository
     def cleanup(self)  # Clean up resources (close connections, database, etc.).
@@ -374,6 +405,48 @@ def build_database(taxa_tsv, vernacular_tsv, db_filename)  # Build a SQLite data
 def main()  # Main entry point for build-db.
 ```
 - calls: `Path`, `argparse.ArgumentParser`, `build_database`
+
+### Module: daynimal.db.first_launch
+> First-launch setup: download distribution from GitHub Releases, build minimal DB.
+> 
+> This module handles:
+> - Database resolution (find existing DB or fallback via .daynimal_config)
+> - Downloading compressed TSV files from GitHub Releases
+> - Verifying checksums
+> - Building the minimal SQLite database
+> - Initializing FTS5 search index
+```python
+def _get_db_path_from_url()  # Extract database file path from settings.database_url.
+```
+- calls: `Path`, `len`
+```python
+def _get_config_file_path()  # Get path to .daynimal_config file (same directory as default DB).
+```
+- calls: `_get_db_path_from_url`
+```python
+def is_db_valid(db_path)  # Check if a database file exists and contains taxa data.
+```
+- calls: `sqlite3.connect`, `str`
+```python
+def save_db_config(db_path)  # Save the active database path to .daynimal_config.
+```
+- calls: `_get_config_file_path`, `json.dumps`, `str`
+```python
+def resolve_database()  # Find the active database, updating settings if needed.
+```
+- calls: `Path`, `_get_config_file_path`, `_get_db_path_from_url`, `is_db_valid`, `json.loads`
+```python
+def verify_checksum(file_path, expected_sha256)  # Verify SHA256 checksum of a file.
+```
+- calls: `hashlib.sha256`, `iter`, `open`
+```python
+def download_file(url, dest, progress_callback)  # Download a file with streaming and optional progress reporting.
+```
+- calls: `httpx.stream`, `int`, `len`, `open`, `progress_callback`
+```python
+def download_and_setup_db(progress_callback)  # Download distribution files and build the minimal database.
+```
+- calls: `Path`, `ValueError`, `_download_progress`, `_progress`, `build_database`, `download_file`, `gzip.open`, `init_fts`, `json.loads`, `open`, `progress_callback`, `save_db_config`, `shutil.copyfileobj`, `shutil.rmtree`, `verify_checksum`
 
 ### Module: daynimal.db.generate_distribution
 > Generate distribution TSV files from raw sources (GBIF + TAXREF).
@@ -493,6 +566,9 @@ class AnimalHistoryModel(Base)  # History of viewed animals.
 class UserSettingsModel(Base)  # User preferences and settings.
 ```
 ```python
+class ImageCacheModel(Base)  # Cache for downloaded images from Wikimedia Commons.
+```
+```python
 class FavoriteModel(Base)  # User's favorite animals.
 ```
 ```python
@@ -553,6 +629,34 @@ def log_error(message)  # Quick logging function - error level.
 def log_debug(message)  # Quick logging function - debug level.
 ```
 
+### Module: daynimal.image_cache
+> Image cache service for downloading and serving images locally.
+```python
+class ImageCacheService  # Downloads and caches images locally for offline use.
+    def __init__(self, session, cache_dir, max_size_mb, cache_hd)
+    # calls: ImageCacheModel.__table__.create, self._cache_dir.mkdir
+    @property
+    def client(self)
+    # calls: httpx.Client
+    def close(self)
+    # calls: self._client.close
+    @staticmethod
+    def _url_to_path(url, cache_dir)  # Convert URL to local file path using SHA256 hash.
+    # calls: hashlib.sha256, hashlib.sha256.hexdigest
+    def cache_images(self, images)  # Download and cache images locally.
+    # calls: self._download_and_store, self.get_cache_size, self.purge_lru
+    def _download_and_store(self, url, is_thumbnail)  # Download a single image and store it in cache.
+    # calls: ImageCacheModel, Path, datetime.now, len, retry_with_backoff, self._session.add, self._session.commit, self._session.query, self._session.query.filter, self._session.rollback, self._url_to_path, self.client.get, str
+    def get_local_path(self, url)  # Get local path for a cached image, updating last_accessed_at.
+    # calls: Path, datetime.now, self._session.commit, self._session.delete, self._session.query, self._session.query.filter
+    def get_cache_size(self)  # Get total cache size in bytes from DB.
+    # calls: func.sum, self._session.query, self._session.query.scalar
+    def purge_lru(self, target_size_bytes)  # Remove least recently accessed images until cache is under target size.
+    # calls: ImageCacheModel.last_accessed_at.asc, Path, self._session.commit, self._session.delete, self._session.query, self._session.query.order_by, self.get_cache_size
+    def clear(self)  # Clear all cached images.
+    # calls: Path, Path.unlink, len, self._cache_dir.exists, self._cache_dir.iterdir, self._session.commit, self._session.delete, self._session.query, self._session.query.all
+```
+
 ### Module: daynimal.main
 > Daynimal CLI - Daily Animal Discovery
 > 
@@ -590,6 +694,10 @@ def cmd_credits()  # Show full legal credits and licenses.
 ```
 - calls: `get_app_legal_notice`, `print`
 ```python
+def cmd_setup()  # Download and set up the minimal database.
+```
+- calls: `SystemExit`, `download_and_setup_db`, `print`, `resolve_database`
+```python
 def cmd_history(page, per_page)  # Show history of viewed animals.
 ```
 - calls: `AnimalRepository`, `print`
@@ -600,7 +708,7 @@ def create_parser()  # Create and configure the argument parser.
 ```python
 def main()  # Main entry point.
 ```
-- calls: `cmd_credits`, `cmd_history`, `cmd_info`, `cmd_random`, `cmd_search`, `cmd_stats`, `cmd_today`, `create_parser`, `temporary_database`
+- calls: `SystemExit`, `cmd_credits`, `cmd_history`, `cmd_info`, `cmd_random`, `cmd_search`, `cmd_setup`, `cmd_stats`, `cmd_today`, `create_parser`, `print`, `resolve_database`, `temporary_database`
 
 ### Module: daynimal.repository
 > Animal Repository - aggregates data from local DB and external APIs.
@@ -613,7 +721,7 @@ def main()  # Main entry point.
 ```python
 class AnimalRepository  # Repository for accessing animal information.
     def __init__(self, session)
-    # calls: get_session, threading.Lock
+    # calls: ImageCacheService, get_session, threading.Lock
     @property
     def wikidata(self)
     # calls: WikidataAPI
@@ -624,7 +732,7 @@ class AnimalRepository  # Repository for accessing animal information.
     def commons(self)
     # calls: CommonsAPI
     def close(self)  # Close all connections.
-    # calls: self._commons.close, self._wikidata.close, self._wikipedia.close, self.session.close
+    # calls: self._commons.close, self._wikidata.close, self._wikipedia.close, self.image_cache.close, self.session.close
     def __enter__(self)
     def __exit__(self, exc_type, exc_val, exc_tb)
     # calls: self.close
@@ -653,7 +761,7 @@ class AnimalRepository  # Repository for accessing animal information.
     def _fetch_and_cache_wikipedia(self, taxon_id, scientific_name)  # Fetch Wikipedia and cache it.
     # calls: self._save_cache, self.wikipedia.get_by_taxonomy
     def _fetch_and_cache_images(self, taxon_id, scientific_name, wikidata)  # Fetch Commons images and cache them.
-    # calls: self._save_cache, self.commons.get_by_taxonomy, self.commons.get_images_for_wikidata
+    # calls: self._save_cache, self.commons.get_by_taxonomy, self.commons.get_images_for_wikidata, self.image_cache.cache_images
     def _save_cache(self, taxon_id, source, data)  # Save data to enrichment cache.
     # calls: EnrichmentCacheModel, datetime.now, isinstance, json.dumps, self._to_dict, self.session.add, self.session.commit, self.session.query, self.session.query.filter, self.session.rollback
     def _to_dict(self, obj)  # Convert dataclass to dict, handling enums.
@@ -949,9 +1057,9 @@ class AnimalDisplay  # Component for displaying detailed animal information.
 > Image carousel component for displaying animal images with navigation.
 ```python
 class ImageCarousel  # Image carousel with navigation controls.
-    def __init__(self, images, current_index, on_index_change, animal_display_name, animal_taxon_id)  # Initialize ImageCarousel.
+    def __init__(self, images, current_index, on_index_change, animal_display_name, animal_taxon_id, image_cache)  # Initialize ImageCarousel.
     def build(self)  # Build the carousel UI.
-    # calls: ft.Column, ft.Container, ft.IconButton, ft.Image, ft.Row, ft.Text, len, self._build_empty_state, self._build_error_content
+    # calls: ft.Column, ft.Container, ft.IconButton, ft.Image, ft.Row, ft.Text, len, self._build_empty_state, self._build_error_content, self.image_cache.get_local_path, str
     def _build_empty_state(self)  # Build the empty state UI when no images available.
     # calls: ft.Column, ft.Container, ft.Icon, ft.Text
     def _build_error_content(self, image)  # Build the error content for failed image loads.
@@ -991,6 +1099,8 @@ class EmptyStateWidget(ft.Container)  # Empty state widget.
 ```python
 @dataclass
 class AppState  # Shared application state across all views.
+    @property
+    def image_cache(self)  # Get image cache service from repository.
     @property
     def repository(self)  # Get or create repository (lazy initialization, thread-safe).
     # calls: AnimalRepository
@@ -1095,9 +1205,28 @@ class SettingsView(BaseView)  # View for app settings, preferences, and credits.
     def build(self)  # Build the settings view UI.
     # calls: asyncio.create_task, self._load_settings
     async def _load_settings(self)  # Load settings and build the UI.
-    # calls: asyncio.to_thread, ft.Column, ft.Container, ft.Divider, ft.Icon, ft.Padding, ft.Row, ft.Switch, ft.Text, print, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: asyncio.to_thread, ft.Column, ft.Container, ft.Divider, ft.ElevatedButton, ft.Icon, ft.Padding, ft.Row, ft.Switch, ft.Text, print, self.app_state.image_cache.get_cache_size, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    def _on_clear_cache(self, e)  # Handle clear cache button click.
+    # calls: asyncio.create_task, self._load_settings, self.app_state.image_cache.clear, self.debugger.log_error, self.debugger.logger.info
     def _on_theme_toggle(self, e)  # Handle theme toggle switch change.
     # calls: print, self.app_state.repository.set_setting, self.debugger.log_error, self.debugger.logger.error, self.debugger.logger.info, self.page.update, traceback.format_exc
+```
+
+### Module: daynimal.ui.views.setup_view
+> Setup view for first-launch database installation.
+```python
+class SetupView(BaseView)  # View displayed on first launch when no database is found.
+    def __init__(self, page, app_state, on_setup_complete, debugger)  # Initialize SetupView.
+    # calls: ft.ButtonStyle, ft.Column, ft.ElevatedButton, ft.ProgressBar, ft.Text, super, super.__init__
+    def build(self)  # Build the setup view UI.
+    # calls: ft.Column, ft.Container, ft.Icon, ft.Text
+    def _on_install_click(self, e)  # Handle install button click — launch async setup.
+    # calls: asyncio.create_task, self._start_setup
+    async def _start_setup(self)  # Run the download and setup process.
+    # calls: asyncio.sleep, asyncio.to_thread, ft.ElevatedButton, ft.Icon, ft.Text, self.log_error, self.on_setup_complete, self.page.update, str
+    def _update_progress(self, stage, progress)  # Update UI with progress from download_and_setup_db.
+    # calls: self.page.update
+    async def refresh(self)  # No-op refresh.
 ```
 
 ### Module: daynimal.ui.views.stats_view

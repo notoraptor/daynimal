@@ -174,6 +174,34 @@ class SettingsView(BaseView):
                 padding=ft.Padding(left=20, right=20, top=10, bottom=20),
             )
 
+            # Image cache section
+            cache_size_bytes = self.app_state.image_cache.get_cache_size()
+            if cache_size_bytes < 1024 * 1024:
+                cache_size_text = f"{cache_size_bytes / 1024:.1f} Ko"
+            else:
+                cache_size_text = f"{cache_size_bytes / (1024 * 1024):.1f} Mo"
+
+            cache_section = ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text(
+                            "Cache d'images", size=18, weight=ft.FontWeight.BOLD
+                        ),
+                        ft.Text(
+                            f"Taille du cache : {cache_size_text}",
+                            size=12,
+                        ),
+                        ft.ElevatedButton(
+                            "Vider le cache",
+                            icon=ft.Icons.DELETE,
+                            on_click=self._on_clear_cache,
+                        ),
+                    ],
+                    spacing=10,
+                ),
+                padding=ft.Padding(left=20, right=20, top=10, bottom=10),
+            )
+
             # Update content
             self.settings_container.controls = [
                 header,
@@ -181,6 +209,8 @@ class SettingsView(BaseView):
                 app_info,
                 ft.Divider(),
                 preferences,
+                ft.Divider(),
+                cache_section,
                 ft.Divider(),
                 credits,
                 ft.Divider(),
@@ -220,6 +250,18 @@ class SettingsView(BaseView):
 
         finally:
             self.page.update()
+
+    def _on_clear_cache(self, e):
+        """Handle clear cache button click."""
+        try:
+            count = self.app_state.image_cache.clear()
+            # Reload settings to update cache size display
+            asyncio.create_task(self._load_settings())
+            if self.debugger:
+                self.debugger.logger.info(f"Image cache cleared: {count} images removed")
+        except Exception as error:
+            if self.debugger:
+                self.debugger.log_error("clear_cache", error)
 
     def _on_theme_toggle(self, e):
         """Handle theme toggle switch change."""

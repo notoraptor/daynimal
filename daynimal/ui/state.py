@@ -8,6 +8,7 @@ import threading
 from dataclasses import dataclass, field
 from typing import Optional
 
+from daynimal.image_cache import ImageCacheService
 from daynimal.repository import AnimalRepository
 from daynimal.schemas import AnimalInfo
 
@@ -32,6 +33,11 @@ class AppState:
     current_image_index: int = 0
     cached_stats: Optional[dict] = None
     current_view_name: str = "today"
+
+    @property
+    def image_cache(self) -> ImageCacheService:
+        """Get image cache service from repository."""
+        return self.repository.image_cache
 
     @property
     def repository(self) -> AnimalRepository:

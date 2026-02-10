@@ -167,6 +167,29 @@ class UserSettingsModel(Base):
     value: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class ImageCacheModel(Base):
+    """Cache for downloaded images from Wikimedia Commons."""
+
+    __tablename__ = "image_cache"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    url: Mapped[str] = mapped_column(String(1024), nullable=False, unique=True)
+    local_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    downloaded_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_utcnow, nullable=False
+    )
+    last_accessed_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_utcnow, nullable=False
+    )
+    is_thumbnail: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    __table_args__ = (
+        Index("ix_image_cache_url", "url", unique=True),
+        Index("ix_image_cache_last_accessed", "last_accessed_at"),
+    )
+
+
 class FavoriteModel(Base):
     """
     User's favorite animals.
