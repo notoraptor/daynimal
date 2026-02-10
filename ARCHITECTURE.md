@@ -11,6 +11,7 @@
 - `daynimal.debug` — Debug utilities for Daynimal Flet app.
 - `daynimal.image_cache` — Image cache service for downloading and serving images locally.
 - `daynimal.main` — Daynimal CLI - Daily Animal Discovery
+- `daynimal.notifications` — Notification service for daily animal reminders.
 - `daynimal.repository` — Animal Repository - aggregates data from local DB and external APIs.
 - `daynimal.schemas`
 
@@ -136,6 +137,9 @@
 - depends on `daynimal.db.first_launch`
 - depends on `daynimal.repository`
 
+### daynimal.notifications
+- depends on `daynimal.repository`
+
 ### daynimal.repository
 - depends on `daynimal.connectivity`
 - depends on `daynimal.db.models`
@@ -173,6 +177,7 @@
 
 ### daynimal.ui.app_controller
 - depends on `daynimal.debug`
+- depends on `daynimal.notifications`
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.favorites_view`
 - depends on `daynimal.ui.views.history_view`
@@ -253,13 +258,13 @@
 - flet (used 16 times)
 - pathlib (used 12 times)
 - typing (used 11 times)
-- asyncio (used 9 times)
+- asyncio (used 10 times)
+- datetime (used 9 times)
 - sqlalchemy (used 9 times)
 - argparse (used 8 times)
-- datetime (used 8 times)
 - httpx (used 6 times)
+- logging (used 6 times)
 - traceback (used 6 times)
-- logging (used 5 times)
 - dataclasses (used 4 times)
 - sys (used 4 times)
 - hashlib (used 3 times)
@@ -279,6 +284,7 @@
 - io (used 1 times)
 - math (used 1 times)
 - os (used 1 times)
+- plyer (used 1 times)
 - pydantic_settings (used 1 times)
 - random (used 1 times)
 - shutil (used 1 times)
@@ -741,6 +747,29 @@ def main()  # Main entry point.
 ```
 - calls: `SystemExit`, `cmd_credits`, `cmd_history`, `cmd_info`, `cmd_random`, `cmd_search`, `cmd_setup`, `cmd_stats`, `cmd_today`, `create_parser`, `print`, `resolve_database`, `temporary_database`
 
+### Module: daynimal.notifications
+> Notification service for daily animal reminders.
+```python
+class NotificationService  # In-app notification service that sends a daily desktop notification.
+    def __init__(self, repository)
+    @property
+    def enabled(self)  # Whether notifications are enabled.
+    # calls: self.repository.get_setting
+    @property
+    def notification_time(self)  # Configured notification time (HH:MM format).
+    # calls: self.repository.get_setting
+    def start(self)  # Start the periodic check loop.
+    # calls: asyncio.create_task, self._check_loop
+    def stop(self)  # Stop the periodic check loop.
+    # calls: self._task.cancel
+    async def _check_loop(self)  # Periodically check if it's time to send a notification.
+    # calls: asyncio.sleep, self._send_notification, self._should_notify
+    def _should_notify(self)  # Check if a notification should be sent now.
+    # calls: datetime.now, datetime.now.strftime, int, self.notification_time.split, self.repository.get_setting
+    async def _send_notification(self)  # Send the daily animal notification.
+    # calls: asyncio.to_thread, datetime.now, datetime.now.strftime, self.repository.set_setting
+```
+
 ### Module: daynimal.repository
 > Animal Repository - aggregates data from local DB and external APIs.
 > 
@@ -1013,9 +1042,9 @@ class WikipediaAPI(DataSource)  # Client for Wikipedia API.
 ```python
 class AppController  # Main application controller.
     def __init__(self, page, debugger)  # Initialize AppController.
-    # calls: AppState, FavoritesView, HistoryView, SearchView, SettingsView, StatsView, TodayView, asyncio.create_task, ft.ButtonStyle, ft.Column, ft.Container, ft.Icon, ft.NavigationBar, ft.NavigationBarDestination, ft.Padding, ft.Row, ft.Text, ft.TextButton, get_debugger, self.load_animal_from_favorite, self.load_animal_from_history, self.load_animal_from_search
+    # calls: AppState, FavoritesView, HistoryView, NotificationService, SearchView, SettingsView, StatsView, TodayView, asyncio.create_task, ft.ButtonStyle, ft.Column, ft.Container, ft.Icon, ft.NavigationBar, ft.NavigationBarDestination, ft.Padding, ft.Row, ft.Text, ft.TextButton, get_debugger, self.load_animal_from_favorite, self.load_animal_from_history, self.load_animal_from_search
     def build(self)  # Build the app UI.
-    # calls: ft.Column, self.show_today_view
+    # calls: ft.Column, self.notification_service.start, self.show_today_view
     def on_nav_change(self, e)  # Handle navigation bar changes.
     # calls: len, self.debugger.log_view_change, self.show_favorites_view, self.show_history_view, self.show_search_view, self.show_settings_view, self.show_stats_view, self.show_today_view
     def show_today_view(self)  # Show the Today view.
@@ -1045,7 +1074,7 @@ class AppController  # Main application controller.
     async def _retry_connection(self, e)  # Retry network connection and reload current animal if back online.
     # calls: asyncio.to_thread, self._load_and_display_animal, self._update_offline_banner
     def cleanup(self)  # Clean up resources.
-    # calls: self.state.close_repository
+    # calls: self.notification_service.stop, self.state.close_repository
 ```
 
 ### Module: daynimal.ui.components.animal_card
@@ -1258,13 +1287,17 @@ class SettingsView(BaseView)  # View for app settings, preferences, and credits.
     def build(self)  # Build the settings view UI.
     # calls: asyncio.create_task, self._load_settings
     async def _load_settings(self)  # Load settings and build the UI.
-    # calls: asyncio.to_thread, ft.Column, ft.Container, ft.Divider, ft.ElevatedButton, ft.Icon, ft.Padding, ft.Row, ft.Switch, ft.Text, print, self.app_state.image_cache.get_cache_size, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: asyncio.to_thread, ft.Column, ft.Container, ft.Divider, ft.Dropdown, ft.ElevatedButton, ft.Icon, ft.Padding, ft.Row, ft.Switch, ft.Text, ft.dropdown.Option, print, range, self.app_state.image_cache.get_cache_size, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
     def _on_clear_cache(self, e)  # Handle clear cache button click.
     # calls: asyncio.create_task, self._load_settings, self.app_state.image_cache.clear, self.debugger.log_error, self.debugger.logger.info
     def _on_offline_toggle(self, e)  # Handle forced offline mode toggle.
     # calls: self.debugger.log_error, self.debugger.logger.info
     def _on_theme_toggle(self, e)  # Handle theme toggle switch change.
     # calls: print, self.app_state.repository.set_setting, self.debugger.log_error, self.debugger.logger.error, self.debugger.logger.info, self.page.update, traceback.format_exc
+    def _on_notifications_toggle(self, e)  # Handle notification toggle switch change.
+    # calls: getattr, self.debugger.log_error, self.debugger.logger.info
+    def _on_notification_time_change(self, e)  # Handle notification time dropdown change.
+    # calls: self.app_state.repository.set_setting, self.debugger.log_error, self.debugger.logger.info
 ```
 
 ### Module: daynimal.ui.views.setup_view

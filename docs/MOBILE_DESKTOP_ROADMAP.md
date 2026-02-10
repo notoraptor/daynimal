@@ -461,11 +461,13 @@ Chemins par plateforme :
 - [x] 13 tests unitaires (`tests/test_notifications.py`)
 - [ ] Tests Android (FCM) et iOS (APNs) — Phase 3
 
-### Partage (2 jours)
-- [ ] Fonction de partage natif (texte + image)
-- [ ] Formats : texte seul, image, lien web
-- [ ] Formatage du texte partage (+ attributions legales automatiques)
-- [ ] Tests
+### Partage desktop ✅
+- [x] Bouton "Copier le texte" : texte formate (nom, description, URL Wikipedia, attribution legale)
+- [x] Bouton "Ouvrir Wikipedia" : ouvre l'article dans le navigateur (grise si pas d'article)
+- [x] Bouton "Copier l'image" : copie le chemin local de l'image en cache (grise si pas d'image)
+- [x] Attribution legale automatique (GBIF CC-BY 4.0, Wikipedia CC-BY-SA 4.0) toujours incluse
+- [x] 5 tests unitaires (`tests/test_sharing.py`)
+- [ ] Partage mobile (share sheet natif Android/iOS) — Phase 3
 
 ### Statistiques personnelles (2 jours)
 - [ ] Nombre total d'animaux consultes

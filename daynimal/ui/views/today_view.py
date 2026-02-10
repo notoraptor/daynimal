@@ -2,6 +2,7 @@
 
 import asyncio
 import traceback
+import webbrowser
 from typing import Callable
 
 import flet as ft
@@ -277,6 +278,63 @@ class TodayView(BaseView):
             ),
         )
 
+        # Share buttons row
+        share_buttons = []
+
+        # Copy text button
+        share_buttons.append(
+            ft.IconButton(
+                icon=ft.Icons.CONTENT_COPY,
+                icon_size=24,
+                tooltip="Copier le texte",
+                on_click=self._on_copy_text,
+            )
+        )
+
+        # Open Wikipedia button (disabled if no Wikipedia article)
+        has_wikipedia = animal.wikipedia is not None
+        share_buttons.append(
+            ft.IconButton(
+                icon=ft.Icons.LANGUAGE,
+                icon_size=24,
+                tooltip="Ouvrir Wikipedia",
+                on_click=self._on_open_wikipedia if has_wikipedia else None,
+                disabled=not has_wikipedia,
+            )
+        )
+
+        # Copy image path button (disabled if no cached image)
+        has_cached_image = False
+        if animal.images and self.app_state and self.app_state.image_cache:
+            first_image = animal.images[0]
+            url = first_image.thumbnail_url or first_image.url
+            local_path = self.app_state.image_cache.get_local_path(url)
+            has_cached_image = local_path is not None
+
+        share_buttons.append(
+            ft.IconButton(
+                icon=ft.Icons.IMAGE,
+                icon_size=24,
+                tooltip="Copier le chemin de l'image",
+                on_click=self._on_copy_image if has_cached_image else None,
+                disabled=not has_cached_image,
+            )
+        )
+
+        controls.insert(
+            first_divider_index + 1,
+            ft.Container(
+                content=ft.Row(
+                    controls=[
+                        ft.Text("Partager :", size=14, weight=ft.FontWeight.BOLD),
+                        *share_buttons,
+                    ],
+                    spacing=5,
+                ),
+                padding=ft.Padding(top=0, bottom=10, left=0, right=0),
+            ),
+        )
+
         # Add images section with carousel
         controls.append(ft.Divider())
         controls.append(ft.Text("Images", size=20, weight=ft.FontWeight.BOLD))
@@ -321,3 +379,53 @@ class TodayView(BaseView):
         # Redraw to update carousel
         if self.current_animal:
             self._display_animal(self.current_animal)
+
+    @staticmethod
+    def _build_share_text(animal: AnimalInfo) -> str:
+        """Build formatted share text for an animal."""
+        scientific = animal.taxon.canonical_name or animal.taxon.scientific_name
+        lines = [f"{animal.display_name} ({scientific})"]
+
+        description = animal.description
+        if description:
+            if len(description) > 200:
+                description = description[:197] + "..."
+            lines.append(description)
+
+        if animal.wikipedia:
+            lines.append(f"\n{animal.wikipedia.article_url}")
+
+        lines.append(
+            "\nVia Daynimal — Sources : GBIF (CC-BY 4.0), Wikipedia (CC-BY-SA 4.0)"
+        )
+
+        return "\n".join(lines)
+
+    async def _on_copy_text(self, e):
+        """Copy formatted animal text to clipboard."""
+        if not self.current_animal:
+            return
+        text = self._build_share_text(self.current_animal)
+        self.page.set_clipboard(text)
+        self.page.open(ft.SnackBar(content=ft.Text("Texte copié !")))
+        self.page.update()
+
+    def _on_open_wikipedia(self, e):
+        """Open Wikipedia article in default browser."""
+        if not self.current_animal or not self.current_animal.wikipedia:
+            return
+        webbrowser.open(self.current_animal.wikipedia.article_url)
+
+    async def _on_copy_image(self, e):
+        """Copy local image path to clipboard."""
+        if not self.current_animal or not self.current_animal.images:
+            return
+        if not self.app_state or not self.app_state.image_cache:
+            return
+        first_image = self.current_animal.images[0]
+        url = first_image.thumbnail_url or first_image.url
+        local_path = self.app_state.image_cache.get_local_path(url)
+        if local_path:
+            self.page.set_clipboard(str(local_path))
+            self.page.open(ft.SnackBar(content=ft.Text("Chemin de l'image copié !")))
+            self.page.update()
