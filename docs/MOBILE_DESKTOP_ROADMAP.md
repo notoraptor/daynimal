@@ -264,7 +264,7 @@ Architecture modulaire complete dans `daynimal/ui/` :
 
 ### Tests — ✅ Achievements exceptionnels
 
-**Couverture actuelle : 55%** — **438 tests passent** (vs ~50 tests initiaux)
+**Couverture actuelle : 55%** — **455 tests passent** (vs ~50 tests initiaux)
 
 **🎉 Succès Phase 2a - Tests critiques (Fév 2026)**
 - **attribution.py** : 0% → **100%** (75 tests, compliance légale garantie)
