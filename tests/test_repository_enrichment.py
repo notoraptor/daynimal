@@ -7,17 +7,14 @@ of AnimalRepository, including cache retrieval, API fetching, and utilities.
 
 import pytest
 import json
-from datetime import datetime, UTC
 from unittest.mock import patch, MagicMock
 
 from daynimal.repository import AnimalRepository, remove_accents
 from daynimal.schemas import (
     AnimalInfo,
-    Taxon,
     WikidataEntity,
     WikipediaArticle,
     CommonsImage,
-    TaxonomicRank,
     License,
 )
 from daynimal.db.models import TaxonModel, EnrichmentCacheModel
@@ -41,7 +38,7 @@ def test_enrich_already_enriched(populated_session, sync_executor):
     animal = AnimalInfo(taxon=taxon, is_enriched=True)
 
     with patch.object(repo, "_get_cached_wikidata") as mock_cached_wd:
-        with patch.object(repo, "_fetch_and_cache_wikidata") as mock_fetch_wd:
+        with patch.object(repo, "_fetch_and_cache_wikidata"):
             repo._enrich(animal, taxon_model)
 
             # Should not fetch if already enriched (but will check cache)
@@ -95,8 +92,12 @@ def test_enrich_thread_safety(populated_session, sync_executor):
         with patch.object(repo, "_get_cached_wikipedia", return_value=None):
             with patch.object(repo, "_get_cached_images", return_value=[]):
                 with patch.object(repo, "_fetch_and_cache_wikidata", return_value=None):
-                    with patch.object(repo, "_fetch_and_cache_wikipedia", return_value=None):
-                        with patch.object(repo, "_fetch_and_cache_images", return_value=[]):
+                    with patch.object(
+                        repo, "_fetch_and_cache_wikipedia", return_value=None
+                    ):
+                        with patch.object(
+                            repo, "_fetch_and_cache_images", return_value=[]
+                        ):
                             # Verify lock exists
                             assert hasattr(repo, "_session_lock")
                             repo._enrich(animal, taxon_model)
@@ -115,10 +116,18 @@ def test_enrich_session_rollback_on_error(populated_session, sync_executor):
         with patch.object(repo, "_get_cached_wikipedia", return_value=None):
             with patch.object(repo, "_get_cached_images", return_value=[]):
                 with patch.object(repo, "_fetch_and_cache_wikidata", return_value=None):
-                    with patch.object(repo, "_fetch_and_cache_wikipedia", return_value=None):
-                        with patch.object(repo, "_fetch_and_cache_images", return_value=[]):
+                    with patch.object(
+                        repo, "_fetch_and_cache_wikipedia", return_value=None
+                    ):
+                        with patch.object(
+                            repo, "_fetch_and_cache_images", return_value=[]
+                        ):
                             # Mock commit to raise error
-                            with patch.object(populated_session, "commit", side_effect=Exception("DB error")):
+                            with patch.object(
+                                populated_session,
+                                "commit",
+                                side_effect=Exception("DB error"),
+                            ):
                                 # Exception should propagate when commit fails
                                 with pytest.raises(Exception, match="DB error"):
                                     repo._enrich(animal, taxon_model)
@@ -168,9 +177,17 @@ def test_enrich_all_apis_fail(populated_session, sync_executor):
     with patch.object(repo, "_get_cached_wikidata", return_value=None):
         with patch.object(repo, "_get_cached_wikipedia", return_value=None):
             with patch.object(repo, "_get_cached_images", return_value=[]):
-                with patch.object(repo, "_fetch_and_cache_wikidata", side_effect=Exception("API down")):
-                    with patch.object(repo, "_fetch_and_cache_wikipedia", side_effect=Exception("API down")):
-                        with patch.object(repo, "_fetch_and_cache_images", return_value=[]):
+                with patch.object(
+                    repo, "_fetch_and_cache_wikidata", side_effect=Exception("API down")
+                ):
+                    with patch.object(
+                        repo,
+                        "_fetch_and_cache_wikipedia",
+                        side_effect=Exception("API down"),
+                    ):
+                        with patch.object(
+                            repo, "_fetch_and_cache_images", return_value=[]
+                        ):
                             # Should not raise, just fail silently
                             repo._enrich(animal, taxon_model)
 
@@ -180,7 +197,9 @@ def test_enrich_all_apis_fail(populated_session, sync_executor):
                             assert animal.images == []
 
 
-def test_enrich_wikidata_fails_wikipedia_succeeds(populated_session, mock_enrichment_data, sync_executor):
+def test_enrich_wikidata_fails_wikipedia_succeeds(
+    populated_session, mock_enrichment_data, sync_executor
+):
     """Wikidata échoue, Wikipedia réussit."""
     repo = AnimalRepository(session=populated_session)
 
@@ -191,9 +210,15 @@ def test_enrich_wikidata_fails_wikipedia_succeeds(populated_session, mock_enrich
     with patch.object(repo, "_get_cached_wikidata", return_value=None):
         with patch.object(repo, "_get_cached_wikipedia", return_value=None):
             with patch.object(repo, "_get_cached_images", return_value=[]):
-                with patch.object(repo, "_fetch_and_cache_wikidata", side_effect=Exception("Wikidata down")):
+                with patch.object(
+                    repo,
+                    "_fetch_and_cache_wikidata",
+                    side_effect=Exception("Wikidata down"),
+                ):
                     with patch.object(repo, "_fetch_and_cache_wikipedia") as mock_wp:
-                        with patch.object(repo, "_fetch_and_cache_images", return_value=[]):
+                        with patch.object(
+                            repo, "_fetch_and_cache_images", return_value=[]
+                        ):
                             mock_wp.return_value = mock_enrichment_data["wikipedia"]
                             animal.wikipedia = mock_enrichment_data["wikipedia"]
 
@@ -203,7 +228,9 @@ def test_enrich_wikidata_fails_wikipedia_succeeds(populated_session, mock_enrich
                             assert animal.wikipedia is not None
 
 
-def test_enrich_wikipedia_fails_wikidata_succeeds(populated_session, mock_enrichment_data, sync_executor):
+def test_enrich_wikipedia_fails_wikidata_succeeds(
+    populated_session, mock_enrichment_data, sync_executor
+):
     """Wikipedia échoue, Wikidata réussit."""
     repo = AnimalRepository(session=populated_session)
 
@@ -215,8 +242,14 @@ def test_enrich_wikipedia_fails_wikidata_succeeds(populated_session, mock_enrich
         with patch.object(repo, "_get_cached_wikipedia", return_value=None):
             with patch.object(repo, "_get_cached_images", return_value=[]):
                 with patch.object(repo, "_fetch_and_cache_wikidata") as mock_wd:
-                    with patch.object(repo, "_fetch_and_cache_wikipedia", side_effect=Exception("Wikipedia down")):
-                        with patch.object(repo, "_fetch_and_cache_images", return_value=[]):
+                    with patch.object(
+                        repo,
+                        "_fetch_and_cache_wikipedia",
+                        side_effect=Exception("Wikipedia down"),
+                    ):
+                        with patch.object(
+                            repo, "_fetch_and_cache_images", return_value=[]
+                        ):
                             mock_wd.return_value = mock_enrichment_data["wikidata"]
                             animal.wikidata = mock_enrichment_data["wikidata"]
 
@@ -238,8 +271,12 @@ def test_enrich_images_fail(populated_session, sync_executor):
         with patch.object(repo, "_get_cached_wikipedia", return_value=None):
             with patch.object(repo, "_get_cached_images", return_value=[]):
                 with patch.object(repo, "_fetch_and_cache_wikidata", return_value=None):
-                    with patch.object(repo, "_fetch_and_cache_wikipedia", return_value=None):
-                        with patch.object(repo, "_fetch_and_cache_images", return_value=[]):
+                    with patch.object(
+                        repo, "_fetch_and_cache_wikipedia", return_value=None
+                    ):
+                        with patch.object(
+                            repo, "_fetch_and_cache_images", return_value=[]
+                        ):
                             # Should not crash (images API fails gracefully)
                             repo._enrich(animal, taxon_model)
 
@@ -297,9 +334,7 @@ def test_get_cached_wikidata_corrupted(populated_session):
 
     # Add corrupted cache
     corrupted_cache = EnrichmentCacheModel(
-        taxon_id=1,
-        source="wikidata",
-        data="{invalid json",
+        taxon_id=1, source="wikidata", data="{invalid json"
     )
     populated_session.add(corrupted_cache)
     populated_session.commit()
@@ -333,9 +368,7 @@ def test_get_cached_wikipedia_json_corrupted(populated_session):
 
     # Add corrupted cache
     corrupted_cache = EnrichmentCacheModel(
-        taxon_id=1,
-        source="wikipedia",
-        data="{not valid json",
+        taxon_id=1, source="wikipedia", data="{not valid json"
     )
     populated_session.add(corrupted_cache)
     populated_session.commit()
@@ -436,7 +469,9 @@ def test_fetch_and_cache_wikidata_exception(populated_session):
     """Exception loggée → None retourné."""
     repo = AnimalRepository(session=populated_session)
 
-    with patch.object(repo.wikidata, "get_by_taxonomy", side_effect=Exception("API error")):
+    with patch.object(
+        repo.wikidata, "get_by_taxonomy", side_effect=Exception("API error")
+    ):
         with patch.object(repo, "_save_cache") as mock_save:
             result = repo._fetch_and_cache_wikidata(1, "Test species")
 
@@ -444,19 +479,23 @@ def test_fetch_and_cache_wikidata_exception(populated_session):
             assert not mock_save.called
 
 
-def test_fetch_and_cache_wikidata_cache_verification(populated_session, mock_enrichment_data):
+def test_fetch_and_cache_wikidata_cache_verification(
+    populated_session, mock_enrichment_data
+):
     """Vérifier cache JSON correct dans DB."""
     repo = AnimalRepository(session=populated_session)
 
     with patch.object(repo.wikidata, "get_by_taxonomy") as mock_api:
         mock_api.return_value = mock_enrichment_data["wikidata"]
 
-        result = repo._fetch_and_cache_wikidata(1, "Test species")
+        repo._fetch_and_cache_wikidata(1, "Test species")
 
         # Verify cache was saved
-        cache = populated_session.query(EnrichmentCacheModel).filter_by(
-            taxon_id=1, source="wikidata"
-        ).first()
+        cache = (
+            populated_session.query(EnrichmentCacheModel)
+            .filter_by(taxon_id=1, source="wikidata")
+            .first()
+        )
 
         assert cache is not None
         assert "Q144" in cache.data
@@ -492,25 +531,31 @@ def test_fetch_and_cache_wikipedia_exception(populated_session):
     """Exception loggée → None retourné."""
     repo = AnimalRepository(session=populated_session)
 
-    with patch.object(repo.wikipedia, "get_by_taxonomy", side_effect=Exception("API error")):
+    with patch.object(
+        repo.wikipedia, "get_by_taxonomy", side_effect=Exception("API error")
+    ):
         result = repo._fetch_and_cache_wikipedia(1, "Test species")
 
         assert result is None
 
 
-def test_fetch_and_cache_wikipedia_cache_verification(populated_session, mock_enrichment_data):
+def test_fetch_and_cache_wikipedia_cache_verification(
+    populated_session, mock_enrichment_data
+):
     """Vérifier cache JSON correct dans DB."""
     repo = AnimalRepository(session=populated_session)
 
     with patch.object(repo.wikipedia, "get_by_taxonomy") as mock_api:
         mock_api.return_value = mock_enrichment_data["wikipedia"]
 
-        result = repo._fetch_and_cache_wikipedia(1, "Test species")
+        repo._fetch_and_cache_wikipedia(1, "Test species")
 
         # Verify cache
-        cache = populated_session.query(EnrichmentCacheModel).filter_by(
-            taxon_id=1, source="wikipedia"
-        ).first()
+        cache = (
+            populated_session.query(EnrichmentCacheModel)
+            .filter_by(taxon_id=1, source="wikipedia")
+            .first()
+        )
 
         assert cache is not None
         assert "Dog" in cache.data
@@ -533,7 +578,9 @@ def test_fetch_and_cache_images_from_wikidata(populated_session, mock_enrichment
         assert mock_api.call_args[0][0] == "Q144"
 
 
-def test_fetch_and_cache_images_fallback_search(populated_session, mock_enrichment_data):
+def test_fetch_and_cache_images_fallback_search(
+    populated_session, mock_enrichment_data
+):
     """Pas de QID → recherche par nom."""
     repo = AnimalRepository(session=populated_session)
 
@@ -566,7 +613,9 @@ def test_fetch_and_cache_images_exception(populated_session):
     """Exception → [] retourné."""
     repo = AnimalRepository(session=populated_session)
 
-    with patch.object(repo.commons, "get_by_taxonomy", side_effect=Exception("API error")):
+    with patch.object(
+        repo.commons, "get_by_taxonomy", side_effect=Exception("API error")
+    ):
         result = repo._fetch_and_cache_images(1, "Test species", None)
 
         assert result == []
@@ -586,9 +635,11 @@ def test_save_cache_new_entry(populated_session):
     repo._save_cache(1, "wikidata", data)
 
     # Verify entry was created
-    cache = populated_session.query(EnrichmentCacheModel).filter_by(
-        taxon_id=1, source="wikidata"
-    ).first()
+    cache = (
+        populated_session.query(EnrichmentCacheModel)
+        .filter_by(taxon_id=1, source="wikidata")
+        .first()
+    )
 
     assert cache is not None
     assert "Q123" in cache.data
@@ -599,11 +650,7 @@ def test_save_cache_update_existing(populated_session):
     repo = AnimalRepository(session=populated_session)
 
     # Create initial entry
-    cache = EnrichmentCacheModel(
-        taxon_id=1,
-        source="wikidata",
-        data='{"old": "data"}',
-    )
+    cache = EnrichmentCacheModel(taxon_id=1, source="wikidata", data='{"old": "data"}')
     populated_session.add(cache)
     populated_session.commit()
 
@@ -612,9 +659,11 @@ def test_save_cache_update_existing(populated_session):
     repo._save_cache(1, "wikidata", new_data)
 
     # Verify updated
-    updated_cache = populated_session.query(EnrichmentCacheModel).filter_by(
-        taxon_id=1, source="wikidata"
-    ).first()
+    updated_cache = (
+        populated_session.query(EnrichmentCacheModel)
+        .filter_by(taxon_id=1, source="wikidata")
+        .first()
+    )
 
     assert "new" in updated_cache.data
     assert "old" not in updated_cache.data
@@ -663,9 +712,11 @@ def test_save_cache_list_serialization(populated_session):
     repo._save_cache(1, "images", data)
 
     # Verify list was serialized
-    cache = populated_session.query(EnrichmentCacheModel).filter_by(
-        taxon_id=1, source="images"
-    ).first()
+    cache = (
+        populated_session.query(EnrichmentCacheModel)
+        .filter_by(taxon_id=1, source="images")
+        .first()
+    )
 
     assert cache is not None
     deserialized = json.loads(cache.data)
@@ -685,9 +736,7 @@ def test_to_dict_dataclass(populated_session):
     from daynimal.schemas import WikidataEntity
 
     entity = WikidataEntity(
-        qid="Q123",
-        labels={"en": "Test"},
-        descriptions={"en": "Description"},
+        qid="Q123", labels={"en": "Test"}, descriptions={"en": "Description"}
     )
 
     result = repo._to_dict(entity)
@@ -701,12 +750,10 @@ def test_to_dict_enum_handling(populated_session):
     """Enum → .value."""
     repo = AnimalRepository(session=populated_session)
 
-    from daynimal.schemas import CommonsImage, License
+    from daynimal.schemas import CommonsImage
 
     image = CommonsImage(
-        filename="test.jpg",
-        url="https://example.com/test.jpg",
-        license=License.CC_BY,
+        filename="test.jpg", url="https://example.com/test.jpg", license=License.CC_BY
     )
 
     result = repo._to_dict(image)
@@ -823,6 +870,7 @@ def test_get_stats_all_enriched(populated_session):
 
     # Mark all species as enriched
     from daynimal.db.models import TaxonModel
+
     populated_session.query(TaxonModel).filter_by(rank="species").update(
         {"is_enriched": True}
     )

@@ -27,7 +27,9 @@ class ImageCacheService:
     ):
         self._session = session
         self._cache_dir = cache_dir or settings.image_cache_dir
-        self._max_size_bytes = (max_size_mb or settings.image_cache_max_size_mb) * 1024 * 1024
+        self._max_size_bytes = (
+            (max_size_mb or settings.image_cache_max_size_mb) * 1024 * 1024
+        )
         self._cache_hd = cache_hd if cache_hd is not None else settings.image_cache_hd
         self._client: httpx.Client | None = None
         self._cache_dir.mkdir(parents=True, exist_ok=True)

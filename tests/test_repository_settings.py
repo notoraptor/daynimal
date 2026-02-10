@@ -5,7 +5,6 @@ This module tests the key-value settings storage:
 get_setting, set_setting.
 """
 
-import pytest
 from unittest.mock import patch
 
 from daynimal.repository import AnimalRepository
@@ -75,7 +74,9 @@ def test_set_setting_new(populated_session):
     repo.set_setting("new_key", "new_value")
 
     # Verify it's in database
-    setting = populated_session.query(UserSettingsModel).filter_by(key="new_key").first()
+    setting = (
+        populated_session.query(UserSettingsModel).filter_by(key="new_key").first()
+    )
     assert setting is not None
     assert setting.value == "new_value"
 

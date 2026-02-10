@@ -5,11 +5,10 @@ This module tests the CRUD operations for favorites:
 add_favorite, remove_favorite, is_favorite, get_favorites, get_favorites_count.
 """
 
-import pytest
 from unittest.mock import patch
 
 from daynimal.repository import AnimalRepository
-from daynimal.db.models import FavoriteModel, TaxonModel
+from daynimal.db.models import FavoriteModel
 
 
 # =============================================================================
@@ -224,6 +223,7 @@ def test_get_favorites_basic(populated_session):
     assert total == 3
     # All should be AnimalInfo objects
     from daynimal.schemas import AnimalInfo
+
     assert all(isinstance(f, AnimalInfo) for f in favorites)
 
 
@@ -322,6 +322,7 @@ def test_get_favorites_large_dataset(populated_session):
 
     # Should handle large dataset efficiently
     import time
+
     start = time.time()
     favorites, total = repo.get_favorites(page=1, per_page=50)
     duration = time.time() - start

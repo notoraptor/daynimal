@@ -18,12 +18,7 @@ from daynimal.schemas import (
     ConservationStatus,
     License,
 )
-from daynimal.main import (
-    cmd_today,
-    cmd_random,
-    cmd_history,
-    print_animal,
-)
+from daynimal.main import cmd_today, cmd_random, cmd_history, print_animal
 
 
 def capture_stdout(func, *args, **kwargs):
@@ -78,7 +73,7 @@ def _make_enriched_animal():
             thumbnail_url="https://upload.wikimedia.org/thumb/wolf1.jpg",
             author="Photographer1",
             license=License.CC_BY_SA,
-        ),
+        )
     ]
 
     return AnimalInfo(

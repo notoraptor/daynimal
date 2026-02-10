@@ -15,6 +15,7 @@ import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, UTC
 
+import httpx
 from sqlalchemy import func, or_, text
 from sqlalchemy.orm import Session
 
@@ -34,6 +35,7 @@ from daynimal.schemas import (
     WikipediaArticle,
     CommonsImage,
 )
+from daynimal.connectivity import ConnectivityService
 from daynimal.image_cache import ImageCacheService
 from daynimal.sources.wikidata import WikidataAPI
 from daynimal.sources.wikipedia import WikipediaAPI
@@ -69,6 +71,7 @@ class AnimalRepository:
         self._wikidata: WikidataAPI | None = None
         self._wikipedia: WikipediaAPI | None = None
         self._commons: CommonsAPI | None = None
+        self.connectivity = ConnectivityService()
         self.image_cache = ImageCacheService(session=self.session)
 
     @property
@@ -482,6 +485,16 @@ class AnimalRepository:
         """
         scientific_name = animal.taxon.canonical_name or animal.taxon.scientific_name
 
+        # Skip network enrichment if offline
+        if not self.connectivity.is_online:
+            logger.info(f"Offline: skipping API enrichment for {scientific_name}")
+            # Still load cached data
+            animal.wikidata = self._get_cached_wikidata(taxon_model.taxon_id)
+            animal.wikipedia = self._get_cached_wikipedia(taxon_model.taxon_id)
+            animal.images = self._get_cached_images(taxon_model.taxon_id)
+            animal.is_enriched = taxon_model.is_enriched
+            return
+
         # Try to load from cache first
         animal.wikidata = self._get_cached_wikidata(taxon_model.taxon_id)
         animal.wikipedia = self._get_cached_wikipedia(taxon_model.taxon_id)
@@ -601,6 +614,10 @@ class AnimalRepository:
             if entity:
                 self._save_cache(taxon_id, "wikidata", entity)
             return entity
+        except httpx.RequestError:
+            self.connectivity.set_offline()
+            logger.warning(f"Network error fetching Wikidata for {scientific_name}")
+            return None
         except Exception as e:
             logger.warning(f"Error fetching Wikidata for {scientific_name}: {e}")
             return None
@@ -614,6 +631,10 @@ class AnimalRepository:
             if article:
                 self._save_cache(taxon_id, "wikipedia", article)
             return article
+        except httpx.RequestError:
+            self.connectivity.set_offline()
+            logger.warning(f"Network error fetching Wikipedia for {scientific_name}")
+            return None
         except Exception as e:
             logger.warning(f"Error fetching Wikipedia for {scientific_name}: {e}")
             return None
@@ -641,6 +662,10 @@ class AnimalRepository:
                     logger.warning(f"Error caching images locally: {e}")
 
             return images
+        except httpx.RequestError:
+            self.connectivity.set_offline()
+            logger.warning(f"Network error fetching Commons for {scientific_name}")
+            return []
         except Exception as e:
             logger.warning(f"Error fetching Commons images for {scientific_name}: {e}")
             return []

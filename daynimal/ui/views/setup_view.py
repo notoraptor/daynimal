@@ -110,9 +110,7 @@ class SetupView(BaseView):
             self.error_container.controls = [
                 ft.Icon(ft.Icons.ERROR, size=40, color=ft.Colors.ERROR),
                 ft.Text(
-                    "Erreur lors de l'installation",
-                    size=18,
-                    color=ft.Colors.ERROR,
+                    "Erreur lors de l'installation", size=18, color=ft.Colors.ERROR
                 ),
                 ft.Text(str(error), size=12, color=ft.Colors.GREY_600),
                 ft.ElevatedButton(

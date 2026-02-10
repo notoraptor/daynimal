@@ -5,9 +5,8 @@ This module tests the query and retrieval methods of AnimalRepository,
 including get_by_id, get_by_name, search (FTS5 and fallback), and random selection.
 """
 
-import pytest
 from datetime import datetime
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from daynimal.repository import AnimalRepository
 from daynimal.schemas import TaxonomicRank
@@ -126,7 +125,10 @@ def test_get_by_name_case_sensitivity(populated_session):
 
     # Case-different query may or may not work (depends on SQLite collation)
     # We just verify the API doesn't crash
-    assert animal_lower is None or animal_lower.taxon.taxon_id == animal_exact.taxon.taxon_id
+    assert (
+        animal_lower is None
+        or animal_lower.taxon.taxon_id == animal_exact.taxon.taxon_id
+    )
 
 
 def test_get_by_name_with_enrichment(populated_session):
@@ -300,7 +302,9 @@ def test_get_random_prefer_unenriched(populated_session):
         unenriched_found = False
 
         for _ in range(10):
-            animal = repo.get_random(rank="species", prefer_unenriched=True, enrich=False)
+            animal = repo.get_random(
+                rank="species", prefer_unenriched=True, enrich=False
+            )
 
             if animal and not animal.is_enriched:
                 unenriched_found = True
@@ -325,11 +329,17 @@ def test_get_random_fallback_to_any(populated_session):
             return None
         else:
             # Second call (any) returns first species
-            return populated_session.query(TaxonModel).filter(TaxonModel.rank == "species").first()
+            return (
+                populated_session.query(TaxonModel)
+                .filter(TaxonModel.rank == "species")
+                .first()
+            )
 
     with patch.object(repo, "_get_random_by_id_range", side_effect=mock_get_random):
         with patch.object(repo, "_enrich"):
-            animal = repo.get_random(rank="species", prefer_unenriched=True, enrich=False)
+            animal = repo.get_random(
+                rank="species", prefer_unenriched=True, enrich=False
+            )
 
             # Should have tried unenriched first, then fallback
             assert call_count[0] >= 2

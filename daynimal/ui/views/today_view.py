@@ -35,6 +35,7 @@ class TodayView(BaseView):
         """
         super().__init__(page, app_state, debugger)
         self.on_favorite_toggle_callback = on_favorite_toggle
+        self.on_load_complete: Callable[[], None] | None = None
         self.today_animal_container = ft.Column(controls=[], spacing=10)
         self.current_animal: AnimalInfo | None = None
         self.current_image_index = 0
@@ -186,6 +187,10 @@ class TodayView(BaseView):
 
             # Display animal in Today view
             self._display_animal(animal)
+
+            # Notify controller (e.g. to update offline banner)
+            if self.on_load_complete:
+                self.on_load_complete()
 
         except Exception as error:
             # Log error with full traceback

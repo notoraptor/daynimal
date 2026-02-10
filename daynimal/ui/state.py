@@ -50,6 +50,13 @@ class AppState:
             with self._repo_lock:
                 if self._repository is None:
                     self._repository = AnimalRepository()
+                    # Restore forced offline setting
+                    force_offline = self._repository.get_setting(
+                        "force_offline", "false"
+                    )
+                    self._repository.connectivity.force_offline = (
+                        force_offline == "true"
+                    )
         return self._repository
 
     def close_repository(self):
@@ -61,6 +68,11 @@ class AppState:
             if self._repository:
                 self._repository.close()
                 self._repository = None
+
+    @property
+    def is_online(self) -> bool:
+        """Return current network connectivity state."""
+        return self.repository.connectivity.is_online
 
     def reset_animal_display(self):
         """Reset animal display state (used when loading new animal)."""

@@ -347,23 +347,17 @@ def generate():
                 md.write("```python\n")
                 for dec in info["decorators"]:
                     md.write(f"{dec}\n")
-                bases_str = (
-                    f"({', '.join(info['bases'])})" if info["bases"] else ""
-                )
+                bases_str = f"({', '.join(info['bases'])})" if info["bases"] else ""
                 md.write(f"class {cls_name}{bases_str}")
                 if info["doc"]:
                     md.write(f"  # {info['doc']}")
                 md.write("\n")
-                for method_info, method_calls in zip(
-                    info["methods"], info["calls"]
-                ):
+                for method_info, method_calls in zip(info["methods"], info["calls"]):
                     for dec in method_info["decorators"]:
                         md.write(f"    {dec}\n")
                     md.write(f"    {method_info['signature']}\n")
                     if method_calls:
-                        md.write(
-                            f"    # calls: {', '.join(method_calls)}\n"
-                        )
+                        md.write(f"    # calls: {', '.join(method_calls)}\n")
                 md.write("```\n")
             # functions
             for func_info in sigs["functions"]:
@@ -380,9 +374,7 @@ def generate():
         md.write("\n## 6. High-Coupling Modules (Risk Zones)\n")
         if hubs:
             for h in hubs:
-                md.write(
-                    f"- {h} ({len(internal_deps[h])} internal dependencies)\n"
-                )
+                md.write(f"- {h} ({len(internal_deps[h])} internal dependencies)\n")
         else:
             md.write("- No obvious high-coupling modules detected\n")
 

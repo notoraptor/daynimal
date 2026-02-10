@@ -34,7 +34,7 @@ def _get_db_path_from_url() -> Path:
     url = settings.database_url
     # "sqlite:///daynimal.db" -> "daynimal.db"
     if url.startswith("sqlite:///"):
-        return Path(url[len("sqlite:///"):])
+        return Path(url[len("sqlite:///") :])
     return Path(url)
 
 
@@ -73,8 +73,7 @@ def save_db_config(db_path: Path) -> None:
     """
     config_path = _get_config_file_path()
     config_path.write_text(
-        json.dumps({"database_path": str(db_path)}, indent=2),
-        encoding="utf-8",
+        json.dumps({"database_path": str(db_path)}, indent=2), encoding="utf-8"
     )
 
 
@@ -157,9 +156,7 @@ def download_file(
     return dest
 
 
-def download_and_setup_db(
-    progress_callback: Optional[ProgressCallback] = None,
-) -> None:
+def download_and_setup_db(progress_callback: Optional[ProgressCallback] = None) -> None:
     """Download distribution files and build the minimal database.
 
     Args:
@@ -182,11 +179,13 @@ def download_and_setup_db(
 
     def _download_progress(stage: str):
         """Return a download progress callback for a given stage."""
+
         def callback(downloaded: int, total: Optional[int]):
             if total:
                 _progress(stage, downloaded / total)
             else:
                 _progress(stage, None)
+
         return callback
 
     try:
@@ -206,11 +205,11 @@ def download_and_setup_db(
         _progress("download_taxa", 0.0)
         taxa_gz_path = tmp_dir / taxa_gz
         download_file(
-            f"{base_url}/{taxa_gz}",
-            taxa_gz_path,
-            _download_progress("download_taxa"),
+            f"{base_url}/{taxa_gz}", taxa_gz_path, _download_progress("download_taxa")
         )
-        if taxa_gz in checksums and not verify_checksum(taxa_gz_path, checksums[taxa_gz]):
+        if taxa_gz in checksums and not verify_checksum(
+            taxa_gz_path, checksums[taxa_gz]
+        ):
             raise ValueError(f"Checksum mismatch for {taxa_gz}")
 
         # 3. Download vernacular
@@ -222,7 +221,9 @@ def download_and_setup_db(
             vern_gz_path,
             _download_progress("download_vernacular"),
         )
-        if vern_gz in checksums and not verify_checksum(vern_gz_path, checksums[vern_gz]):
+        if vern_gz in checksums and not verify_checksum(
+            vern_gz_path, checksums[vern_gz]
+        ):
             raise ValueError(f"Checksum mismatch for {vern_gz}")
 
         # 4. Decompress
@@ -230,18 +231,23 @@ def download_and_setup_db(
         taxa_tsv_path = tmp_dir / "animalia_taxa_minimal.tsv"
         vern_tsv_path = tmp_dir / "animalia_vernacular_minimal.tsv"
 
-        for gz_path, tsv_path in [(taxa_gz_path, taxa_tsv_path), (vern_gz_path, vern_tsv_path)]:
+        for gz_path, tsv_path in [
+            (taxa_gz_path, taxa_tsv_path),
+            (vern_gz_path, vern_tsv_path),
+        ]:
             with gzip.open(gz_path, "rb") as f_in, open(tsv_path, "wb") as f_out:
                 shutil.copyfileobj(f_in, f_out)
 
         # 5. Build database
         _progress("build_db", None)
         from daynimal.db.build_db import build_database
+
         build_database(taxa_tsv_path, vern_tsv_path, db_filename)
 
         # 6. Init FTS
         _progress("build_fts", None)
         from daynimal.db.init_fts import init_fts
+
         init_fts(db_path=db_filename)
 
         # 7. Save config

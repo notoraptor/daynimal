@@ -6,7 +6,6 @@ Covers search(), get_images_for_wikidata(), error paths, and edge cases.
 
 from daynimal.sources.commons import CommonsAPI
 from daynimal.schemas import License
-from tests.fixtures.commons_responses import COMMONS_NOT_FOUND
 
 
 class TestCommonsSearch:
@@ -37,9 +36,7 @@ class TestCommonsSearch:
                                 "url": "https://upload.wikimedia.org/wolf2.jpg",
                                 "descriptionurl": "https://commons.wikimedia.org/wiki/File:Wolf2.jpg",
                                 "user": "Photographer2",
-                                "extmetadata": {
-                                    "LicenseShortName": {"value": "CC0"}
-                                },
+                                "extmetadata": {"LicenseShortName": {"value": "CC0"}},
                             }
                         ],
                     },
@@ -170,7 +167,9 @@ class TestCommonsGetByTaxonomyFallback:
     ):
         """Test that get_by_taxonomy falls back to search when category search fails."""
         # Mock _search_category to return empty
-        mock_http_client.add_response("categorymembers", {"query": {"categorymembers": []}})
+        mock_http_client.add_response(
+            "categorymembers", {"query": {"categorymembers": []}}
+        )
 
         # Mock general search to return results
         search_response = {
@@ -212,7 +211,7 @@ class TestCommonsGetBySourceIdNotFound:
             "query": {
                 "pages": {
                     "123": {
-                        "title": "File:NoImageInfo.jpg",
+                        "title": "File:NoImageInfo.jpg"
                         # Missing imageinfo
                     }
                 }
@@ -311,7 +310,9 @@ class TestCommonsLicenseParsing:
                                 "descriptionurl": "https://commons.wikimedia.org/wiki/File:Unknown.jpg",
                                 "user": "User",
                                 "extmetadata": {
-                                    "LicenseShortName": {"value": "Some Unknown License"}
+                                    "LicenseShortName": {
+                                        "value": "Some Unknown License"
+                                    }
                                 },
                             }
                         ],

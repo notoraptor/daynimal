@@ -5,19 +5,16 @@ This test module ensures that all attribution functionality works correctly
 to maintain legal compliance with CC-BY, CC-BY-SA, and other licenses.
 """
 
-import pytest
 from datetime import datetime, UTC
 from daynimal.attribution import (
     AttributionInfo,
     DataAttribution,
     GBIF_ATTRIBUTION,
     TAXREF_ATTRIBUTION,
-    WIKIDATA_ATTRIBUTION,
     create_wikidata_attribution,
     create_wikipedia_attribution,
     create_commons_attribution,
     get_app_legal_notice,
-    LEGAL_NOTICE_SHORT,
     LEGAL_NOTICE_FULL,
 )
 from daynimal.schemas import License
@@ -89,9 +86,7 @@ def test_attribution_info_complete():
 def test_attribution_info_defaults():
     """AttributionInfo has correct default values."""
     attr = AttributionInfo(
-        source_name="Test",
-        license=License.CC0,
-        license_url="https://example.com",
+        source_name="Test", license=License.CC0, license_url="https://example.com"
     )
     assert attr.author is None
     assert attr.title is None
@@ -215,11 +210,14 @@ def test_to_text_full_with_author_no_title():
 
 def test_to_text_all_licenses():
     """to_text() works with all license types."""
-    for license_type in [License.CC0, License.CC_BY, License.CC_BY_SA, License.PUBLIC_DOMAIN]:
+    for license_type in [
+        License.CC0,
+        License.CC_BY,
+        License.CC_BY_SA,
+        License.PUBLIC_DOMAIN,
+    ]:
         attr = AttributionInfo(
-            source_name="Test",
-            license=license_type,
-            license_url="https://example.com",
+            source_name="Test", license=license_type, license_url="https://example.com"
         )
         text = attr.to_text()
         assert license_type.value in text
@@ -245,7 +243,9 @@ def test_to_html_complete():
     assert '<a href="https://en.wikipedia.org/wiki/Gray_wolf">Gray wolf</a>' in html
     assert "by Wikipedia contributors" in html
     assert "from Wikipedia" in html
-    assert '<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA</a>' in html
+    assert (
+        '<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA</a>' in html
+    )
     assert "licensed under" in html
     assert "<em>[modified]</em>" in html
 
@@ -331,16 +331,21 @@ def test_to_html_license_link():
     )
     html = attr.to_html()
 
-    assert '<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA</a>' in html
+    assert (
+        '<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC-BY-SA</a>' in html
+    )
 
 
 def test_to_html_all_licenses():
     """to_html() works with all license types."""
-    for license_type in [License.CC0, License.CC_BY, License.CC_BY_SA, License.PUBLIC_DOMAIN]:
+    for license_type in [
+        License.CC0,
+        License.CC_BY,
+        License.CC_BY_SA,
+        License.PUBLIC_DOMAIN,
+    ]:
         attr = AttributionInfo(
-            source_name="Test",
-            license=license_type,
-            license_url="https://example.com",
+            source_name="Test", license=license_type, license_url="https://example.com"
         )
         html = attr.to_html()
         assert license_type.value in html
@@ -382,9 +387,7 @@ def test_attribution_info_long_urls():
     """AttributionInfo handles very long URLs."""
     long_url = "https://example.com/" + "a" * 200
     attr = AttributionInfo(
-        source_name="Test",
-        license=License.CC_BY,
-        license_url=long_url,
+        source_name="Test", license=License.CC_BY, license_url=long_url
     )
     text = attr.to_text()
 
@@ -457,9 +460,7 @@ def test_data_attribution_complete():
     commons_attr = create_commons_attribution("Dog.jpg", "Test Author", License.CC_BY)
 
     data_attr = DataAttribution(
-        wikidata=wikidata_attr,
-        wikipedia=wikipedia_attr,
-        images=[commons_attr],
+        wikidata=wikidata_attr, wikipedia=wikipedia_attr, images=[commons_attr]
     )
 
     assert data_attr.taxonomy == GBIF_ATTRIBUTION
@@ -488,9 +489,7 @@ def test_get_all_ordering_complete():
     image2 = create_commons_attribution("Dog2.jpg", "Author 2", License.CC_BY_SA)
 
     data_attr = DataAttribution(
-        wikidata=wikidata_attr,
-        wikipedia=wikipedia_attr,
-        images=[image1, image2],
+        wikidata=wikidata_attr, wikipedia=wikipedia_attr, images=[image1, image2]
     )
 
     all_attr = data_attr.get_all()
@@ -523,10 +522,7 @@ def test_get_required_attributions_excludes_cc0():
     wikidata_attr = create_wikidata_attribution("Q144")  # CC0
     wikipedia_attr = create_wikipedia_attribution("Dog", "en")  # CC-BY-SA
 
-    data_attr = DataAttribution(
-        wikidata=wikidata_attr,
-        wikipedia=wikipedia_attr,
-    )
+    data_attr = DataAttribution(wikidata=wikidata_attr, wikipedia=wikipedia_attr)
 
     required = data_attr.get_required_attributions()
 
@@ -570,10 +566,7 @@ def test_get_required_attributions_includes_cc_by_sa():
     wikipedia_attr = create_wikipedia_attribution("Test", "en")  # CC-BY-SA
     image = create_commons_attribution("Test.jpg", "Author", License.CC_BY_SA)
 
-    data_attr = DataAttribution(
-        wikipedia=wikipedia_attr,
-        images=[image],
-    )
+    data_attr = DataAttribution(wikipedia=wikipedia_attr, images=[image])
     required = data_attr.get_required_attributions()
 
     assert len(required) == 3  # GBIF + Wikipedia + image
@@ -608,10 +601,7 @@ def test_to_text_multiple_sources():
     wikidata_attr = create_wikidata_attribution("Q144")
     wikipedia_attr = create_wikipedia_attribution("Dog", "en")
 
-    data_attr = DataAttribution(
-        wikidata=wikidata_attr,
-        wikipedia=wikipedia_attr,
-    )
+    data_attr = DataAttribution(wikidata=wikidata_attr, wikipedia=wikipedia_attr)
     text = data_attr.to_text()
 
     assert "GBIF" in text
@@ -640,7 +630,7 @@ def test_to_html_multiple_sources():
 
     assert "GBIF" in html
     assert "Wikipedia" in html
-    assert '<a href=' in html
+    assert "<a href=" in html
 
 
 def test_to_html_images():
@@ -911,9 +901,7 @@ def test_integration_complete_attribution_chain():
 
     # Create DataAttribution
     data_attr = DataAttribution(
-        wikidata=wikidata_attr,
-        wikipedia=wikipedia_attr,
-        images=[image1, image2],
+        wikidata=wikidata_attr, wikipedia=wikipedia_attr, images=[image1, image2]
     )
 
     # Export text
@@ -959,7 +947,9 @@ def test_integration_required_vs_all_attributions():
     required_attr = data_attr.get_required_attributions()
 
     assert len(all_attr) == 5  # GBIF + Wikidata + Wikipedia + 2 images
-    assert len(required_attr) == 3  # GBIF + Wikipedia + CC-BY image (excludes Wikidata CC0 and CC0 image)
+    assert (
+        len(required_attr) == 3
+    )  # GBIF + Wikipedia + CC-BY image (excludes Wikidata CC0 and CC0 image)
 
 
 def test_integration_attribution_consistency_text_vs_html():
@@ -967,10 +957,7 @@ def test_integration_attribution_consistency_text_vs_html():
     wikipedia_attr = create_wikipedia_attribution("Test Article", "en")
     image = create_commons_attribution("Test.jpg", "Test Author", License.CC_BY)
 
-    data_attr = DataAttribution(
-        wikipedia=wikipedia_attr,
-        images=[image],
-    )
+    data_attr = DataAttribution(wikipedia=wikipedia_attr, images=[image])
 
     text = data_attr.to_text()
     html = data_attr.to_html()
@@ -988,15 +975,19 @@ def test_integration_real_world_animal_all_sources():
     wikidata_attr = create_wikidata_attribution("Q18498")  # Wolf
     wikipedia_attr = create_wikipedia_attribution("Gray wolf", "en", modified=True)
     images = [
-        create_commons_attribution("Canis lupus 1.jpg", "John Photographer", License.CC_BY_SA),
-        create_commons_attribution("Canis lupus 2.jpg", "Jane Photographer", License.CC_BY),
-        create_commons_attribution("Canis lupus 3.jpg", None, License.CC_BY),  # Unknown author
+        create_commons_attribution(
+            "Canis lupus 1.jpg", "John Photographer", License.CC_BY_SA
+        ),
+        create_commons_attribution(
+            "Canis lupus 2.jpg", "Jane Photographer", License.CC_BY
+        ),
+        create_commons_attribution(
+            "Canis lupus 3.jpg", None, License.CC_BY
+        ),  # Unknown author
     ]
 
     data_attr = DataAttribution(
-        wikidata=wikidata_attr,
-        wikipedia=wikipedia_attr,
-        images=images,
+        wikidata=wikidata_attr, wikipedia=wikipedia_attr, images=images
     )
 
     # Verify all sources present
@@ -1014,7 +1005,7 @@ def test_integration_real_world_animal_all_sources():
 
     # Verify HTML output
     html = data_attr.to_html()
-    assert '<a href=' in html
+    assert "<a href=" in html
     assert "Gray_wolf" in html  # URL format
     assert "<em>[modified]</em>" in html
 
@@ -1046,11 +1037,7 @@ def test_integration_data_attribution_immutable_after_creation():
     wikipedia = create_wikipedia_attribution("Test", "en")
     image = create_commons_attribution("Test.jpg", "Author", License.CC_BY)
 
-    data_attr = DataAttribution(
-        wikidata=wikidata,
-        wikipedia=wikipedia,
-        images=[image],
-    )
+    data_attr = DataAttribution(wikidata=wikidata, wikipedia=wikipedia, images=[image])
 
     # Access multiple times should return same objects
     assert data_attr.taxonomy == data_attr.taxonomy

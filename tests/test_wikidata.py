@@ -11,7 +11,6 @@ from tests.fixtures.wikidata_responses import (
     WIKIDATA_ENTITY_Q18498,
     WIKIDATA_NOT_FOUND,
     WIKIDATA_SEARCH_WOLF,
-    WIKIDATA_SPARQL_CANIS_LUPUS,
 )
 
 
@@ -130,15 +129,17 @@ class TestWikidataGetByTaxonomy:
     def test_fallback_to_search_when_sparql_fails(self, mock_http_client):
         """Test fallback to search API when SPARQL returns error."""
         # SPARQL returns 500
-        mock_http_client.add_response(
-            "query.wikidata.org/sparql", {}, status_code=500
-        )
+        mock_http_client.add_response("query.wikidata.org/sparql", {}, status_code=500)
         # Search finds result
         mock_http_client.add_response("wbsearchentities", WIKIDATA_SEARCH_WOLF)
         # _is_taxon check
         mock_http_client.add_response(
             "wbgetclaims",
-            {"claims": {"P225": [{"mainsnak": {"datavalue": {"value": "Canis lupus"}}}]}},
+            {
+                "claims": {
+                    "P225": [{"mainsnak": {"datavalue": {"value": "Canis lupus"}}}]
+                }
+            },
         )
         # get_by_source_id
         mock_http_client.add_response("wbgetentities", WIKIDATA_ENTITY_Q18498)
@@ -162,7 +163,11 @@ class TestWikidataGetByTaxonomy:
         # _is_taxon check
         mock_http_client.add_response(
             "wbgetclaims",
-            {"claims": {"P225": [{"mainsnak": {"datavalue": {"value": "Canis lupus"}}}]}},
+            {
+                "claims": {
+                    "P225": [{"mainsnak": {"datavalue": {"value": "Canis lupus"}}}]
+                }
+            },
         )
         # get_by_source_id
         mock_http_client.add_response("wbgetentities", WIKIDATA_ENTITY_Q18498)
@@ -229,7 +234,11 @@ class TestWikidataSearchTaxonQid:
         mock_http_client.add_response("wbsearchentities", WIKIDATA_SEARCH_WOLF)
         mock_http_client.add_response(
             "wbgetclaims",
-            {"claims": {"P225": [{"mainsnak": {"datavalue": {"value": "Canis lupus"}}}]}},
+            {
+                "claims": {
+                    "P225": [{"mainsnak": {"datavalue": {"value": "Canis lupus"}}}]
+                }
+            },
         )
 
         api = WikidataAPI()
@@ -268,7 +277,11 @@ class TestWikidataIsTaxon:
         """Test that entity with P225 is identified as taxon."""
         mock_http_client.add_response(
             "wbgetclaims",
-            {"claims": {"P225": [{"mainsnak": {"datavalue": {"value": "Canis lupus"}}}]}},
+            {
+                "claims": {
+                    "P225": [{"mainsnak": {"datavalue": {"value": "Canis lupus"}}}]
+                }
+            },
         )
 
         api = WikidataAPI()
@@ -441,9 +454,7 @@ class TestWikidataHelpers:
         """Test _get_claim_value with wikibase-entityid type."""
         api = WikidataAPI()
         claim = [{"mainsnak": {"datavalue": {"value": {"id": "Q237350"}}}}]
-        assert (
-            api._get_claim_value(claim, value_type="wikibase-entityid") == "Q237350"
-        )
+        assert api._get_claim_value(claim, value_type="wikibase-entityid") == "Q237350"
 
     def test_get_quantity_string_empty_list(self):
         """Test _get_quantity_string with empty list."""
@@ -470,13 +481,7 @@ class TestWikidataHelpers:
     def test_get_quantity_string_no_unit(self):
         """Test _get_quantity_string when unit is empty string."""
         api = WikidataAPI()
-        claim = [
-            {
-                "mainsnak": {
-                    "datavalue": {"value": {"amount": "+42", "unit": ""}}
-                }
-            }
-        ]
+        claim = [{"mainsnak": {"datavalue": {"value": {"amount": "+42", "unit": ""}}}}]
         assert api._get_quantity_string(claim) == "42"
 
     def test_get_quantity_string_unknown_unit(self):
@@ -507,8 +512,7 @@ class TestWikidataHelpers:
         api = WikidataAPI()
         url = api._get_commons_url("Wolf image.jpg")
         assert (
-            url
-            == "https://commons.wikimedia.org/wiki/Special:FilePath/Wolf_image.jpg"
+            url == "https://commons.wikimedia.org/wiki/Special:FilePath/Wolf_image.jpg"
         )
 
     def test_get_commons_url_no_spaces(self):

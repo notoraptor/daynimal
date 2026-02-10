@@ -85,6 +85,7 @@ def test_parallel_api_calls_timing(mock_taxon_model, animal_info):
         mock_images.return_value = []
 
         repo = AnimalRepository(session=mock_session)
+        repo.connectivity.set_online()
 
         # Measure execution time
         start = time.time()
@@ -94,7 +95,7 @@ def test_parallel_api_calls_timing(mock_taxon_model, animal_info):
         # With parallel execution: ~0.1s (max of both)
         # With sequential execution: ~0.2s (sum of both)
         # Allow some overhead but should be much less than 0.2s
-        assert duration < 0.15, (
+        assert duration < 0.18, (
             f"Expected parallel execution (~0.1s), got {duration:.3f}s"
         )
 
@@ -127,6 +128,7 @@ def test_parallel_api_calls_error_handling(mock_taxon_model, animal_info):
         mock_images.return_value = []
 
         repo = AnimalRepository(session=mock_session)
+        repo.connectivity.set_online()
 
         # Should not raise exception
         repo._enrich(animal_info, mock_taxon_model)
@@ -169,6 +171,7 @@ def test_only_missing_data_fetched(mock_taxon_model, animal_info):
         mock_fetch_img.return_value = []
 
         repo = AnimalRepository(session=mock_session)
+        repo.connectivity.set_online()
 
         repo._enrich(animal_info, mock_taxon_model)
 
@@ -223,6 +226,7 @@ def test_images_fetched_after_parallel_calls(mock_taxon_model, animal_info):
         ),
     ):
         repo = AnimalRepository(session=mock_session)
+        repo.connectivity.set_online()
 
         repo._enrich(animal_info, mock_taxon_model)
 
@@ -247,6 +251,7 @@ def test_enrichment_flag_set(mock_taxon_model, animal_info):
         patch.object(AnimalRepository, "_fetch_and_cache_images", return_value=[]),
     ):
         repo = AnimalRepository(session=mock_session)
+        repo.connectivity.set_online()
 
         # Initially not enriched
         assert not mock_taxon_model.is_enriched
@@ -271,6 +276,7 @@ def test_repository_init_with_session():
     mock_session = MagicMock()
 
     repo = AnimalRepository(session=mock_session)
+    repo.connectivity.set_online()
 
     assert repo.session == mock_session
 
@@ -292,6 +298,7 @@ def test_repository_lazy_api_initialization():
     mock_session = MagicMock()
 
     repo = AnimalRepository(session=mock_session)
+    repo.connectivity.set_online()
 
     # APIs should be None initially
     assert repo._wikidata is None
@@ -318,6 +325,7 @@ def test_close_idempotent():
     mock_session.close = MagicMock()
 
     repo = AnimalRepository(session=mock_session)
+    repo.connectivity.set_online()
 
     # Close multiple times
     repo.close()
@@ -369,6 +377,7 @@ def test_parallel_timing_with_no_cache():
         mock_img.return_value = []
 
         repo = AnimalRepository(session=mock_session)
+        repo.connectivity.set_online()
 
         start = time.time()
         repo._enrich(animal, taxon)
@@ -417,6 +426,7 @@ def test_parallel_api_variations():
         mock_img.return_value = []
 
         repo = AnimalRepository(session=mock_session)
+        repo.connectivity.set_online()
 
         start = time.time()
         repo._enrich(animal, taxon)

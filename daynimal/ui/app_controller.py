@@ -47,6 +47,7 @@ class AppController:
             on_favorite_toggle=self.on_favorite_toggle,
             debugger=self.debugger,
         )
+        self.today_view.on_load_complete = self._update_offline_banner
 
         self.history_view = HistoryView(
             page=page,
@@ -83,6 +84,30 @@ class AppController:
             page=page, app_state=self.state, debugger=self.debugger
         )
 
+        # Offline banner
+        self.offline_banner = ft.Container(
+            content=ft.Row(
+                controls=[
+                    ft.Icon(ft.Icons.WIFI_OFF, color=ft.Colors.WHITE, size=18),
+                    ft.Text(
+                        "Mode hors ligne — données en cache uniquement",
+                        color=ft.Colors.WHITE,
+                        size=13,
+                    ),
+                    ft.TextButton(
+                        "Réessayer",
+                        on_click=self._retry_connection,
+                        style=ft.ButtonStyle(color=ft.Colors.WHITE),
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=10,
+            ),
+            bgcolor=ft.Colors.GREY_700,
+            padding=ft.Padding(left=10, right=10, top=8, bottom=8),
+            visible=False,
+        )
+
         # Navigation bar
         self.nav_bar = ft.NavigationBar(
             destinations=[
@@ -103,7 +128,9 @@ class AppController:
         """Build the app UI."""
         # Main layout
         layout = ft.Column(
-            controls=[self.content_container, self.nav_bar], expand=True, spacing=0
+            controls=[self.offline_banner, self.content_container, self.nav_bar],
+            expand=True,
+            spacing=0,
         )
 
         # Show initial view
@@ -232,6 +259,9 @@ class AppController:
 
             animal = await asyncio.to_thread(fetch_animal)
 
+            # Update offline banner after load
+            self._update_offline_banner()
+
             if animal:
                 self.today_view.current_animal = animal
                 self.today_view.current_image_index = 0  # Reset carousel
@@ -337,6 +367,25 @@ class AppController:
             self.page.snack_bar = snack_bar
             snack_bar.open = True
             self.page.update()
+
+    def _update_offline_banner(self):
+        """Update offline banner visibility based on connectivity state."""
+        self.offline_banner.visible = not self.state.is_online
+        self.page.update()
+
+    async def _retry_connection(self, e=None):
+        """Retry network connection and reload current animal if back online."""
+        connectivity = self.state.repository.connectivity
+        was_offline = not connectivity.is_online
+        await asyncio.to_thread(connectivity.check)
+        self._update_offline_banner()
+
+        if was_offline and connectivity.is_online and self.today_view.current_animal:
+            # Reload current animal with enrichment
+            taxon_id = self.today_view.current_animal.taxon.taxon_id
+            await self._load_and_display_animal(
+                taxon_id=taxon_id, source="retry", enrich=True, add_to_history=False
+            )
 
     def cleanup(self):
         """Clean up resources."""

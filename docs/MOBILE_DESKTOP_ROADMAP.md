@@ -264,7 +264,7 @@ Architecture modulaire complete dans `daynimal/ui/` :
 
 ### Tests — ✅ Achievements exceptionnels
 
-**Couverture actuelle : 55%** — **482 tests passent** (vs ~50 tests initiaux)
+**Couverture actuelle : 55%** — **493 tests passent** (vs ~50 tests initiaux)
 
 **🎉 Succès Phase 2a - Tests critiques (Fév 2026)**
 - **attribution.py** : 0% → **100%** (75 tests, compliance légale garantie)
@@ -423,21 +423,22 @@ Chemins par plateforme :
 - Android : `/data/data/com.daynimal/cache/images/`
 - iOS : `Library/Caches/images/`
 
-### Mode hors ligne (3 jours)
-- [ ] Detection de connectivite
-- [ ] UI adaptative (afficher message si pas d'internet)
-- [ ] Indication claire des donnees necessitant internet vs disponibles localement
-- [ ] Indicateurs visuels (icone online/offline)
-- [ ] Queue de synchronisation pour actions hors ligne
+### Mode hors ligne ✅
+- [x] Detection de connectivite (`ConnectivityService` dans `daynimal/connectivity.py`)
+- [x] UI adaptative : bandeau hors ligne avec bouton "Réessayer" dans `AppController`
+- [x] Skip enrichissement API quand hors ligne (retour immediat avec donnees cachees)
+- [x] Indicateurs visuels (icone wifi_off + bandeau gris)
+- [x] Toggle "Forcer le mode hors ligne" dans Parametres (persiste en DB)
+- [x] Detection passive : HEAD request sur wikidata.org, cache TTL 60s, timeout 5s
+- [x] Mise a jour automatique du statut apres echec API (`set_offline()`)
+- [x] 11 tests unitaires (`tests/test_connectivity.py`)
 
-Pattern d'implementation :
-```python
-if is_online():
-    animal = repo.get_by_id(taxon_id, enrich=True)
-else:
-    animal = repo.get_by_id(taxon_id, enrich=False)
-    show_message("Mode hors ligne - donnees limitees")
-```
+**Implementation :**
+- `ConnectivityService` : HEAD sur wikidata.org, cache 60s, mode force
+- `repository.py` : `_enrich()` skip les APIs si hors ligne, `set_offline()` sur erreur reseau
+- `ui/state.py` : propriete `is_online` + restauration setting `force_offline` au demarrage
+- `ui/app_controller.py` : bandeau hors ligne + bouton Reessayer + mise a jour apres chaque chargement
+- `ui/views/settings_view.py` : switch "Forcer le mode hors ligne"
 
 ### Notes personnelles (3 jours)
 - [ ] Ajouter des notes textuelles sur des animaux

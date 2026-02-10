@@ -35,9 +35,7 @@ def detect_github_user() -> str | None:
 
         # Get the remote URL
         result = subprocess.run(
-            ["git", "remote", "get-url", remote_name],
-            capture_output=True,
-            text=True,
+            ["git", "remote", "get-url", remote_name], capture_output=True, text=True
         )
         if result.returncode != 0:
             return None

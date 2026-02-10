@@ -196,12 +196,12 @@ def populated_session(session):
         taxa.append(taxon)
 
         # Add vernacular names
-        for lang, name in [("en", f"Species {i} English"), ("fr", f"Espèce {i}"), ("es", f"Especie {i}")]:
-            vn = VernacularNameModel(
-                taxon_id=i,
-                name=name,
-                language=lang,
-            )
+        for lang, name in [
+            ("en", f"Species {i} English"),
+            ("fr", f"Espèce {i}"),
+            ("es", f"Especie {i}"),
+        ]:
+            vn = VernacularNameModel(taxon_id=i, name=name, language=lang)
             session.add(vn)
 
     # Genus (10 total: IDs 50-59, gaps from 30-50)
@@ -221,11 +221,7 @@ def populated_session(session):
         )
         taxa.append(taxon)
 
-        vn = VernacularNameModel(
-            taxon_id=i,
-            name=f"Genus {i} common",
-            language="en",
-        )
+        vn = VernacularNameModel(taxon_id=i, name=f"Genus {i} common", language="en")
         session.add(vn)
 
     # Family (5 total: IDs 100-104)
@@ -298,12 +294,15 @@ def session_with_fts(populated_session):
 
     try:
         # Test if FTS5 is available
-        populated_session.execute(text("CREATE VIRTUAL TABLE test_fts USING fts5(content)"))
+        populated_session.execute(
+            text("CREATE VIRTUAL TABLE test_fts USING fts5(content)")
+        )
         populated_session.execute(text("DROP TABLE test_fts"))
 
         # FTS5 available, create taxa_fts table
         # Note: 'rank' is a reserved FTS5 keyword, so we use 'taxonomic_rank'
-        populated_session.execute(text("""
+        populated_session.execute(
+            text("""
             CREATE VIRTUAL TABLE taxa_fts USING fts5(
                 taxon_id UNINDEXED,
                 scientific_name,
@@ -311,11 +310,13 @@ def session_with_fts(populated_session):
                 vernacular_names,
                 taxonomic_rank UNINDEXED
             )
-        """))
+        """)
+        )
 
         # Populate FTS table
         # Match the real init_fts.py implementation
-        populated_session.execute(text("""
+        populated_session.execute(
+            text("""
             INSERT INTO taxa_fts(taxon_id, scientific_name, canonical_name, vernacular_names, taxonomic_rank)
             SELECT
                 t.taxon_id,
@@ -326,7 +327,8 @@ def session_with_fts(populated_session):
             FROM taxa t
             LEFT JOIN vernacular_names v ON t.taxon_id = v.taxon_id
             GROUP BY t.taxon_id
-        """))
+        """)
+        )
 
         populated_session.commit()
 
@@ -405,11 +407,7 @@ def mock_enrichment_data():
         ),
     ]
 
-    return {
-        "wikidata": wikidata,
-        "wikipedia": wikipedia,
-        "images": images,
-    }
+    return {"wikidata": wikidata, "wikipedia": wikipedia, "images": images}
 
 
 @pytest.fixture

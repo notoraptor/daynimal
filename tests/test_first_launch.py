@@ -180,7 +180,10 @@ def test_download_failure_cleanup(tmp_cwd):
     db_path = tmp_cwd / "daynimal_minimal.db"
 
     with (
-        patch("daynimal.db.first_launch.download_file", side_effect=RuntimeError("Network error")),
+        patch(
+            "daynimal.db.first_launch.download_file",
+            side_effect=RuntimeError("Network error"),
+        ),
         patch("daynimal.db.first_launch.settings") as mock_settings,
     ):
         mock_settings.distribution_base_url = "https://example.com"

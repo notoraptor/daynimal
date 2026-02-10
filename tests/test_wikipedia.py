@@ -191,9 +191,7 @@ class TestWikipediaAPI:
             "list=search",
             {
                 "query": {
-                    "search": [
-                        {"pageid": 99999, "title": "Some Other Wolf Species"},
-                    ]
+                    "search": [{"pageid": 99999, "title": "Some Other Wolf Species"}]
                 }
             },
         )

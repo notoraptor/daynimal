@@ -168,7 +168,11 @@ class TestBaseViewShowEmptyState:
 
         view = ConcreteView(page, state)
         view.show_empty_state(
-            ft.Icons.INFO, "Empty", "Nothing here", icon_size=40, icon_color=ft.Colors.BLUE
+            ft.Icons.INFO,
+            "Empty",
+            "Nothing here",
+            icon_size=40,
+            icon_color=ft.Colors.BLUE,
         )
 
         assert len(view.container.controls) == 1
@@ -180,7 +184,9 @@ class TestBaseViewShowEmptyState:
         state = MagicMock(spec=AppState)
 
         view = ConcreteView(page, state)
-        view.show_empty_state(ft.Icons.INFO, "Empty", "Nothing here")  # Should not raise
+        view.show_empty_state(
+            ft.Icons.INFO, "Empty", "Nothing here"
+        )  # Should not raise
 
 
 class TestBaseViewLogging:

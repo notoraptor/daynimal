@@ -38,10 +38,11 @@ class SettingsView(BaseView):
             def fetch_data():
                 repo = self.app_state.repository
                 theme_mode = repo.get_setting("theme_mode", "light")
+                force_offline = repo.get_setting("force_offline", "false") == "true"
                 stats = repo.get_stats()
-                return theme_mode, stats
+                return theme_mode, force_offline, stats
 
-            theme_mode, stats = await asyncio.to_thread(fetch_data)
+            theme_mode, force_offline, stats = await asyncio.to_thread(fetch_data)
             is_dark = theme_mode == "dark"
 
             # Header
@@ -99,6 +100,11 @@ class SettingsView(BaseView):
                             label="Thème sombre",
                             value=is_dark,
                             on_change=self._on_theme_toggle,
+                        ),
+                        ft.Switch(
+                            label="Forcer le mode hors ligne",
+                            value=force_offline,
+                            on_change=self._on_offline_toggle,
                         ),
                     ],
                     spacing=10,
@@ -184,13 +190,8 @@ class SettingsView(BaseView):
             cache_section = ft.Container(
                 content=ft.Column(
                     controls=[
-                        ft.Text(
-                            "Cache d'images", size=18, weight=ft.FontWeight.BOLD
-                        ),
-                        ft.Text(
-                            f"Taille du cache : {cache_size_text}",
-                            size=12,
-                        ),
+                        ft.Text("Cache d'images", size=18, weight=ft.FontWeight.BOLD),
+                        ft.Text(f"Taille du cache : {cache_size_text}", size=12),
                         ft.ElevatedButton(
                             "Vider le cache",
                             icon=ft.Icons.DELETE,
@@ -258,10 +259,29 @@ class SettingsView(BaseView):
             # Reload settings to update cache size display
             asyncio.create_task(self._load_settings())
             if self.debugger:
-                self.debugger.logger.info(f"Image cache cleared: {count} images removed")
+                self.debugger.logger.info(
+                    f"Image cache cleared: {count} images removed"
+                )
         except Exception as error:
             if self.debugger:
                 self.debugger.log_error("clear_cache", error)
+
+    def _on_offline_toggle(self, e):
+        """Handle forced offline mode toggle."""
+        try:
+            is_forced = e.control.value
+            repo = self.app_state.repository
+            repo.set_setting("force_offline", "true" if is_forced else "false")
+            repo.connectivity.force_offline = is_forced
+
+            if self.debugger:
+                self.debugger.logger.info(
+                    f"Force offline mode: {'enabled' if is_forced else 'disabled'}"
+                )
+
+        except Exception as error:
+            if self.debugger:
+                self.debugger.log_error("on_offline_toggle", error)
 
     def _on_theme_toggle(self, e):
         """Handle theme toggle switch change."""

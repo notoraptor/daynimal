@@ -5,13 +5,11 @@ This module targets the remaining 4% uncovered lines in repository.py
 to achieve 100% code coverage.
 """
 
-import pytest
 from datetime import datetime
 from unittest.mock import patch
 
 from daynimal.repository import AnimalRepository
-from daynimal.db.models import TaxonModel, AnimalHistoryModel
-from daynimal.schemas import AnimalInfo
+from daynimal.db.models import TaxonModel
 
 
 # =============================================================================
@@ -26,7 +24,6 @@ def test_search_fts5_no_species_short_query(session_with_fts):
 
     Covers lines 272-273.
     """
-    from daynimal.db.models import TaxonModel
 
     # Add only genus (no species) with matching name
     genus = TaxonModel(
@@ -43,8 +40,10 @@ def test_search_fts5_no_species_short_query(session_with_fts):
 
     # Rebuild FTS index
     from sqlalchemy import text
+
     session_with_fts.execute(text("DELETE FROM taxa_fts"))
-    session_with_fts.execute(text("""
+    session_with_fts.execute(
+        text("""
         INSERT INTO taxa_fts(taxon_id, scientific_name, canonical_name, vernacular_names, taxonomic_rank)
         SELECT
             t.taxon_id,
@@ -53,7 +52,8 @@ def test_search_fts5_no_species_short_query(session_with_fts):
             '',
             t.rank
         FROM taxa t
-    """))
+    """)
+    )
     session_with_fts.commit()
 
     repo = AnimalRepository(session=session_with_fts)
@@ -72,7 +72,6 @@ def test_search_fts5_no_species_long_query_returns_other_ranks(session_with_fts)
 
     Covers line 275.
     """
-    from daynimal.db.models import TaxonModel
 
     # Add genus and family (no species)
     genus = TaxonModel(
@@ -98,12 +97,15 @@ def test_search_fts5_no_species_long_query_returns_other_ranks(session_with_fts)
 
     # Rebuild FTS
     from sqlalchemy import text
+
     session_with_fts.execute(text("DELETE FROM taxa_fts"))
-    session_with_fts.execute(text("""
+    session_with_fts.execute(
+        text("""
         INSERT INTO taxa_fts(taxon_id, scientific_name, canonical_name, vernacular_names, taxonomic_rank)
         SELECT t.taxon_id, t.scientific_name, COALESCE(t.canonical_name, t.scientific_name), '', t.rank
         FROM taxa t
-    """))
+    """)
+    )
     session_with_fts.commit()
 
     repo = AnimalRepository(session=session_with_fts)
@@ -234,7 +236,6 @@ def test_model_to_taxon_invalid_rank(populated_session):
 
     Covers lines 711-714.
     """
-    from daynimal.db.models import TaxonModel
 
     # Create taxon with unsupported rank
     taxon_model = TaxonModel(
@@ -296,4 +297,7 @@ def test_get_history_with_corrupted_entry_logged(populated_session, caplog):
     assert history[0].taxon.taxon_id == 1
 
     # Warning should be logged
-    assert any("Skipping corrupted history entry" in record.message for record in caplog.records)
+    assert any(
+        "Skipping corrupted history entry" in record.message
+        for record in caplog.records
+    )

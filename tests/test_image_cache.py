@@ -33,10 +33,7 @@ def cache_dir(tmp_path):
 def service(db_session, cache_dir):
     """Create an ImageCacheService for testing."""
     svc = ImageCacheService(
-        session=db_session,
-        cache_dir=cache_dir,
-        max_size_mb=10,
-        cache_hd=False,
+        session=db_session, cache_dir=cache_dir, max_size_mb=10, cache_hd=False
     )
     yield svc
     svc.close()
@@ -130,7 +127,9 @@ class TestCacheImages:
 
 class TestGetLocalPath:
     @patch("daynimal.image_cache.retry_with_backoff")
-    def test_returns_path_if_cached(self, mock_retry, service, sample_image, db_session):
+    def test_returns_path_if_cached(
+        self, mock_retry, service, sample_image, db_session
+    ):
         mock_retry.return_value = _mock_response()
         service.cache_images([sample_image])
 
