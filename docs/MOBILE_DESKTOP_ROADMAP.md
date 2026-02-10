@@ -216,6 +216,7 @@ Architecture modulaire complete dans `daynimal/ui/` :
 - **Components** :
   - `components/widgets.py` (LoadingWidget, ErrorWidget, EmptyStateWidget)
   - `components/animal_card.py` (AnimalCard reutilisable)
+  - `components/pagination.py` (PaginationBar reutilisable)
   - `components/image_carousel.py` (ImageCarousel avec navigation)
   - `components/animal_display.py` (AnimalDisplay pour details)
 - **Views** (toutes etendent BaseView) :
@@ -227,7 +228,7 @@ Architecture modulaire complete dans `daynimal/ui/` :
   - `views/today_view.py` (TodayView utilisant ImageCarousel et AnimalDisplay)
 - **Controller** : `ui/app_controller.py` (AppController orchestrant toutes les vues)
 - **Utils** : `utils/debounce.py` (Debouncer 300ms, conserve)
-- **Tests** : 55 tests UI dans `tests/ui/` (100%)
+- **Tests** : 61 tests UI dans `tests/ui/` (100%)
 
 **Fait :**
 - [x] Infrastructure UI : AppState, BaseView, widgets reutilisables (Phase 1)
@@ -264,7 +265,7 @@ Architecture modulaire complete dans `daynimal/ui/` :
 
 ### Tests — ✅ Achievements exceptionnels
 
-**Couverture actuelle : 55%** — **493 tests passent** (vs ~50 tests initiaux)
+**Couverture actuelle : 55%** — **499 tests passent** (vs ~50 tests initiaux)
 
 **🎉 Succès Phase 2a - Tests critiques (Fév 2026)**
 - **attribution.py** : 0% → **100%** (75 tests, compliance légale garantie)
@@ -298,7 +299,7 @@ Architecture modulaire complete dans `daynimal/ui/` :
 - [x] Tests `repository.py` : edge cases (FTS5, wrap-around, corrupted entries) — **10 tests**
 - [x] Tests `test_history.py` : extensions (deleted taxon, concurrency) — **8 tests**
 - [x] Tests `test_repository_parallel.py` : extensions (init, lifecycle) — **7 tests**
-- [x] Tests UI : SearchView, AnimalCard, AppState, widgets, Debouncer, BaseView — **55 tests**
+- [x] Tests UI : SearchView, AnimalCard, AppState, widgets, Debouncer, BaseView, PaginationBar — **61 tests**
 
 **Fichiers créés :**
 - `tests/test_attribution.py` (~1070 lignes)
@@ -446,17 +447,10 @@ Chemins par plateforme :
 
 ## Phase 2c : Features secondaires (2 semaines)
 
-### Pagination UI History/Favoris (1 jour)
-Actuellement hardcode `per_page=50` sans controles de navigation (`app.py` lignes 881, 1078).
-Le backend supporte la pagination mais l'UI ne l'expose pas.
-- [ ] Ajouter boutons "Page precedente / suivante" ou "Charger plus"
-- [ ] Afficher le nombre total d'entrees
-
-### Favoris avances (2 jours)
-Les favoris basiques (ajout/suppression/liste) sont implementes en Phase 1.
-Reste a ajouter :
-- [ ] Recherche et filtrage dans les favoris
-- [ ] Statistiques : nombre de favoris par famille, classe, ordre
+### Pagination UI History/Favoris ✅
+- [x] Composant `PaginationBar` reutilisable (`daynimal/ui/components/pagination.py`)
+- [x] Integration dans `HistoryView` et `FavoritesView` (`per_page=20`, navigation page precedente/suivante)
+- [x] 6 tests unitaires (`tests/ui/test_pagination.py`)
 
 ### Notifications (3 jours)
 - [ ] Service de notifications
@@ -580,6 +574,10 @@ Deplacees ici depuis la Phase 2 — a implementer apres validation du modele fre
 - **Statistiques avancees** : graphiques detailles, tendances, comparaisons
 - **Collections personnalisees illimitees** : creation, edition, partage
 
+### Favoris avances
+- [ ] Recherche et filtrage dans les favoris
+- [ ] Statistiques : nombre de favoris par famille, classe, ordre
+
 ### Notes personnelles
 - [ ] Ajouter des notes textuelles sur des animaux
 - [ ] Modifier/supprimer des notes
@@ -679,4 +677,4 @@ Si Flet pose probleme a l'avenir :
 
 ---
 
-*Statut : Phase 1 completee - Phase 2a (stabilisation) completee - Phase 2b (features mobile) completee - Phase 2c (features secondaires) a venir*
+*Statut : Phase 1 completee - Phase 2a (stabilisation) completee - Phase 2b (features mobile) completee - Phase 2c (features secondaires) en cours*

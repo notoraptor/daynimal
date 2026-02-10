@@ -6,8 +6,11 @@ from typing import Callable
 
 import flet as ft
 
+from daynimal.ui.components.pagination import PaginationBar
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
+
+PER_PAGE = 20
 
 
 class FavoritesView(BaseView):
@@ -31,7 +34,10 @@ class FavoritesView(BaseView):
         """
         super().__init__(page, app_state, debugger)
         self.on_animal_click = on_animal_click
+        self.current_page = 1
+        self.total_count = 0
         self.favorites_list = ft.Column(controls=[], spacing=10)
+        self.pagination_container = ft.Container()
 
     def build(self) -> ft.Control:
         """Build the favorites view UI."""
@@ -57,6 +63,7 @@ class FavoritesView(BaseView):
                 header,
                 ft.Divider(),
                 ft.Container(content=self.favorites_list, padding=20, expand=True),
+                self.pagination_container,
             ],
             expand=True,
         )
@@ -88,9 +95,12 @@ class FavoritesView(BaseView):
         try:
             # Fetch favorites
             def fetch_favorites():
-                return self.app_state.repository.get_favorites(page=1, per_page=50)
+                return self.app_state.repository.get_favorites(
+                    page=self.current_page, per_page=PER_PAGE
+                )
 
             favorites_items, total = await asyncio.to_thread(fetch_favorites)
+            self.total_count = total
 
             if not favorites_items:
                 # Empty favorites
@@ -177,6 +187,14 @@ class FavoritesView(BaseView):
 
                 self.favorites_list.controls = controls
 
+                # Update pagination
+                self.pagination_container.content = PaginationBar(
+                    page=self.current_page,
+                    total=total,
+                    per_page=PER_PAGE,
+                    on_page_change=self._on_page_change,
+                ).build().content
+
         except Exception as error:
             # Log error with full traceback
             error_msg = f"Error in load_favorites: {error}"
@@ -212,6 +230,11 @@ class FavoritesView(BaseView):
 
         finally:
             self.page.update()
+
+    def _on_page_change(self, new_page: int):
+        """Handle page change from pagination bar."""
+        self.current_page = new_page
+        asyncio.create_task(self.load_favorites())
 
     def _on_favorite_item_click(self, e):
         """Handle click on a favorite item."""

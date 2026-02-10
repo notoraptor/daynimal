@@ -6,8 +6,11 @@ from typing import Callable
 
 import flet as ft
 
+from daynimal.ui.components.pagination import PaginationBar
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
+
+PER_PAGE = 20
 
 
 class HistoryView(BaseView):
@@ -31,7 +34,10 @@ class HistoryView(BaseView):
         """
         super().__init__(page, app_state, debugger)
         self.on_animal_click = on_animal_click
+        self.current_page = 1
+        self.total_count = 0
         self.history_list = ft.Column(controls=[], spacing=10)
+        self.pagination_container = ft.Container()
 
     def build(self) -> ft.Control:
         """Build the history view UI."""
@@ -57,6 +63,7 @@ class HistoryView(BaseView):
                 header,
                 ft.Divider(),
                 ft.Container(content=self.history_list, padding=20, expand=True),
+                self.pagination_container,
             ],
             expand=True,
         )
@@ -88,9 +95,12 @@ class HistoryView(BaseView):
         try:
             # Fetch history
             def fetch_history():
-                return self.app_state.repository.get_history(page=1, per_page=50)
+                return self.app_state.repository.get_history(
+                    page=self.current_page, per_page=PER_PAGE
+                )
 
             history_items, total = await asyncio.to_thread(fetch_history)
+            self.total_count = total
 
             if not history_items:
                 # Empty history
@@ -186,6 +196,14 @@ class HistoryView(BaseView):
 
                 self.history_list.controls = controls
 
+                # Update pagination
+                self.pagination_container.content = PaginationBar(
+                    page=self.current_page,
+                    total=total,
+                    per_page=PER_PAGE,
+                    on_page_change=self._on_page_change,
+                ).build().content
+
         except Exception as error:
             # Log error with full traceback
             error_msg = f"Error in load_history: {error}"
@@ -221,6 +239,11 @@ class HistoryView(BaseView):
 
         finally:
             self.page.update()
+
+    def _on_page_change(self, new_page: int):
+        """Handle page change from pagination bar."""
+        self.current_page = new_page
+        asyncio.create_task(self.load_history())
 
     def _on_history_item_click(self, e):
         """Handle click on history item - load animal and switch to Today view."""
