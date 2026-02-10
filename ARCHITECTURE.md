@@ -7,6 +7,7 @@
 - `daynimal.app` — Daynimal Flet App - Desktop/Mobile Application
 - `daynimal.attribution` — Attribution management for legal compliance.
 - `daynimal.config`
+- `daynimal.connectivity` — Network connectivity detection for offline mode.
 - `daynimal.debug` — Debug utilities for Daynimal Flet app.
 - `daynimal.image_cache` — Image cache service for downloading and serving images locally.
 - `daynimal.main` — Daynimal CLI - Daily Animal Discovery
@@ -40,6 +41,7 @@
 - `daynimal.ui.components.animal_card` — Reusable animal card component for list views.
 - `daynimal.ui.components.animal_display` — Animal display component for showing detailed animal information.
 - `daynimal.ui.components.image_carousel` — Image carousel component for displaying animal images with navigation.
+- `daynimal.ui.components.pagination` — Reusable pagination bar component.
 - `daynimal.ui.components.widgets` — Reusable UI widgets for Daynimal app.
 
 ### daynimal/ui/utils
@@ -135,6 +137,7 @@
 - depends on `daynimal.repository`
 
 ### daynimal.repository
+- depends on `daynimal.connectivity`
 - depends on `daynimal.db.models`
 - depends on `daynimal.db.session`
 - depends on `daynimal.image_cache`
@@ -209,10 +212,12 @@
 - depends on `daynimal.ui.state`
 
 ### daynimal.ui.views.favorites_view
+- depends on `daynimal.ui.components.pagination`
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.base`
 
 ### daynimal.ui.views.history_view
+- depends on `daynimal.ui.components.pagination`
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.base`
 
@@ -245,33 +250,34 @@
 - depends on `daynimal.debug`
 
 ## 4. External Dependencies
-- flet (used 15 times)
+- flet (used 16 times)
 - pathlib (used 12 times)
-- typing (used 10 times)
+- typing (used 11 times)
 - asyncio (used 9 times)
 - sqlalchemy (used 9 times)
 - argparse (used 8 times)
 - datetime (used 8 times)
+- httpx (used 6 times)
 - traceback (used 6 times)
+- logging (used 5 times)
 - dataclasses (used 4 times)
-- httpx (used 4 times)
-- logging (used 4 times)
 - sys (used 4 times)
 - hashlib (used 3 times)
 - json (used 3 times)
 - re (used 3 times)
 - subprocess (used 3 times)
+- threading (used 3 times)
+- time (used 3 times)
 - abc (used 2 times)
 - csv (used 2 times)
 - gzip (used 2 times)
-- threading (used 2 times)
-- time (used 2 times)
 - ast (used 1 times)
 - collections (used 1 times)
 - concurrent (used 1 times)
 - contextlib (used 1 times)
 - enum (used 1 times)
 - io (used 1 times)
+- math (used 1 times)
 - os (used 1 times)
 - pydantic_settings (used 1 times)
 - random (used 1 times)
@@ -364,6 +370,31 @@ def get_app_legal_notice(format)  # Get the application's legal notice for displ
 ### Module: daynimal.config
 ```python
 class Settings(BaseSettings)
+```
+
+### Module: daynimal.connectivity
+> Network connectivity detection for offline mode.
+> 
+> Provides a lightweight connectivity check to avoid long API timeouts
+> when the device is offline. Uses a HEAD request to wikidata.org with
+> a short timeout and caches the result for 60 seconds.
+```python
+class ConnectivityService  # Detects network connectivity via a lightweight HEAD request.
+    def __init__(self)
+    # calls: threading.Lock
+    @property
+    def is_online(self)  # Return cached connectivity state, refreshing if TTL expired.
+    # calls: self.check, time.monotonic
+    def check(self)  # Force an immediate connectivity check.
+    # calls: httpx.head, time.monotonic
+    def set_offline(self)  # Mark as offline (e.g. after API failure).
+    # calls: time.monotonic
+    def set_online(self)  # Mark as online.
+    # calls: time.monotonic
+    @property
+    def force_offline(self)  # Whether offline mode is forced by user.
+    @force_offline.setter
+    def force_offline(self, value)  # Set forced offline mode.
 ```
 
 ### Module: daynimal.db.build_db
@@ -721,7 +752,7 @@ def main()  # Main entry point.
 ```python
 class AnimalRepository  # Repository for accessing animal information.
     def __init__(self, session)
-    # calls: ImageCacheService, get_session, threading.Lock
+    # calls: ConnectivityService, ImageCacheService, get_session, threading.Lock
     @property
     def wikidata(self)
     # calls: WikidataAPI
@@ -757,11 +788,11 @@ class AnimalRepository  # Repository for accessing animal information.
     def _get_cached_images(self, taxon_id)  # Load cached images from database.
     # calls: CommonsImage, json.loads, self.session.query, self.session.query.filter
     def _fetch_and_cache_wikidata(self, taxon_id, scientific_name)  # Fetch Wikidata and cache it.
-    # calls: self._save_cache, self.wikidata.get_by_taxonomy
+    # calls: self._save_cache, self.connectivity.set_offline, self.wikidata.get_by_taxonomy
     def _fetch_and_cache_wikipedia(self, taxon_id, scientific_name)  # Fetch Wikipedia and cache it.
-    # calls: self._save_cache, self.wikipedia.get_by_taxonomy
+    # calls: self._save_cache, self.connectivity.set_offline, self.wikipedia.get_by_taxonomy
     def _fetch_and_cache_images(self, taxon_id, scientific_name, wikidata)  # Fetch Commons images and cache them.
-    # calls: self._save_cache, self.commons.get_by_taxonomy, self.commons.get_images_for_wikidata, self.image_cache.cache_images
+    # calls: self._save_cache, self.commons.get_by_taxonomy, self.commons.get_images_for_wikidata, self.connectivity.set_offline, self.image_cache.cache_images
     def _save_cache(self, taxon_id, source, data)  # Save data to enrichment cache.
     # calls: EnrichmentCacheModel, datetime.now, isinstance, json.dumps, self._to_dict, self.session.add, self.session.commit, self.session.query, self.session.query.filter, self.session.rollback
     def _to_dict(self, obj)  # Convert dataclass to dict, handling enums.
@@ -982,7 +1013,7 @@ class WikipediaAPI(DataSource)  # Client for Wikipedia API.
 ```python
 class AppController  # Main application controller.
     def __init__(self, page, debugger)  # Initialize AppController.
-    # calls: AppState, FavoritesView, HistoryView, SearchView, SettingsView, StatsView, TodayView, asyncio.create_task, ft.Column, ft.NavigationBar, ft.NavigationBarDestination, get_debugger, self.load_animal_from_favorite, self.load_animal_from_history, self.load_animal_from_search
+    # calls: AppState, FavoritesView, HistoryView, SearchView, SettingsView, StatsView, TodayView, asyncio.create_task, ft.ButtonStyle, ft.Column, ft.Container, ft.Icon, ft.NavigationBar, ft.NavigationBarDestination, ft.Padding, ft.Row, ft.Text, ft.TextButton, get_debugger, self.load_animal_from_favorite, self.load_animal_from_history, self.load_animal_from_search
     def build(self)  # Build the app UI.
     # calls: ft.Column, self.show_today_view
     def on_nav_change(self, e)  # Handle navigation bar changes.
@@ -1006,9 +1037,13 @@ class AppController  # Main application controller.
     async def load_animal_from_search(self, taxon_id)  # Load an animal from search and display in Today view.
     # calls: self._load_and_display_animal
     async def _load_and_display_animal(self, taxon_id, source, enrich, add_to_history)  # Unified method to load and display an animal in Today view.
-    # calls: asyncio.sleep, asyncio.to_thread, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.page.update, self.show_today_view, self.today_view._display_animal, str, traceback.format_exc
+    # calls: asyncio.sleep, asyncio.to_thread, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self._update_offline_banner, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.page.update, self.show_today_view, self.today_view._display_animal, str, traceback.format_exc
     def on_favorite_toggle(self, taxon_id, is_favorite)  # Handle favorite toggle from any view.
     # calls: ft.SnackBar, ft.Text, print, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    def _update_offline_banner(self)  # Update offline banner visibility based on connectivity state.
+    # calls: self.page.update
+    async def _retry_connection(self, e)  # Retry network connection and reload current animal if back online.
+    # calls: asyncio.to_thread, self._load_and_display_animal, self._update_offline_banner
     def cleanup(self)  # Clean up resources.
     # calls: self.state.close_repository
 ```
@@ -1070,6 +1105,18 @@ class ImageCarousel  # Image carousel with navigation controls.
     # calls: len, self.on_index_change
 ```
 
+### Module: daynimal.ui.components.pagination
+> Reusable pagination bar component.
+```python
+class PaginationBar  # Pagination bar: [< Précédent]  Page X / Y  [Suivant >]
+    def __init__(self, page, total, per_page, on_page_change)
+    @property
+    def total_pages(self)
+    # calls: math.ceil, max
+    def build(self)
+    # calls: ft.Container, ft.Padding.symmetric, ft.Row, ft.Text, ft.TextButton, self.on_page_change
+```
+
 ### Module: daynimal.ui.components.widgets
 > Reusable UI widgets for Daynimal app.
 > 
@@ -1103,9 +1150,11 @@ class AppState  # Shared application state across all views.
     def image_cache(self)  # Get image cache service from repository.
     @property
     def repository(self)  # Get or create repository (lazy initialization, thread-safe).
-    # calls: AnimalRepository
+    # calls: AnimalRepository, self._repository.get_setting
     def close_repository(self)  # Close repository and cleanup resources.
     # calls: self._repository.close
+    @property
+    def is_online(self)  # Return current network connectivity state.
     def reset_animal_display(self)  # Reset animal display state (used when loading new animal).
 ```
 
@@ -1151,11 +1200,13 @@ class BaseView(ABC)  # Abstract base class for all views in the Daynimal app.
 ```python
 class FavoritesView(BaseView)  # View for displaying and managing favorite animals.
     def __init__(self, page, app_state, on_animal_click, debugger)  # Initialize FavoritesView.
-    # calls: ft.Column, super, super.__init__
+    # calls: ft.Column, ft.Container, super, super.__init__
     def build(self)  # Build the favorites view UI.
     # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, ft.Row, ft.Text, self.load_favorites
     async def load_favorites(self)  # Load favorites from repository.
-    # calls: asyncio.sleep, asyncio.to_thread, ft.Card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Row, ft.Text, print, self.app_state.repository.get_favorites, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, ft.Card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Row, ft.Text, print, self.app_state.repository.get_favorites, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    def _on_page_change(self, new_page)  # Handle page change from pagination bar.
+    # calls: asyncio.create_task, self.load_favorites
     def _on_favorite_item_click(self, e)  # Handle click on a favorite item.
     # calls: print, self.debugger.log_error, self.debugger.logger.error, self.debugger.logger.info, self.on_animal_click, traceback.format_exc
 ```
@@ -1165,11 +1216,13 @@ class FavoritesView(BaseView)  # View for displaying and managing favorite anima
 ```python
 class HistoryView(BaseView)  # View for displaying and managing animal viewing history.
     def __init__(self, page, app_state, on_animal_click, debugger)  # Initialize HistoryView.
-    # calls: ft.Column, super, super.__init__
+    # calls: ft.Column, ft.Container, super, super.__init__
     def build(self)  # Build the history view UI.
     # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, ft.Row, ft.Text, self.load_history
     async def load_history(self)  # Load history from repository.
-    # calls: asyncio.sleep, asyncio.to_thread, ft.Card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Row, ft.Text, print, self.app_state.repository.get_history, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, ft.Card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Row, ft.Text, print, self.app_state.repository.get_history, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    def _on_page_change(self, new_page)  # Handle page change from pagination bar.
+    # calls: asyncio.create_task, self.load_history
     def _on_history_item_click(self, e)  # Handle click on history item - load animal and switch to Today view.
     # calls: print, self.debugger.log_error, self.debugger.logger.error, self.debugger.logger.info, self.on_animal_click, traceback.format_exc
 ```
@@ -1208,6 +1261,8 @@ class SettingsView(BaseView)  # View for app settings, preferences, and credits.
     # calls: asyncio.to_thread, ft.Column, ft.Container, ft.Divider, ft.ElevatedButton, ft.Icon, ft.Padding, ft.Row, ft.Switch, ft.Text, print, self.app_state.image_cache.get_cache_size, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
     def _on_clear_cache(self, e)  # Handle clear cache button click.
     # calls: asyncio.create_task, self._load_settings, self.app_state.image_cache.clear, self.debugger.log_error, self.debugger.logger.info
+    def _on_offline_toggle(self, e)  # Handle forced offline mode toggle.
+    # calls: self.debugger.log_error, self.debugger.logger.info
     def _on_theme_toggle(self, e)  # Handle theme toggle switch change.
     # calls: print, self.app_state.repository.set_setting, self.debugger.log_error, self.debugger.logger.error, self.debugger.logger.info, self.page.update, traceback.format_exc
 ```
@@ -1256,7 +1311,7 @@ class TodayView(BaseView)  # View for displaying the animal of the day or random
     async def _load_random_animal(self, e)  # Load a random animal.
     # calls: self._load_animal_for_today_view
     async def _load_animal_for_today_view(self, mode)  # Load and display an animal in the Today view.
-    # calls: asyncio.sleep, asyncio.to_thread, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self._display_animal, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: asyncio.sleep, asyncio.to_thread, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self._display_animal, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.on_load_complete, self.page.update, str, traceback.format_exc
     def _display_animal(self, animal)  # Display animal information in the Today view.
     # calls: AnimalDisplay, ImageCarousel, ft.Container, ft.Divider, ft.IconButton, ft.Padding, ft.Row, ft.Text, len, self.app_state.repository.is_favorite, self.page.update
     def _on_favorite_toggle(self, e)  # Handle favorite button toggle.

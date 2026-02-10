@@ -452,12 +452,14 @@ Chemins par plateforme :
 - [x] Integration dans `HistoryView` et `FavoritesView` (`per_page=20`, navigation page precedente/suivante)
 - [x] 6 tests unitaires (`tests/ui/test_pagination.py`)
 
-### Notifications (3 jours)
-- [ ] Service de notifications
-- [ ] Notification quotidienne programmee "Decouvrez l'animal du jour !"
-- [ ] Heure personnalisable
-- [ ] Parametre activation/desactivation
-- [ ] Tests Android (FCM) et iOS (APNs)
+### Notifications desktop ✅
+- [x] Service de notifications (`daynimal/notifications.py`) : `NotificationService` avec boucle async periodique
+- [x] Notification quotidienne programmee "Decouvrez l'animal du jour !" via plyer (cross-platform)
+- [x] Heure personnalisable (dropdown 00:00-23:00 dans Parametres)
+- [x] Parametre activation/desactivation (switch dans Parametres)
+- [x] Integration `AppController` : start/stop automatique du service
+- [x] 13 tests unitaires (`tests/test_notifications.py`)
+- [ ] Tests Android (FCM) et iOS (APNs) — Phase 3
 
 ### Partage (2 jours)
 - [ ] Fonction de partage natif (texte + image)

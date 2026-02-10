@@ -43,6 +43,19 @@ class SettingsView(BaseView):
                 return theme_mode, force_offline, stats
 
             theme_mode, force_offline, stats = await asyncio.to_thread(fetch_data)
+
+            # Fetch notification settings
+            def fetch_notification_settings():
+                repo = self.app_state.repository
+                notif_enabled = (
+                    repo.get_setting("notifications_enabled", "false") == "true"
+                )
+                notif_time = repo.get_setting("notification_time", "08:00")
+                return notif_enabled, notif_time
+
+            notif_enabled, notif_time = await asyncio.to_thread(
+                fetch_notification_settings
+            )
             is_dark = theme_mode == "dark"
 
             # Header
@@ -105,6 +118,35 @@ class SettingsView(BaseView):
                             label="Forcer le mode hors ligne",
                             value=force_offline,
                             on_change=self._on_offline_toggle,
+                        ),
+                    ],
+                    spacing=10,
+                ),
+                padding=ft.Padding(left=20, right=20, top=10, bottom=10),
+            )
+
+            # Notifications section
+            hour_options = [ft.dropdown.Option(f"{h:02d}:00") for h in range(24)]
+            notifications_section = ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Text("Notifications", size=18, weight=ft.FontWeight.BOLD),
+                        ft.Switch(
+                            label="Notification quotidienne",
+                            value=notif_enabled,
+                            on_change=self._on_notifications_toggle,
+                        ),
+                        ft.Row(
+                            controls=[
+                                ft.Text("Heure de notification :", size=14),
+                                ft.Dropdown(
+                                    value=notif_time,
+                                    options=hour_options,
+                                    width=120,
+                                    on_change=self._on_notification_time_change,
+                                ),
+                            ],
+                            spacing=10,
                         ),
                     ],
                     spacing=10,
@@ -211,6 +253,8 @@ class SettingsView(BaseView):
                 ft.Divider(),
                 preferences,
                 ft.Divider(),
+                notifications_section,
+                ft.Divider(),
                 cache_section,
                 ft.Divider(),
                 credits,
@@ -309,3 +353,40 @@ class SettingsView(BaseView):
             else:
                 print(f"ERROR: {error_msg}")
                 print(f"Traceback:\n{error_traceback}")
+
+    def _on_notifications_toggle(self, e):
+        """Handle notification toggle switch change."""
+        try:
+            is_enabled = e.control.value
+            repo = self.app_state.repository
+            repo.set_setting("notifications_enabled", "true" if is_enabled else "false")
+
+            # Start/stop the notification service if available
+            notif_service = getattr(self.app_state, "notification_service", None)
+            if notif_service:
+                if is_enabled:
+                    notif_service.start()
+                else:
+                    notif_service.stop()
+
+            if self.debugger:
+                self.debugger.logger.info(
+                    f"Notifications: {'enabled' if is_enabled else 'disabled'}"
+                )
+
+        except Exception as error:
+            if self.debugger:
+                self.debugger.log_error("on_notifications_toggle", error)
+
+    def _on_notification_time_change(self, e):
+        """Handle notification time dropdown change."""
+        try:
+            new_time = e.control.value
+            self.app_state.repository.set_setting("notification_time", new_time)
+
+            if self.debugger:
+                self.debugger.logger.info(f"Notification time changed to: {new_time}")
+
+        except Exception as error:
+            if self.debugger:
+                self.debugger.log_error("on_notification_time_change", error)

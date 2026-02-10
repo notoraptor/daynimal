@@ -188,12 +188,16 @@ class FavoritesView(BaseView):
                 self.favorites_list.controls = controls
 
                 # Update pagination
-                self.pagination_container.content = PaginationBar(
-                    page=self.current_page,
-                    total=total,
-                    per_page=PER_PAGE,
-                    on_page_change=self._on_page_change,
-                ).build().content
+                self.pagination_container.content = (
+                    PaginationBar(
+                        page=self.current_page,
+                        total=total,
+                        per_page=PER_PAGE,
+                        on_page_change=self._on_page_change,
+                    )
+                    .build()
+                    .content
+                )
 
         except Exception as error:
             # Log error with full traceback

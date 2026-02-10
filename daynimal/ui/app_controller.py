@@ -6,6 +6,7 @@ import traceback
 import flet as ft
 
 from daynimal.debug import get_debugger
+from daynimal.notifications import NotificationService
 from daynimal.ui.state import AppState
 from daynimal.ui.views.favorites_view import FavoritesView
 from daynimal.ui.views.history_view import HistoryView
@@ -36,6 +37,10 @@ class AppController:
         # Shared state
         self.state = AppState()
         self.current_view_name = "today"
+
+        # Notification service
+        self.notification_service = NotificationService(self.state.repository)
+        self.state.notification_service = self.notification_service
 
         # Content container
         self.content_container = ft.Column(controls=[], expand=True, spacing=0)
@@ -135,6 +140,9 @@ class AppController:
 
         # Show initial view
         self.show_today_view()
+
+        # Start notification service
+        self.notification_service.start()
 
         return layout
 
@@ -389,4 +397,5 @@ class AppController:
 
     def cleanup(self):
         """Clean up resources."""
+        self.notification_service.stop()
         self.state.close_repository()
