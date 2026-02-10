@@ -62,6 +62,9 @@
 ### root
 - `generate_architecture`
 
+### scripts
+- `scripts.prepare_release` — Prepare distribution files for GitHub Release.
+
 ## 2. Entry Points
 - daynimal.app
 - daynimal.main
@@ -71,6 +74,7 @@
 - debug.debug_filter
 - debug.run_app_debug
 - debug.view_logs
+- scripts.prepare_release
 
 ## 3. Internal Dependencies
 
@@ -217,33 +221,35 @@
 
 ## 4. External Dependencies
 - flet (used 14 times)
-- pathlib (used 9 times)
+- pathlib (used 10 times)
 - typing (used 9 times)
+- argparse (used 8 times)
 - asyncio (used 8 times)
 - sqlalchemy (used 8 times)
-- argparse (used 7 times)
-- datetime (used 6 times)
+- datetime (used 7 times)
 - traceback (used 6 times)
 - dataclasses (used 4 times)
 - sys (used 4 times)
+- logging (used 3 times)
 - abc (used 2 times)
 - csv (used 2 times)
 - httpx (used 2 times)
-- logging (used 2 times)
+- json (used 2 times)
 - re (used 2 times)
 - subprocess (used 2 times)
 - threading (used 2 times)
+- time (used 2 times)
 - ast (used 1 times)
 - collections (used 1 times)
 - concurrent (used 1 times)
 - contextlib (used 1 times)
 - enum (used 1 times)
+- gzip (used 1 times)
+- hashlib (used 1 times)
 - io (used 1 times)
-- json (used 1 times)
 - os (used 1 times)
 - pydantic_settings (used 1 times)
 - random (used 1 times)
-- time (used 1 times)
 - unicodedata (used 1 times)
 - zipfile (used 1 times)
 
@@ -756,6 +762,8 @@ class DataSource(ABC, Generic)  # Abstract base class for external data sources.
     def __enter__(self)
     def __exit__(self, exc_type, exc_val, exc_tb)
     # calls: self.close
+    def _request_with_retry(self, method, url)  # Make HTTP request with automatic retry on rate limit and service errors.
+    # calls: ValueError, retry_with_backoff, self.client.get, self.client.post
     @property
     @abstractmethod
     def source_name(self)  # Name of the data source (e.g., 'wikidata', 'wikipedia').
@@ -769,6 +777,10 @@ class DataSource(ABC, Generic)  # Abstract base class for external data sources.
     @abstractmethod
     def search(self, query, limit)  # Search for entities matching a query.
 ```
+```python
+def retry_with_backoff(func, max_retries, backoff_base)  # Execute HTTP request with exponential backoff retry.
+```
+- calls: `func`, `range`, `time.sleep`
 
 ### Module: daynimal.sources.commons
 > Wikimedia Commons API client.
@@ -783,15 +795,15 @@ class CommonsAPI(DataSource)  # Client for Wikimedia Commons API.
     @property
     def license(self)
     def get_by_source_id(self, source_id)  # Fetch image info by filename.
-    # calls: iter, next, self._parse_image_info, self.client.get
+    # calls: iter, next, self._parse_image_info, self._request_with_retry
     def get_by_taxonomy(self, scientific_name, limit)  # Find images on Commons for a species by scientific name.
     # calls: self._search_category, self.search
     def search(self, query, limit)  # Search Commons for images matching query.
-    # calls: self._parse_image_info, self.client.get
+    # calls: self._parse_image_info, self._request_with_retry
     def get_images_for_wikidata(self, qid, limit)  # Get images associated with a Wikidata entity.
-    # calls: self._parse_image_info, self.client.get
+    # calls: self._parse_image_info, self._request_with_retry
     def _search_category(self, scientific_name, limit)  # Search for images in a species category.
-    # calls: self._parse_image_info, self.client.get
+    # calls: self._parse_image_info, self._request_with_retry
     def _parse_image_info(self, filename, imageinfo)  # Parse image info from API response.
     # calls: CommonsImage, re.sub, re.sub.strip, self._is_valid_image_url, self._parse_license
     def _is_valid_image_url(self, url)  # Check if URL points to a valid image file.
@@ -811,17 +823,17 @@ class WikidataAPI(DataSource)  # Client for Wikidata API.
     @property
     def license(self)
     def get_by_source_id(self, source_id)  # Fetch a Wikidata entity by its QID.
-    # calls: self._parse_entity, self.client.get
+    # calls: self._parse_entity, self._request_with_retry
     def get_by_taxonomy(self, scientific_name)  # Find a Wikidata entity by scientific name using SPARQL.
     # calls: self._find_taxon_qid, self.get_by_source_id
     def search(self, query, limit)  # Search Wikidata for entities matching query.
-    # calls: self.client.get, self.get_by_source_id
+    # calls: self._request_with_retry, self.get_by_source_id
     def _find_taxon_qid(self, scientific_name)  # Find QID for a taxon by its scientific name.
-    # calls: self._search_taxon_qid, self.client.get
+    # calls: self._request_with_retry, self._search_taxon_qid
     def _search_taxon_qid(self, scientific_name)  # Fallback search for taxon QID.
-    # calls: self._is_taxon, self.client.get
+    # calls: self._is_taxon, self._request_with_retry
     def _is_taxon(self, qid)  # Check if an entity is a taxon (has P225 taxon name).
-    # calls: bool, self.client.get
+    # calls: bool, self._request_with_retry
     def _parse_entity(self, qid, data)  # Parse raw Wikidata entity into WikidataEntity schema.
     # calls: WikidataEntity, int, self._get_claim_value, self._get_commons_url, self._get_quantity_string
     def _get_claim_value(self, claim_list, value_type)  # Extract value from a claim list.
@@ -846,15 +858,15 @@ class WikipediaAPI(DataSource)  # Client for Wikipedia API.
     @property
     def license(self)
     def get_by_source_id(self, source_id, language)  # Fetch a Wikipedia article by page ID or title.
-    # calls: WikipediaArticle, int, iter, next, self.client.get
+    # calls: WikipediaArticle, int, iter, next, self._request_with_retry
     def get_by_taxonomy(self, scientific_name)  # Find a Wikipedia article by scientific name.
     # calls: self._search_in_language
     def search(self, query, limit, language)  # Search Wikipedia for articles matching query.
-    # calls: self.client.get, self.get_by_source_id, str
+    # calls: self._request_with_retry, self.get_by_source_id, str
     def get_full_article(self, page_id, language)  # Fetch full article content (not just summary).
-    # calls: WikipediaArticle, self.client.get, str
+    # calls: WikipediaArticle, self._request_with_retry, str
     def _search_in_language(self, scientific_name, language)  # Search for an article by scientific name in a specific language.
-    # calls: self.client.get, self.get_by_source_id, str
+    # calls: self._request_with_retry, self.get_by_source_id, str
 ```
 
 ### Module: daynimal.ui.app_controller
@@ -1259,6 +1271,47 @@ def detect_layer(path)  # Group modules by their actual parent directory.
 def generate()
 ```
 - calls: `Counter`, `_extract_known_names`, `_parse_imports_from_tree`, `_parse_tree`, `ast.get_docstring`, `defaultdict`, `detect_layer`, `extract_signatures_and_calls`, `find_python_files`, `len`, `list`, `open`, `print`, `resolve_import`, `set`, `sorted`, `tuple`, `zip`
+
+### Module: scripts.prepare_release
+> Prepare distribution files for GitHub Release.
+> 
+> This script:
+> 1. Verifies TSV files exist
+> 2. Compresses them to .gz
+> 3. Calculates checksums
+> 4. Generates manifest.json with metadata
+> 5. Creates RELEASE_NOTES.md with instructions
+```python
+def get_file_size_mb(path)  # Get file size in MB.
+```
+```python
+def calculate_sha256(path)  # Calculate SHA256 checksum of a file.
+```
+- calls: `hashlib.sha256`, `iter`, `open`
+```python
+def compress_file(input_path, output_path)  # Compress a file using gzip.
+```
+- calls: `gzip.open`, `open`, `print`
+```python
+def verify_tsv_files(data_dir, files)  # Verify that all TSV files exist.
+```
+- calls: `get_file_size_mb`, `print`
+```python
+def compress_distribution(data_dir, output_dir, version)  # Compress distribution files and generate manifest.
+```
+- calls: `calculate_sha256`, `compress_file`, `datetime.now`, `datetime.now.isoformat`, `print`
+```python
+def generate_release_notes(output_dir, manifest, version)  # Generate release notes with instructions.
+```
+- calls: `open`, `print`, `sum`
+```python
+def generate_checksums_file(output_dir, manifest)  # Generate checksums.txt for easy verification.
+```
+- calls: `open`, `print`
+```python
+def main()  # Main entry point.
+```
+- calls: `Path`, `argparse.ArgumentParser`, `compress_distribution`, `generate_checksums_file`, `generate_release_notes`, `json.dump`, `open`, `print`, `sum`, `verify_tsv_files`
 
 ## 6. High-Coupling Modules (Risk Zones)
 - No obvious high-coupling modules detected
