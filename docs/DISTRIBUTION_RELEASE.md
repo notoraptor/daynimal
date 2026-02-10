@@ -33,6 +33,8 @@ Run the release preparation script:
 
 ```bash
 uv run python scripts/prepare_release.py --version 1.0.0
+# GitHub user is auto-detected from git remote.
+# To override: --github-user YOUR_USER
 ```
 
 This generates in `dist/`:
@@ -46,7 +48,7 @@ This generates in `dist/`:
 
 ### Step 1: Create Release on GitHub
 
-1. Go to: https://github.com/YOUR_USER/daynimal/releases/new
+1. Go to: `https://github.com/<user>/daynimal/releases/new` (replace `<user>` with your GitHub username)
 2. Choose a tag: `v1.0.0` (create new tag on publish)
 3. Release title: `Database Distribution v1.0.0`
 4. Copy content from `dist/RELEASE_NOTES.md` to description
@@ -65,11 +67,11 @@ Click "Publish release"
 
 ### Step 4: Get URLs
 
-After publishing, note the asset URLs:
+After publishing, note the asset URLs (shown in `dist/RELEASE_NOTES.md` with the correct username):
 ```
-https://github.com/YOUR_USER/daynimal/releases/download/v1.0.0/animalia_taxa_minimal.tsv.gz
-https://github.com/YOUR_USER/daynimal/releases/download/v1.0.0/animalia_vernacular_minimal.tsv.gz
-https://github.com/YOUR_USER/daynimal/releases/download/v1.0.0/manifest.json
+https://github.com/<user>/daynimal/releases/download/v1.0.0/animalia_taxa_minimal.tsv.gz
+https://github.com/<user>/daynimal/releases/download/v1.0.0/animalia_vernacular_minimal.tsv.gz
+https://github.com/<user>/daynimal/releases/download/v1.0.0/manifest.json
 ```
 
 These URLs will be used by the mobile app for downloading.
@@ -80,7 +82,7 @@ Update the download URLs in your app configuration:
 
 ```python
 # Example in config.py or similar
-DISTRIBUTION_BASE_URL = "https://github.com/YOUR_USER/daynimal/releases/download/v1.0.0"
+DISTRIBUTION_BASE_URL = "https://github.com/<user>/daynimal/releases/download/v1.0.0"
 DISTRIBUTION_VERSION = "1.0.0"
 ```
 
@@ -90,7 +92,7 @@ Users can verify downloads with:
 
 ```bash
 # Download checksums file
-wget https://github.com/YOUR_USER/daynimal/releases/download/v1.0.0/checksums.txt
+wget https://github.com/<user>/daynimal/releases/download/v1.0.0/checksums.txt
 
 # Verify files
 sha256sum -c checksums.txt

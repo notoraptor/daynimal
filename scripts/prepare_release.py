@@ -13,8 +13,46 @@ This script:
 import gzip
 import hashlib
 import json
+import re
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+def detect_github_user() -> str | None:
+    """Detect GitHub user/org from the upstream remote of the current branch."""
+    try:
+        # Get the remote tracking branch (e.g. "origin/master")
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            remote_name = result.stdout.strip().split("/")[0]
+        else:
+            remote_name = "origin"
+
+        # Get the remote URL
+        result = subprocess.run(
+            ["git", "remote", "get-url", remote_name],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return None
+
+        url = result.stdout.strip()
+
+        # Parse GitHub user from HTTPS or SSH URL
+        # HTTPS: https://github.com/USER/REPO.git
+        # SSH: git@github.com:USER/REPO.git
+        match = re.search(r"github\.com[:/]([^/]+)/", url)
+        if match:
+            return match.group(1)
+    except FileNotFoundError:
+        pass
+    return None
 
 
 def get_file_size_mb(path: Path) -> float:
@@ -88,7 +126,9 @@ def compress_distribution(data_dir: Path, output_dir: Path, version: str) -> dic
     return manifest
 
 
-def generate_release_notes(output_dir: Path, manifest: dict, version: str) -> None:
+def generate_release_notes(
+    output_dir: Path, manifest: dict, version: str, github_user: str
+) -> None:
     """Generate release notes with instructions."""
     total_original = sum(f["original_size_bytes"] for f in manifest["files"].values())
     total_compressed = sum(
@@ -138,8 +178,8 @@ The app will automatically:
 
 ```bash
 # Download files
-wget https://github.com/YOUR_USER/daynimal/releases/download/v{version}/animalia_taxa_minimal.tsv.gz
-wget https://github.com/YOUR_USER/daynimal/releases/download/v{version}/animalia_vernacular_minimal.tsv.gz
+wget https://github.com/{github_user}/daynimal/releases/download/v{version}/animalia_taxa_minimal.tsv.gz
+wget https://github.com/{github_user}/daynimal/releases/download/v{version}/animalia_vernacular_minimal.tsv.gz
 
 # Verify checksums (optional but recommended)
 sha256sum -c checksums.txt
@@ -197,7 +237,21 @@ def main():
     parser.add_argument(
         "--version", type=str, default="1.0.0", help="Release version (default: 1.0.0)"
     )
+    parser.add_argument(
+        "--github-user",
+        type=str,
+        default=None,
+        help="GitHub user/org for download URLs (auto-detected from git remote if omitted)",
+    )
     args = parser.parse_args()
+
+    # Resolve GitHub user
+    github_user = args.github_user or detect_github_user()
+    if not github_user:
+        print("[WARNING] Could not detect GitHub user. Use --github-user to set it.")
+        github_user = "YOUR_USER"
+    else:
+        print(f"GitHub user: {github_user}")
 
     print("=" * 70)
     print(f"Daynimal Distribution Release Preparation v{args.version}")
@@ -227,7 +281,7 @@ def main():
     generate_checksums_file(output_dir, manifest)
 
     # Step 5: Generate release notes
-    generate_release_notes(output_dir, manifest, args.version)
+    generate_release_notes(output_dir, manifest, args.version, github_user)
 
     # Summary
     total_compressed = sum(
