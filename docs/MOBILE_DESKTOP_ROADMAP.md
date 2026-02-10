@@ -469,24 +469,7 @@ Chemins par plateforme :
 - [x] 5 tests unitaires (`tests/test_sharing.py`)
 - [ ] Partage mobile (share sheet natif Android/iOS) — Phase 3
 
-### Statistiques personnelles (2 jours)
-- [ ] Nombre total d'animaux consultes
-- [ ] Graphiques : repartition par famille, classe, ordre
-- [ ] Tendances temporelles (animaux vus par semaine/mois)
-- [ ] Animal le plus consulte
-
-### Mode decouverte (2 jours)
-- [ ] "Animal aleatoire" avec categories (mammiferes, oiseaux, reptiles, etc.)
-- [ ] "Defi du jour" : decouvrir X animaux
-- [ ] Suggestions basees sur l'historique
-
-### Optimisations performances (2 jours)
-- [ ] Pagination lazy (charger 20 animaux a la fois)
-- [ ] Images : thumbnails vs full resolution
-- [ ] Index SQLite sur colonnes frequemment filtrees
-- [ ] Cache en memoire pour vues recentes
-
-**Duree estimee Phase 2c : 2 semaines**
+**Duree estimee Phase 2c : 1 semaine**
 
 ---
 
@@ -569,6 +552,19 @@ Taches premium specifiques :
 ## Phase 4 : Features avancees (post-MVP)
 
 A planifier selon feedback utilisateurs.
+
+### Statistiques personnelles
+Deplacees depuis Phase 2c — non prioritaires pour le MVP :
+- [ ] Nombre total d'animaux consultes
+- [ ] Graphiques : repartition par famille, classe, ordre
+- [ ] Tendances temporelles (animaux vus par semaine/mois)
+- [ ] Animal le plus consulte
+
+### Mode decouverte
+Deplace depuis Phase 2c — non prioritaire pour le MVP :
+- [ ] "Animal aleatoire" avec categories (mammiferes, oiseaux, reptiles, etc.)
+- [ ] "Defi du jour" : decouvrir X animaux
+- [ ] Suggestions basees sur l'historique
 
 ### Features premium additionnelles
 Deplacees ici depuis la Phase 2 — a implementer apres validation du modele freemium :
