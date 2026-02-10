@@ -1,6 +1,6 @@
 # Roadmap : Application Mobile/Desktop
 
-**Derniere mise a jour** : 2026-02-09
+**Derniere mise a jour** : 2026-02-10
 
 ---
 
@@ -264,7 +264,7 @@ Architecture modulaire complete dans `daynimal/ui/` :
 
 ### Tests — ✅ Achievements exceptionnels
 
-**Couverture actuelle : 55%** — **455 tests passent** (vs ~50 tests initiaux)
+**Couverture actuelle : 55%** — **468 tests passent** (vs ~50 tests initiaux)
 
 **🎉 Succès Phase 2a - Tests critiques (Fév 2026)**
 - **attribution.py** : 0% → **100%** (75 tests, compliance légale garantie)
@@ -376,7 +376,7 @@ Voir "Pipeline de donnees" plus haut pour les tailles.
 **Etape 1 : Preparer les fichiers de distribution** ✅
 - [x] Compresser les TSV existants en `.gz`
 - [x] Generer checksums SHA256 et manifest.json
-- [ ] Heberger sur GitHub Releases
+- [x] Heberger sur GitHub Releases
 
 **Implementation :** Script `scripts/prepare_release.py` (voir `docs/DISTRIBUTION_RELEASE.md` pour le processus complet).
 
@@ -385,16 +385,15 @@ Tailles mesurees :
 - `animalia_vernacular_minimal.tsv.gz` : 9.21 MB (71.2% reduction)
 - **Total telechargement : 13.37 MB** (75.6% reduction vs 54.85 MB non compresse)
 
-**Etape 2 : Premier lancement dans l'app mobile**
-- [ ] Creer fonction `download_and_setup_db()` :
-  1. Verifier espace disponible (~150 MB necessaires)
-  2. Telecharger TSV.gz (~13.4 MB)
-  3. Decompresser (~55 MB temporaires)
-  4. Importer dans SQLite (creer `daynimal.db` ~117 MB)
-  5. Construire index FTS5
-  6. Supprimer les TSV decompresses
-- [ ] Creer ecran de premier lancement avec progress bar
-- [ ] Gerer les erreurs : espace insuffisant, echec telechargement, reprise
+**Etape 2 : Premier lancement dans l'app** ✅
+- [x] Creer fonction `download_and_setup_db()` avec pipeline complet
+- [x] Resolution DB : `resolve_database()` (defaut → `.daynimal_config` → None)
+- [x] Ecran de premier lancement (`SetupView`) avec progress bar et gestion d'erreurs
+- [x] Integration GUI (`app.py`) : detection DB manquante, affichage SetupView, callback post-setup
+- [x] Integration CLI (`main.py`) : commande `setup` + auto-detection DB manquante
+- [x] 13 tests unitaires (`tests/test_first_launch.py`)
+
+**Implementation :** Module `daynimal/db/first_launch.py` (resolution DB, telechargement streaming, verification SHA256, decompression gzip, build DB + FTS5, cleanup). Vue `daynimal/ui/views/setup_view.py` (SetupView etendant BaseView). Naming : `daynimal.db` (full/desktop), `daynimal_minimal.db` (premier lancement/mobile).
 
 Tailles de reference :
 - APK Flet : ~30-40 MB
@@ -682,4 +681,4 @@ Si Flet pose probleme a l'avenir :
 
 ---
 
-*Statut : Phase 1 completee - Phase 2a (stabilisation) completee - Phase 2b (features mobile) a venir*
+*Statut : Phase 1 completee - Phase 2a (stabilisation) completee - Phase 2b (features mobile) en cours*

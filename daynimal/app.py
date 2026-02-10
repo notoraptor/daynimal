@@ -7,6 +7,7 @@ daily animal discoveries with enriched information.
 
 import flet as ft
 
+from daynimal.db.first_launch import resolve_database
 from daynimal.repository import AnimalRepository
 from daynimal.ui.app_controller import AppController
 
@@ -50,13 +51,35 @@ class DaynimalApp:
         # Load and apply theme from settings
         self._load_theme()
 
-        # Initialize app controller (handles all views and navigation)
-        self.app_controller = AppController(page=self.page, debugger=self.debugger)
+        # Check if database exists
+        db_path = resolve_database()
+        if db_path is None:
+            # Show first-launch setup screen
+            from daynimal.ui.state import AppState
+            from daynimal.ui.views.setup_view import SetupView
 
-        # Add controller's UI to page
+            self.setup_view = SetupView(
+                page=self.page,
+                app_state=AppState(),
+                on_setup_complete=self._on_setup_complete,
+                debugger=self.debugger,
+            )
+            self.page.add(self.setup_view.build())
+        else:
+            self._build_main_app()
+
+        self.page.update()
+
+    def _build_main_app(self):
+        """Build the main application UI (after DB is available)."""
+        self.page.controls.clear()
+        self.app_controller = AppController(page=self.page, debugger=self.debugger)
         self.page.add(self.app_controller.build())
 
-        # Show initial view
+    def _on_setup_complete(self):
+        """Called when first-launch setup finishes successfully."""
+        resolve_database()  # Update settings with new DB path
+        self._build_main_app()
         self.page.update()
 
     def _load_theme(self):

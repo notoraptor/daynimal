@@ -231,12 +231,12 @@
 - dataclasses (used 4 times)
 - sys (used 4 times)
 - logging (used 3 times)
+- re (used 3 times)
+- subprocess (used 3 times)
 - abc (used 2 times)
 - csv (used 2 times)
 - httpx (used 2 times)
 - json (used 2 times)
-- re (used 2 times)
-- subprocess (used 2 times)
 - threading (used 2 times)
 - time (used 2 times)
 - ast (used 1 times)
@@ -1282,6 +1282,10 @@ def generate()
 > 4. Generates manifest.json with metadata
 > 5. Creates RELEASE_NOTES.md with instructions
 ```python
+def detect_github_user()  # Detect GitHub user/org from the upstream remote of the current branch.
+```
+- calls: `re.search`, `subprocess.run`
+```python
 def get_file_size_mb(path)  # Get file size in MB.
 ```
 ```python
@@ -1301,7 +1305,7 @@ def compress_distribution(data_dir, output_dir, version)  # Compress distributio
 ```
 - calls: `calculate_sha256`, `compress_file`, `datetime.now`, `datetime.now.isoformat`, `print`
 ```python
-def generate_release_notes(output_dir, manifest, version)  # Generate release notes with instructions.
+def generate_release_notes(output_dir, manifest, version, github_user)  # Generate release notes with instructions.
 ```
 - calls: `open`, `print`, `sum`
 ```python
@@ -1311,7 +1315,7 @@ def generate_checksums_file(output_dir, manifest)  # Generate checksums.txt for 
 ```python
 def main()  # Main entry point.
 ```
-- calls: `Path`, `argparse.ArgumentParser`, `compress_distribution`, `generate_checksums_file`, `generate_release_notes`, `json.dump`, `open`, `print`, `sum`, `verify_tsv_files`
+- calls: `Path`, `argparse.ArgumentParser`, `compress_distribution`, `detect_github_user`, `generate_checksums_file`, `generate_release_notes`, `json.dump`, `open`, `print`, `sum`, `verify_tsv_files`
 
 ## 6. High-Coupling Modules (Risk Zones)
 - No obvious high-coupling modules detected

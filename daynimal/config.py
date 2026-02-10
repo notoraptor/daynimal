@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     # Rate limiting (requests per second)
     api_rate_limit: float = 1.0
 
+    # Distribution release URL for first-launch setup
+    distribution_base_url: str = (
+        "https://github.com/notoraptor/daynimal/releases/download/v1.0.0"
+    )
+
     class Config:
         env_prefix = "DAYNIMAL_"
         env_file = ".env"

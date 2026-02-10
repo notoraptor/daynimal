@@ -9,6 +9,7 @@ dependencies.
 import io
 import sys
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -327,68 +328,69 @@ class TestCmdHistory:
         assert "No history" in output or "empty" in output.lower()
 
 
+@patch("daynimal.main.resolve_database", return_value=Path("daynimal.db"))
 class TestMainCLI:
     """Tests for the main() CLI entry point and argument parsing."""
 
     @patch("daynimal.main.cmd_today")
     @patch("sys.argv", ["daynimal"])
-    def test_main_no_args_calls_today(self, mock_cmd_today):
+    def test_main_no_args_calls_today(self, mock_cmd_today, _mock_resolve):
         """Test that running daynimal with no args calls cmd_today."""
         main()
         mock_cmd_today.assert_called_once()
 
     @patch("daynimal.main.cmd_random")
     @patch("sys.argv", ["daynimal", "random"])
-    def test_main_random_command(self, mock_cmd_random):
+    def test_main_random_command(self, mock_cmd_random, _mock_resolve):
         """Test that 'daynimal random' calls cmd_random."""
         main()
         mock_cmd_random.assert_called_once()
 
     @patch("daynimal.main.cmd_search")
     @patch("sys.argv", ["daynimal", "search", "lion"])
-    def test_main_search_command_single_word(self, mock_cmd_search):
+    def test_main_search_command_single_word(self, mock_cmd_search, _mock_resolve):
         """Test that 'daynimal search lion' calls cmd_search with 'lion'."""
         main()
         mock_cmd_search.assert_called_once_with("lion")
 
     @patch("daynimal.main.cmd_search")
     @patch("sys.argv", ["daynimal", "search", "panthera", "leo"])
-    def test_main_search_command_multiple_words(self, mock_cmd_search):
+    def test_main_search_command_multiple_words(self, mock_cmd_search, _mock_resolve):
         """Test that 'daynimal search panthera leo' joins words."""
         main()
         mock_cmd_search.assert_called_once_with("panthera leo")
 
     @patch("daynimal.main.cmd_info")
     @patch("sys.argv", ["daynimal", "info", "123456"])
-    def test_main_info_command_by_id(self, mock_cmd_info):
+    def test_main_info_command_by_id(self, mock_cmd_info, _mock_resolve):
         """Test that 'daynimal info 123456' calls cmd_info with ID."""
         main()
         mock_cmd_info.assert_called_once_with("123456")
 
     @patch("daynimal.main.cmd_info")
     @patch("sys.argv", ["daynimal", "info", "Panthera leo"])
-    def test_main_info_command_by_name(self, mock_cmd_info):
+    def test_main_info_command_by_name(self, mock_cmd_info, _mock_resolve):
         """Test that 'daynimal info Panthera leo' joins name."""
         main()
         mock_cmd_info.assert_called_once_with("Panthera leo")
 
     @patch("daynimal.main.cmd_stats")
     @patch("sys.argv", ["daynimal", "stats"])
-    def test_main_stats_command(self, mock_cmd_stats):
+    def test_main_stats_command(self, mock_cmd_stats, _mock_resolve):
         """Test that 'daynimal stats' calls cmd_stats."""
         main()
         mock_cmd_stats.assert_called_once()
 
     @patch("daynimal.main.cmd_credits")
     @patch("sys.argv", ["daynimal", "credits"])
-    def test_main_credits_command(self, mock_cmd_credits):
+    def test_main_credits_command(self, mock_cmd_credits, _mock_resolve):
         """Test that 'daynimal credits' calls cmd_credits."""
         main()
         mock_cmd_credits.assert_called_once()
 
     @patch("daynimal.main.cmd_history")
     @patch("sys.argv", ["daynimal", "history"])
-    def test_main_history_command(self, mock_cmd_history):
+    def test_main_history_command(self, mock_cmd_history, _mock_resolve):
         """Test that 'daynimal history' calls cmd_history with defaults."""
         main()
         # cmd_history now receives named parameters directly from argparse
@@ -396,7 +398,7 @@ class TestMainCLI:
 
     @patch("daynimal.main.cmd_history")
     @patch("sys.argv", ["daynimal", "history", "--page", "2"])
-    def test_main_history_with_args(self, mock_cmd_history):
+    def test_main_history_with_args(self, mock_cmd_history, _mock_resolve):
         """Test that 'daynimal history --page 2' passes page to cmd_history."""
         main()
         # cmd_history now receives parsed integer values
@@ -404,7 +406,7 @@ class TestMainCLI:
 
     @patch("daynimal.main.cmd_today")
     @patch("sys.argv", ["daynimal", "--db", "test.db"])
-    def test_main_with_db_option(self, mock_cmd_today):
+    def test_main_with_db_option(self, mock_cmd_today, _mock_resolve):
         """Test that 'daynimal --db test.db' uses custom DB via context manager."""
         from daynimal.config import settings
 
@@ -419,7 +421,7 @@ class TestMainCLI:
 
     @patch("daynimal.main.cmd_random")
     @patch("sys.argv", ["daynimal", "--db", "minimal.db", "random"])
-    def test_main_with_db_option_and_command(self, mock_cmd_random):
+    def test_main_with_db_option_and_command(self, mock_cmd_random, _mock_resolve):
         """Test that 'daynimal --db minimal.db random' uses custom DB via context manager."""
         from daynimal.config import settings
 
@@ -433,7 +435,7 @@ class TestMainCLI:
         mock_cmd_random.assert_called_once()
 
     @patch("sys.argv", ["daynimal", "--db"])
-    def test_main_db_without_path_shows_error(self):
+    def test_main_db_without_path_shows_error(self, _mock_resolve):
         """Test that 'daynimal --db' without path shows error."""
         # argparse exits with code 2 for invalid arguments
         with pytest.raises(SystemExit) as exc_info:
@@ -441,7 +443,7 @@ class TestMainCLI:
         assert exc_info.value.code == 2
 
     @patch("sys.argv", ["daynimal", "unknown"])
-    def test_main_unknown_command_shows_help(self):
+    def test_main_unknown_command_shows_help(self, _mock_resolve):
         """Test that unknown command shows error."""
         # argparse exits with code 2 for invalid subcommands
         with pytest.raises(SystemExit) as exc_info:
@@ -449,7 +451,7 @@ class TestMainCLI:
         assert exc_info.value.code == 2
 
     @patch("sys.argv", ["daynimal", "search"])
-    def test_main_search_without_query_shows_error(self):
+    def test_main_search_without_query_shows_error(self, _mock_resolve):
         """Test that 'daynimal search' without query shows error."""
         # argparse exits with code 2 for missing required arguments
         with pytest.raises(SystemExit) as exc_info:
@@ -457,7 +459,7 @@ class TestMainCLI:
         assert exc_info.value.code == 2
 
     @patch("sys.argv", ["daynimal", "info"])
-    def test_main_info_without_arg_shows_error(self):
+    def test_main_info_without_arg_shows_error(self, _mock_resolve):
         """Test that 'daynimal info' without argument shows error."""
         # argparse exits with code 2 for missing required arguments
         with pytest.raises(SystemExit) as exc_info:

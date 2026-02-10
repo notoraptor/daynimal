@@ -9,8 +9,9 @@ from contextlib import contextmanager
 
 from daynimal import AnimalInfo
 from daynimal.attribution import get_app_legal_notice
-from daynimal.repository import AnimalRepository
 from daynimal.config import settings
+from daynimal.db.first_launch import download_and_setup_db, resolve_database
+from daynimal.repository import AnimalRepository
 
 
 @contextmanager
@@ -229,6 +230,38 @@ def cmd_credits():
     print(get_app_legal_notice("full"))
 
 
+def cmd_setup():
+    """Download and set up the minimal database."""
+    if resolve_database() is not None:
+        print("Database already exists. Nothing to do.")
+        return
+
+    print("Setting up Daynimal database (downloading ~13 MB)...\n")
+
+    def progress(stage: str, progress: float | None):
+        labels = {
+            "download_manifest": "Downloading manifest",
+            "download_taxa": "Downloading taxa",
+            "download_vernacular": "Downloading vernacular names",
+            "decompress": "Decompressing",
+            "build_db": "Building database",
+            "build_fts": "Building search index",
+            "cleanup": "Cleaning up",
+        }
+        label = labels.get(stage, stage)
+        if progress is not None:
+            print(f"\r  {label}... {progress:.0%}", end="", flush=True)
+        else:
+            print(f"\r  {label}...", flush=True)
+
+    try:
+        download_and_setup_db(progress_callback=progress)
+        print("\n\nSetup complete! You can now use 'daynimal' commands.")
+    except Exception as e:
+        print(f"\n\nSetup failed: {e}")
+        raise SystemExit(1)
+
+
 def cmd_history(page: int = 1, per_page: int = 10):
     """
     Show history of viewed animals.
@@ -345,6 +378,9 @@ def create_parser():
     # credits command
     subparsers.add_parser("credits", help="Show full legal credits and licenses")
 
+    # setup command
+    subparsers.add_parser("setup", help="Download and set up the minimal database")
+
     # history command
     parser_history = subparsers.add_parser(
         "history", help="Show history of viewed animals"
@@ -375,6 +411,16 @@ def main():
         # Route to appropriate command
         # Default to 'today' if no command specified
         command = args.command or "today"
+
+        # Setup command doesn't need an existing DB
+        if command == "setup":
+            cmd_setup()
+            return
+
+        # All other commands require a database
+        if resolve_database() is None:
+            print("Database not found. Run 'daynimal setup' first.")
+            raise SystemExit(1)
 
         if command == "today":
             cmd_today()
