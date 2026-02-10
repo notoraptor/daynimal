@@ -440,27 +440,7 @@ Chemins par plateforme :
 - `ui/app_controller.py` : bandeau hors ligne + bouton Reessayer + mise a jour apres chaque chargement
 - `ui/views/settings_view.py` : switch "Forcer le mode hors ligne"
 
-### Notes personnelles (3 jours)
-- [ ] Ajouter des notes textuelles sur des animaux
-- [ ] Modifier/supprimer des notes
-- [ ] Recherche dans les notes
-- [ ] Vue liste des notes
-- [ ] Tests unitaires
-
-Table a creer :
-```sql
-CREATE TABLE notes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    taxon_id INTEGER NOT NULL,
-    note TEXT NOT NULL,
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL,
-    FOREIGN KEY (taxon_id) REFERENCES taxa(taxon_id) ON DELETE CASCADE
-);
-CREATE INDEX ix_notes_taxon_id ON notes(taxon_id);
-```
-
-**Duree estimee Phase 2b : 2-3 semaines**
+**✅ Phase 2b terminee**
 
 ---
 
@@ -600,6 +580,26 @@ Deplacees ici depuis la Phase 2 — a implementer apres validation du modele fre
 - **Statistiques avancees** : graphiques detailles, tendances, comparaisons
 - **Collections personnalisees illimitees** : creation, edition, partage
 
+### Notes personnelles
+- [ ] Ajouter des notes textuelles sur des animaux
+- [ ] Modifier/supprimer des notes
+- [ ] Recherche dans les notes
+- [ ] Vue liste des notes
+- [ ] Tests unitaires
+
+Table a creer :
+```sql
+CREATE TABLE notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    taxon_id INTEGER NOT NULL,
+    note TEXT NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    FOREIGN KEY (taxon_id) REFERENCES taxa(taxon_id) ON DELETE CASCADE
+);
+CREATE INDEX ix_notes_taxon_id ON notes(taxon_id);
+```
+
 ### Nouvelles features
 - **Parcours taxonomique** : arbre hierarchique interactif (Royaume > Phylum > Classe > ...), compteurs par branche
 - **Filtres avances** : par statut IUCN, habitat (marin/terrestre/aerien), region geographique, taille/masse, combinaison de filtres
@@ -679,4 +679,4 @@ Si Flet pose probleme a l'avenir :
 
 ---
 
-*Statut : Phase 1 completee - Phase 2a (stabilisation) completee - Phase 2b (features mobile) en cours*
+*Statut : Phase 1 completee - Phase 2a (stabilisation) completee - Phase 2b (features mobile) completee - Phase 2c (features secondaires) a venir*
