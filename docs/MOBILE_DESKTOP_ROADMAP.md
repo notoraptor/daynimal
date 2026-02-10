@@ -373,22 +373,23 @@ Voir "Pipeline de donnees" plus haut pour les tailles.
 
 **Note :** Depuis le refactoring de fevrier 2026, les TSV de distribution incluent deja les noms TAXREF (89K noms FR). Il suffit de les compresser et heberger.
 
-**Etape 1 : Preparer les fichiers de distribution**
-- [ ] Compresser les TSV existants en `.gz`
-- [ ] Heberger sur GitHub Releases ou CDN
+**Etape 1 : Preparer les fichiers de distribution** ✅
+- [x] Compresser les TSV existants en `.gz`
+- [x] Generer checksums SHA256 et manifest.json
+- [ ] Heberger sur GitHub Releases
 
-Commande pour regenerer les TSV (si necessaire) :
-```bash
-uv run generate-distribution --mode minimal --taxref data/TAXREFv18.txt
-gzip data/animalia_taxa_minimal.tsv
-gzip data/animalia_vernacular_minimal.tsv
-```
+**Implementation :** Script `scripts/prepare_release.py` (voir `docs/DISTRIBUTION_RELEASE.md` pour le processus complet).
+
+Tailles mesurees :
+- `animalia_taxa_minimal.tsv.gz` : 4.15 MB (81.8% reduction)
+- `animalia_vernacular_minimal.tsv.gz` : 9.21 MB (71.2% reduction)
+- **Total telechargement : 13.37 MB** (75.6% reduction vs 54.85 MB non compresse)
 
 **Etape 2 : Premier lancement dans l'app mobile**
 - [ ] Creer fonction `download_and_setup_db()` :
   1. Verifier espace disponible (~150 MB necessaires)
-  2. Telecharger TSV.gz (~14-16 MB)
-  3. Decompresser (~56 MB temporaires)
+  2. Telecharger TSV.gz (~13.4 MB)
+  3. Decompresser (~55 MB temporaires)
   4. Importer dans SQLite (creer `daynimal.db` ~117 MB)
   5. Construire index FTS5
   6. Supprimer les TSV decompresses
@@ -397,7 +398,7 @@ gzip data/animalia_vernacular_minimal.tsv
 
 Tailles de reference :
 - APK Flet : ~30-40 MB
-- Telechargement premier lancement : ~14-16 MB (TSV.gz avec TAXREF)
+- Telechargement premier lancement : ~13.4 MB (TSV.gz avec TAXREF)
 - DB SQLite apres import : ~117 MB (apres VACUUM)
 - App totale sur appareil : ~150-180 MB (APK + DB + cache)
 - Contrainte Google Play : APK < 150 MB (donc DB telechargee separement, obligatoire)

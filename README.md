@@ -185,13 +185,17 @@ daynimal/
 │   ├── repository.py  # Data access layer
 │   └── schemas.py     # Data models
 ├── data/              # Raw data files (GBIF, TAXREF) - gitignored
+├── dist/              # Distribution files (.gz, manifest) - gitignored
 ├── tmp/               # Temporary/decompressed files - gitignored
 ├── debug/             # Debugging tools
 │   ├── run_app_debug.py    # Debug launcher
 │   ├── debug_filter.py     # Log filtering
 │   ├── view_logs.py        # Log viewer
 │   └── README.md           # Debug documentation
+├── scripts/           # Build and release scripts
+│   └── prepare_release.py  # Compress TSV + generate manifest
 ├── docs/              # Documentation
+│   ├── DISTRIBUTION_RELEASE.md  # Release process guide
 │   ├── TAXREF.md      # TAXREF import guide
 │   └── ...            # Other guides
 ├── tests/             # Test suite
