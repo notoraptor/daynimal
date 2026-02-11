@@ -143,7 +143,7 @@ class SettingsView(BaseView):
                                     value=notif_time,
                                     options=hour_options,
                                     width=120,
-                                    on_change=self._on_notification_time_change,
+                                    on_select=self._on_notification_time_change,
                                 ),
                             ],
                             spacing=10,

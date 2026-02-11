@@ -19,7 +19,6 @@ data/
 tmp/
 
 daynimal*.db
-CLAUDE.md
 .claude
 /logs
 .coverage

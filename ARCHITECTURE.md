@@ -91,7 +91,6 @@
 
 ### daynimal.app
 - depends on `daynimal.db.first_launch`
-- depends on `daynimal.debug`
 - depends on `daynimal.repository`
 - depends on `daynimal.ui.app_controller`
 - depends on `daynimal.ui.state`
@@ -262,11 +261,11 @@
 - datetime (used 9 times)
 - sqlalchemy (used 9 times)
 - argparse (used 8 times)
+- traceback (used 7 times)
 - httpx (used 6 times)
 - logging (used 6 times)
-- traceback (used 6 times)
+- sys (used 5 times)
 - dataclasses (used 4 times)
-- sys (used 4 times)
 - hashlib (used 3 times)
 - json (used 3 times)
 - re (used 3 times)
@@ -276,6 +275,7 @@
 - abc (used 2 times)
 - csv (used 2 times)
 - gzip (used 2 times)
+- os (used 2 times)
 - ast (used 1 times)
 - collections (used 1 times)
 - concurrent (used 1 times)
@@ -283,12 +283,12 @@
 - enum (used 1 times)
 - io (used 1 times)
 - math (used 1 times)
-- os (used 1 times)
 - plyer (used 1 times)
 - pydantic_settings (used 1 times)
 - random (used 1 times)
 - shutil (used 1 times)
 - sqlite3 (used 1 times)
+- types (used 1 times)
 - unicodedata (used 1 times)
 - zipfile (used 1 times)
 
@@ -319,9 +319,13 @@ class DaynimalApp  # Main application class for Daynimal Flet app.
     # calls: self.cleanup, self.debugger.logger.error, self.debugger.logger.info
 ```
 ```python
+def _show_error(page, error)  # Show error visually on the page (critical for mobile debugging).
+```
+- calls: `ft.Column`, `ft.Text`, `str`, `traceback.format_exc`
+```python
 def main()  # Main entry point for the Flet app.
 ```
-- calls: `DaynimalApp`, `ft.app`
+- calls: `DaynimalApp`, `_show_error`, `ft.app`
 
 ### Module: daynimal.attribution
 > Attribution management for legal compliance.
@@ -1042,7 +1046,7 @@ class WikipediaAPI(DataSource)  # Client for Wikipedia API.
 ```python
 class AppController  # Main application controller.
     def __init__(self, page, debugger)  # Initialize AppController.
-    # calls: AppState, FavoritesView, HistoryView, NotificationService, SearchView, SettingsView, StatsView, TodayView, asyncio.create_task, ft.ButtonStyle, ft.Column, ft.Container, ft.Icon, ft.NavigationBar, ft.NavigationBarDestination, ft.Padding, ft.Row, ft.Text, ft.TextButton, get_debugger, self.load_animal_from_favorite, self.load_animal_from_history, self.load_animal_from_search
+    # calls: AppState, FavoritesView, HistoryView, NotificationService, SearchView, SettingsView, StatsView, TodayView, asyncio.create_task, ft.Button, ft.ButtonStyle, ft.Column, ft.Container, ft.Icon, ft.NavigationBar, ft.NavigationBarDestination, ft.Padding, ft.Row, ft.Text, get_debugger, self.load_animal_from_favorite, self.load_animal_from_history, self.load_animal_from_search
     def build(self)  # Build the app UI.
     # calls: ft.Column, self.notification_service.start, self.show_today_view
     def on_nav_change(self, e)  # Handle navigation bar changes.
@@ -1143,7 +1147,7 @@ class PaginationBar  # Pagination bar: [< Précédent]  Page X / Y  [Suivant >]
     def total_pages(self)
     # calls: math.ceil, max
     def build(self)
-    # calls: ft.Container, ft.Padding.symmetric, ft.Row, ft.Text, ft.TextButton, self.on_page_change
+    # calls: ft.Button, ft.Container, ft.Padding.symmetric, ft.Row, ft.Text, self.on_page_change
 ```
 
 ### Module: daynimal.ui.components.widgets
@@ -1287,7 +1291,7 @@ class SettingsView(BaseView)  # View for app settings, preferences, and credits.
     def build(self)  # Build the settings view UI.
     # calls: asyncio.create_task, self._load_settings
     async def _load_settings(self)  # Load settings and build the UI.
-    # calls: asyncio.to_thread, ft.Column, ft.Container, ft.Divider, ft.Dropdown, ft.ElevatedButton, ft.Icon, ft.Padding, ft.Row, ft.Switch, ft.Text, ft.dropdown.Option, print, range, self.app_state.image_cache.get_cache_size, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: asyncio.to_thread, ft.Button, ft.Column, ft.Container, ft.Divider, ft.Dropdown, ft.Icon, ft.Padding, ft.Row, ft.Switch, ft.Text, ft.dropdown.Option, print, range, self.app_state.image_cache.get_cache_size, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
     def _on_clear_cache(self, e)  # Handle clear cache button click.
     # calls: asyncio.create_task, self._load_settings, self.app_state.image_cache.clear, self.debugger.log_error, self.debugger.logger.info
     def _on_offline_toggle(self, e)  # Handle forced offline mode toggle.
@@ -1305,13 +1309,13 @@ class SettingsView(BaseView)  # View for app settings, preferences, and credits.
 ```python
 class SetupView(BaseView)  # View displayed on first launch when no database is found.
     def __init__(self, page, app_state, on_setup_complete, debugger)  # Initialize SetupView.
-    # calls: ft.ButtonStyle, ft.Column, ft.ElevatedButton, ft.ProgressBar, ft.Text, super, super.__init__
+    # calls: ft.Button, ft.ButtonStyle, ft.Column, ft.ProgressBar, ft.Text, super, super.__init__
     def build(self)  # Build the setup view UI.
-    # calls: ft.Column, ft.Container, ft.Icon, ft.Text
+    # calls: ft.Alignment, ft.Column, ft.Container, ft.Icon, ft.Text
     def _on_install_click(self, e)  # Handle install button click — launch async setup.
     # calls: asyncio.create_task, self._start_setup
     async def _start_setup(self)  # Run the download and setup process.
-    # calls: asyncio.sleep, asyncio.to_thread, ft.ElevatedButton, ft.Icon, ft.Text, self.log_error, self.on_setup_complete, self.page.update, str
+    # calls: asyncio.sleep, asyncio.to_thread, ft.Button, ft.Icon, ft.Text, self.log_error, self.on_setup_complete, self.page.update, str
     def _update_progress(self, stage, progress)  # Update UI with progress from download_and_setup_db.
     # calls: self.page.update
     async def refresh(self)  # No-op refresh.
@@ -1346,11 +1350,20 @@ class TodayView(BaseView)  # View for displaying the animal of the day or random
     async def _load_animal_for_today_view(self, mode)  # Load and display an animal in the Today view.
     # calls: asyncio.sleep, asyncio.to_thread, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self._display_animal, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.on_load_complete, self.page.update, str, traceback.format_exc
     def _display_animal(self, animal)  # Display animal information in the Today view.
-    # calls: AnimalDisplay, ImageCarousel, ft.Container, ft.Divider, ft.IconButton, ft.Padding, ft.Row, ft.Text, len, self.app_state.repository.is_favorite, self.page.update
+    # calls: AnimalDisplay, ImageCarousel, ft.Container, ft.Divider, ft.IconButton, ft.Padding, ft.Row, ft.Text, len, self.app_state.image_cache.get_local_path, self.app_state.repository.is_favorite, self.page.update
     def _on_favorite_toggle(self, e)  # Handle favorite button toggle.
     # calls: self._display_animal, self.app_state.repository.is_favorite, self.on_favorite_toggle_callback
     def _on_image_index_change(self, new_index)  # Handle image index change in carousel.
     # calls: self._display_animal
+    @staticmethod
+    def _build_share_text(animal)  # Build formatted share text for an animal.
+    # calls: len
+    async def _on_copy_text(self, e)  # Copy formatted animal text to clipboard.
+    # calls: ft.SnackBar, ft.Text, self._build_share_text, self.page.open, self.page.set_clipboard, self.page.update
+    def _on_open_wikipedia(self, e)  # Open Wikipedia article in default browser.
+    # calls: self.page.launch_url
+    async def _on_copy_image(self, e)  # Copy local image path to clipboard.
+    # calls: ft.SnackBar, ft.Text, self.app_state.image_cache.get_local_path, self.page.open, self.page.set_clipboard, self.page.update, str
 ```
 
 ### Module: debug.debug_filter
