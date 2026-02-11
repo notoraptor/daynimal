@@ -4,7 +4,10 @@ import asyncio
 import logging
 from datetime import datetime
 
-from plyer import notification
+try:
+    from plyer import notification
+except ImportError:
+    notification = None
 
 from daynimal.repository import AnimalRepository
 
@@ -83,6 +86,10 @@ class NotificationService:
     async def _send_notification(self):
         """Send the daily animal notification."""
         try:
+            if notification is None:
+                logger.debug("plyer not available, skipping notification")
+                return
+
             animal = await asyncio.to_thread(self.repository.get_animal_of_the_day)
             if animal is None:
                 return

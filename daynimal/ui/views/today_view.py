@@ -2,7 +2,6 @@
 
 import asyncio
 import traceback
-import webbrowser
 from typing import Callable
 
 import flet as ft
@@ -414,7 +413,7 @@ class TodayView(BaseView):
         """Open Wikipedia article in default browser."""
         if not self.current_animal or not self.current_animal.wikipedia:
             return
-        webbrowser.open(self.current_animal.wikipedia.article_url)
+        self.page.launch_url(self.current_animal.wikipedia.article_url)
 
     async def _on_copy_image(self, e):
         """Copy local image path to clipboard."""

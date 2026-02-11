@@ -139,17 +139,20 @@ Reste non prioritaire : tests des 8 modules UI a 0% (`app_controller`, `today_vi
 
 Objectif : valider que Flet compile sur mobile et deployer l'app.
 
-### Etape 1 : Validation (prerequis)
+### Etape 1 : Adaptations pre-build
 
-- [ ] Builder un APK "hello world" avec Flet pour valider la compilation Android
-- [ ] Identifier les problemes specifiques mobile (performance SQLite, permissions fichiers, taille APK)
+- [ ] Remplacer `webbrowser.open()` par `page.launch_url()` (today_view.py)
+- [ ] Creer `get_app_data_dir()` mobile-aware dans config.py (utiliser `page.client_storage` ou chemins sandbox)
+- [ ] Corriger chemins hardcodes dans first_launch.py (tmp/, db filename)
+- [ ] Ajouter detection de plateforme pour features desktop-only (plyer notifications)
+- [ ] Creer `flet.toml` avec configuration Android (package name, permissions, SDK)
 
-### Etape 2 : Build Android
+### Etape 2 : Build et test Android
 
-- [ ] Configuration build Android (Flet CLI)
-- [ ] Compilation APK avec l'app complete
-- [ ] Tests emulateur + appareil reel
-- [ ] Ajustements UI/UX mobile
+- [ ] Compilation APK avec Flet CLI (`flet build apk`)
+- [ ] Tests emulateur Android
+- [ ] Tests appareil reel
+- [ ] Ajustements UI/UX mobile (tailles, touch targets, navigation)
 
 ### Etape 3 : Build iOS (si Mac disponible)
 

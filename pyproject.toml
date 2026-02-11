@@ -34,6 +34,21 @@ daynimal-app = "daynimal.app:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.flet]
+org = "com.daynimal"
+product = "Daynimal"
+company = "Daynimal"
+
+[tool.flet.app]
+module = "app"
+path = "daynimal"
+
+[tool.flet.android]
+split_per_abi = true
+
+[tool.flet.android.permission]
+"android.permission.INTERNET" = true
+
 [tool.ruff.lint.per-file-ignores]
 # Do not complain about unused imports in __init__ files.
 "__init__.py" = ["F401"]
