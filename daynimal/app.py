@@ -5,19 +5,45 @@ A cross-platform application built with Flet (Flutter for Python) that displays
 daily animal discoveries with enriched information.
 """
 
+import os
+import sys
+import types
+
+# On Android/mobile, Flet copies package contents to an "app" directory.
+# Absolute imports like "from daynimal.xxx" fail because there's no "daynimal"
+# package on sys.path. Fix: register current directory as the "daynimal" package.
+if "daynimal" not in sys.modules:
+    _app_dir = os.path.dirname(os.path.abspath(__file__))
+    _pkg = types.ModuleType("daynimal")
+    _pkg.__path__ = [_app_dir]
+    _pkg.__package__ = "daynimal"
+    _pkg.__file__ = os.path.join(_app_dir, "__init__.py")
+    sys.modules["daynimal"] = _pkg
+
 import flet as ft
 
-from daynimal.db.first_launch import resolve_database
-from daynimal.repository import AnimalRepository
-from daynimal.ui.app_controller import AppController
 
-# Try to import debugger (optional)
-try:
-    import daynimal.debug  # noqa: F401
+def _show_error(page: ft.Page, error: Exception):
+    """Show error visually on the page (critical for mobile debugging)."""
+    import traceback
 
-    DEBUG_AVAILABLE = True
-except ImportError:
-    DEBUG_AVAILABLE = False
+    page.controls.clear()
+    page.add(
+        ft.Column(
+            [
+                ft.Text("Startup Error", size=24, color=ft.Colors.ERROR),
+                ft.Text(str(error), size=14),
+                ft.Text(
+                    traceback.format_exc(),
+                    size=10,
+                    selectable=True,
+                ),
+            ],
+            scroll=ft.ScrollMode.AUTO,
+            expand=True,
+        )
+    )
+    page.update()
 
 
 class DaynimalApp:
@@ -48,6 +74,8 @@ class DaynimalApp:
 
     def build(self):
         """Build the user interface."""
+        from daynimal.db.first_launch import resolve_database
+
         # Load and apply theme from settings
         self._load_theme()
 
@@ -72,12 +100,16 @@ class DaynimalApp:
 
     def _build_main_app(self):
         """Build the main application UI (after DB is available)."""
+        from daynimal.ui.app_controller import AppController
+
         self.page.controls.clear()
         self.app_controller = AppController(page=self.page, debugger=self.debugger)
         self.page.add(self.app_controller.build())
 
     def _on_setup_complete(self):
         """Called when first-launch setup finishes successfully."""
+        from daynimal.db.first_launch import resolve_database
+
         resolve_database()  # Update settings with new DB path
         self._build_main_app()
         self.page.update()
@@ -85,6 +117,8 @@ class DaynimalApp:
     def _load_theme(self):
         """Load theme setting from database and apply to page."""
         try:
+            from daynimal.repository import AnimalRepository
+
             with AnimalRepository() as repo:
                 theme_mode = repo.get_setting("theme_mode", "light")
                 self.page.theme_mode = (
@@ -141,9 +175,11 @@ def main():
     """Main entry point for the Flet app."""
 
     def app_main(page: ft.Page):
-        DaynimalApp(page)
+        try:
+            DaynimalApp(page)
+        except Exception as e:
+            _show_error(page, e)
 
-    # Run as desktop app
     ft.app(target=app_main)
 
 

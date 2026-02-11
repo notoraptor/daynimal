@@ -99,7 +99,7 @@ class AppController:
                         color=ft.Colors.WHITE,
                         size=13,
                     ),
-                    ft.TextButton(
+                    ft.Button(
                         "Réessayer",
                         on_click=self._retry_connection,
                         style=ft.ButtonStyle(color=ft.Colors.WHITE),

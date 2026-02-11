@@ -139,20 +139,51 @@ Reste non prioritaire : tests des 8 modules UI a 0% (`app_controller`, `today_vi
 
 Objectif : valider que Flet compile sur mobile et deployer l'app.
 
+### Workflow de test Android
+
+```bash
+# Build APK (3 architectures: arm64-v8a, armeabi-v7a, x86_64)
+PYTHONUTF8=1 PYTHONIOENCODING=utf-8 uv run flet build apk --no-rich-output
+
+# Lancer l'emulateur (AVD "daynimal_test", Pixel 6, API 35)
+$ANDROID_HOME/emulator/emulator -avd daynimal_test -no-audio &
+
+# Installer et lancer l'app
+adb wait-for-device
+adb install -r build/apk/app-x86_64-release.apk
+adb shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
+
+# Verifier l'UI (screenshot) et les logs
+adb exec-out screencap -p > screenshot.png
+adb logcat -d | grep -i "flutter\|python\|error" | grep -v "audit\|InetDiag"
+
+# Redemarrer l'app
+adb shell am force-stop com.daynimal.daynimal
+```
+
+**Note** : BlueStacks est incompatible avec Flet (ecran blanc). Utiliser l'emulateur Android Studio.
+Sur Windows/Git Bash, utiliser des chemins Unix : `"/c/Users/.../Android/sdk/platform-tools/adb"`.
+
 ### Etape 1 : Adaptations pre-build
 
-- [ ] Remplacer `webbrowser.open()` par `page.launch_url()` (today_view.py)
+- [x] Remplacer `webbrowser.open()` par `page.launch_url()` (today_view.py)
 - [ ] Creer `get_app_data_dir()` mobile-aware dans config.py (utiliser `page.client_storage` ou chemins sandbox)
 - [ ] Corriger chemins hardcodes dans first_launch.py (tmp/, db filename)
-- [ ] Ajouter detection de plateforme pour features desktop-only (plyer notifications)
-- [ ] Creer `flet.toml` avec configuration Android (package name, permissions, SDK)
+- [x] Ajouter detection de plateforme pour features desktop-only (plyer notifications)
+- [x] Configuration Android dans pyproject.toml (`[tool.flet]`, permissions, split_per_abi)
+- [x] Fix imports absolus pour Android (`sys.modules` hack dans app.py)
+- [x] Migrer widgets deprecated (`ElevatedButton`/`TextButton` → `Button`, `ft.alignment.center` → `ft.Alignment`)
 
 ### Etape 2 : Build et test Android
 
-- [ ] Compilation APK avec Flet CLI (`flet build apk`)
-- [ ] Tests emulateur Android
+- [x] Compilation APK avec Flet CLI (`flet build apk`) — 3 architectures (arm64, armv7, x86_64)
+- [x] Tests emulateur Android (AVD via Android Studio emulator) — ecran premier lancement OK
 - [ ] Tests appareil reel
+- [ ] Tester telechargement DB depuis ecran premier lancement
+- [ ] Tester navigation complete apres installation DB
 - [ ] Ajustements UI/UX mobile (tailles, touch targets, navigation)
+
+**Note** : BlueStacks est incompatible avec Flet (ecran blanc). Utiliser l'emulateur Android Studio (AVD `daynimal_test`). Voir CLAUDE.md pour les commandes ADB.
 
 ### Etape 3 : Build iOS (si Mac disponible)
 

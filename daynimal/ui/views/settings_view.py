@@ -234,7 +234,7 @@ class SettingsView(BaseView):
                     controls=[
                         ft.Text("Cache d'images", size=18, weight=ft.FontWeight.BOLD),
                         ft.Text(f"Taille du cache : {cache_size_text}", size=12),
-                        ft.ElevatedButton(
+                        ft.Button(
                             "Vider le cache",
                             icon=ft.Icons.DELETE,
                             on_click=self._on_clear_cache,

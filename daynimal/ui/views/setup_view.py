@@ -27,8 +27,8 @@ class SetupView(BaseView):
         self.on_setup_complete = on_setup_complete
 
         # UI elements
-        self.install_button = ft.ElevatedButton(
-            text="Installer la base de données",
+        self.install_button = ft.Button(
+            "Installer la base de données",
             icon=ft.Icons.DOWNLOAD,
             on_click=self._on_install_click,
             style=ft.ButtonStyle(padding=20),
@@ -67,7 +67,7 @@ class SetupView(BaseView):
                     spacing=10,
                 ),
                 padding=40,
-                alignment=ft.alignment.center,
+                alignment=ft.Alignment(0, 0),
                 expand=True,
             )
         ]
@@ -113,8 +113,8 @@ class SetupView(BaseView):
                     "Erreur lors de l'installation", size=18, color=ft.Colors.ERROR
                 ),
                 ft.Text(str(error), size=12, color=ft.Colors.GREY_600),
-                ft.ElevatedButton(
-                    text="Réessayer",
+                ft.Button(
+                    "Réessayer",
                     icon=ft.Icons.REFRESH,
                     on_click=self._on_install_click,
                 ),

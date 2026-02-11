@@ -32,7 +32,7 @@ class PaginationBar:
         return ft.Container(
             content=ft.Row(
                 controls=[
-                    ft.TextButton(
+                    ft.Button(
                         "< Précédent",
                         disabled=self.current_page <= 1,
                         on_click=lambda _: self.on_page_change(self.current_page - 1),
@@ -42,7 +42,7 @@ class PaginationBar:
                         size=14,
                         weight=ft.FontWeight.BOLD,
                     ),
-                    ft.TextButton(
+                    ft.Button(
                         "Suivant >",
                         disabled=self.current_page >= self.total_pages,
                         on_click=lambda _: self.on_page_change(self.current_page + 1),
