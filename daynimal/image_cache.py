@@ -42,7 +42,7 @@ class ImageCacheService:
             self._client = httpx.Client(
                 timeout=settings.httpx_timeout,
                 headers={
-                    "User-Agent": "Daynimal/1.0 (https://github.com/daynimal; contact@example.com)"
+                    "User-Agent": "Daynimal/1.0 (https://github.com/notoraptor/daynimal)"
                 },
                 follow_redirects=True,
             )
