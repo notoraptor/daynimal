@@ -114,9 +114,7 @@ class SetupView(BaseView):
                 ),
                 ft.Text(str(error), size=12, color=ft.Colors.GREY_600),
                 ft.Button(
-                    "Réessayer",
-                    icon=ft.Icons.REFRESH,
-                    on_click=self._on_install_click,
+                    "Réessayer", icon=ft.Icons.REFRESH, on_click=self._on_install_click
                 ),
             ]
             self.install_button.visible = False

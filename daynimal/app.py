@@ -33,11 +33,7 @@ def _show_error(page: ft.Page, error: Exception):
             [
                 ft.Text("Startup Error", size=24, color=ft.Colors.ERROR),
                 ft.Text(str(error), size=14),
-                ft.Text(
-                    traceback.format_exc(),
-                    size=10,
-                    selectable=True,
-                ),
+                ft.Text(traceback.format_exc(), size=10, selectable=True),
             ],
             scroll=ft.ScrollMode.AUTO,
             expand=True,
@@ -180,7 +176,7 @@ def main():
         except Exception as e:
             _show_error(page, e)
 
-    ft.app(target=app_main)
+    ft.run(main=app_main)
 
 
 if __name__ == "__main__":
