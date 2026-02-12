@@ -142,23 +142,30 @@ class SetupView(BaseView):
 
             await asyncio.to_thread(download_and_setup_db, self._update_progress)
 
-            # Show success screen
+            # Show success screen with animation
+            icon_container = ft.Container(
+                content=ft.Icon(
+                    ft.Icons.CHECK_CIRCLE,
+                    size=80,
+                    color=ft.Colors.PRIMARY,
+                ),
+                scale=0,
+                animate_scale=ft.Animation(800, ft.AnimationCurve.ELASTIC_OUT),
+            )
+            text_container = ft.Container(
+                content=ft.Text(
+                    "Tout est prêt !",
+                    size=28,
+                    weight=ft.FontWeight.BOLD,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                opacity=0,
+                animate_opacity=ft.Animation(600, ft.AnimationCurve.EASE_IN),
+            )
             self.container.controls = [
                 ft.Container(
                     content=ft.Column(
-                        controls=[
-                            ft.Icon(
-                                ft.Icons.CHECK_CIRCLE,
-                                size=80,
-                                color=ft.Colors.PRIMARY,
-                            ),
-                            ft.Text(
-                                "Tout est prêt !",
-                                size=28,
-                                weight=ft.FontWeight.BOLD,
-                                text_align=ft.TextAlign.CENTER,
-                            ),
-                        ],
+                        controls=[icon_container, text_container],
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                         spacing=10,
                     ),
@@ -168,7 +175,25 @@ class SetupView(BaseView):
                 )
             ]
             self.page.update()
-            await asyncio.sleep(2)
+            await asyncio.sleep(0.05)
+
+            # Trigger entrance animation
+            icon_container.scale = 1
+            text_container.opacity = 1
+            self.page.update()
+            await asyncio.sleep(1.5)
+
+            # Subtle shrink before transition
+            icon_container.animate_scale = ft.Animation(
+                400, ft.AnimationCurve.EASE_IN
+            )
+            icon_container.scale = 0.8
+            text_container.animate_opacity = ft.Animation(
+                400, ft.AnimationCurve.EASE_IN
+            )
+            text_container.opacity = 0
+            self.page.update()
+            await asyncio.sleep(0.5)
 
             self.on_setup_complete()
 
