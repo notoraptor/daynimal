@@ -1,14 +1,14 @@
 # Roadmap : Application Mobile/Desktop
 
-**Derniere mise a jour** : 2026-02-10
+**Derniere mise a jour** : 2026-02-12
 
 ---
 
 ## Etat actuel
 
-Application Flet desktop fonctionnelle avec 6 onglets (Aujourd'hui, Historique, Favoris, Recherche, Statistiques, Parametres). Architecture modulaire, 520 tests (55% couverture), infrastructure mobile prete (cache images, mode hors ligne, distribution TSV).
+Application Flet desktop fonctionnelle avec 6 onglets (Aujourd'hui, Historique, Favoris, Recherche, Statistiques, Parametres). Architecture modulaire, 524 tests (55% couverture), infrastructure mobile prete (cache images, mode hors ligne, distribution TSV). Chemins mobile-aware (`get_app_data_dir()`, `get_app_temp_dir()`). Build mobile valide sur emulateur Android (premier lancement + telechargement DB OK).
 
-**Prochaine etape** : validation build mobile (Phase 3).
+**Prochaine etape** : tests appareil reel et ajustements UI mobile (Phase 3).
 
 ---
 
@@ -167,8 +167,8 @@ Sur Windows/Git Bash, utiliser des chemins Unix : `"/c/Users/.../Android/sdk/pla
 ### Etape 1 : Adaptations pre-build
 
 - [x] Remplacer `webbrowser.open()` par `page.launch_url()` (today_view.py)
-- [ ] Creer `get_app_data_dir()` mobile-aware dans config.py (utiliser `page.client_storage` ou chemins sandbox)
-- [ ] Corriger chemins hardcodes dans first_launch.py (tmp/, db filename)
+- [x] Creer `get_app_data_dir()` / `get_app_temp_dir()` mobile-aware dans config.py (utilise `FLET_APP_STORAGE_DATA` / `FLET_APP_STORAGE_TEMP`)
+- [x] Corriger chemins hardcodes dans first_launch.py (tmp/, db filename) et debug.py (logs/)
 - [x] Ajouter detection de plateforme pour features desktop-only (plyer notifications)
 - [x] Configuration Android dans pyproject.toml (`[tool.flet]`, permissions, split_per_abi)
 - [x] Fix imports absolus pour Android (`sys.modules` hack dans app.py)
@@ -178,9 +178,9 @@ Sur Windows/Git Bash, utiliser des chemins Unix : `"/c/Users/.../Android/sdk/pla
 
 - [x] Compilation APK avec Flet CLI (`flet build apk`) — 3 architectures (arm64, armv7, x86_64)
 - [x] Tests emulateur Android (AVD via Android Studio emulator) — ecran premier lancement OK
+- [x] Tester telechargement DB depuis ecran premier lancement — OK (fix parsing manifest dict)
+- [x] Tester navigation complete apres installation DB — ecran principal avec 6 onglets OK
 - [ ] Tests appareil reel
-- [ ] Tester telechargement DB depuis ecran premier lancement
-- [ ] Tester navigation complete apres installation DB
 - [ ] Ajustements UI/UX mobile (tailles, touch targets, navigation)
 
 **Note** : BlueStacks est incompatible avec Flet (ecran blanc). Utiliser l'emulateur Android Studio (AVD `daynimal_test`). Voir CLAUDE.md pour les commandes ADB.
@@ -383,4 +383,4 @@ Si Flet pose probleme a l'avenir :
 
 ---
 
-*Statut : Phases 1 a 2c completees — Phase 3 (validation et build mobile) a suivre*
+*Statut : Phases 1 a 2c completees — Phase 3 en cours (build mobile valide sur emulateur, tests appareil reel a suivre)*

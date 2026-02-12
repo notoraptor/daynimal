@@ -19,7 +19,7 @@ from typing import Callable, Optional
 
 import httpx
 
-from daynimal.config import settings
+from daynimal.config import get_app_data_dir, get_app_temp_dir, settings
 
 
 # Type for progress callback: (stage_name, progress_float_or_None)
@@ -169,9 +169,9 @@ def download_and_setup_db(progress_callback: Optional[ProgressCallback] = None) 
         Exception: On any failure (partial DB is cleaned up).
     """
     base_url = settings.distribution_base_url
-    tmp_dir = Path("tmp")
+    tmp_dir = get_app_temp_dir()
     db_filename = "daynimal_minimal.db"
-    db_path = Path(db_filename)
+    db_path = get_app_data_dir() / db_filename
 
     def _progress(stage: str, progress: Optional[float] = None):
         if progress_callback:
@@ -197,7 +197,11 @@ def download_and_setup_db(progress_callback: Optional[ProgressCallback] = None) 
         manifest_path = tmp_dir / "manifest.json"
         download_file(f"{base_url}/manifest.json", manifest_path)
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        checksums = {f["name"]: f["sha256"] for f in manifest["files"]}
+        files = manifest["files"]
+        if isinstance(files, dict):
+            checksums = {name: info["sha256"] for name, info in files.items()}
+        else:
+            checksums = {f["name"]: f["sha256"] for f in files}
         _progress("download_manifest", 1.0)
 
         # 2. Download taxa
@@ -242,13 +246,13 @@ def download_and_setup_db(progress_callback: Optional[ProgressCallback] = None) 
         _progress("build_db", None)
         from daynimal.db.build_db import build_database
 
-        build_database(taxa_tsv_path, vern_tsv_path, db_filename)
+        build_database(taxa_tsv_path, vern_tsv_path, str(db_path))
 
         # 6. Init FTS
         _progress("build_fts", None)
         from daynimal.db.init_fts import init_fts
 
-        init_fts(db_path=db_filename)
+        init_fts(db_path=str(db_path))
 
         # 7. Save config
         save_db_config(db_path)

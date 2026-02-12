@@ -1,11 +1,36 @@
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
 
+def get_app_data_dir() -> Path:
+    """Répertoire de données persistantes (DB, config, cache).
+
+    Sur mobile (Flet), utilise FLET_APP_STORAGE_DATA.
+    Sur desktop, utilise le répertoire courant.
+    """
+    flet_data = os.getenv("FLET_APP_STORAGE_DATA")
+    if flet_data:
+        return Path(flet_data)
+    return Path(".")
+
+
+def get_app_temp_dir() -> Path:
+    """Répertoire temporaire (téléchargements, décompression).
+
+    Sur mobile (Flet), utilise FLET_APP_STORAGE_TEMP.
+    Sur desktop, utilise tmp/ relatif.
+    """
+    flet_temp = os.getenv("FLET_APP_STORAGE_TEMP")
+    if flet_temp:
+        return Path(flet_temp)
+    return Path("tmp")
+
+
 class Settings(BaseSettings):
     # Database
-    database_url: str = "sqlite:///daynimal.db"
+    database_url: str = f"sqlite:///{get_app_data_dir() / 'daynimal.db'}"
 
     # Data directory for dumps
     data_dir: Path = Path("data")
@@ -25,7 +50,7 @@ class Settings(BaseSettings):
     )
 
     # Image cache
-    image_cache_dir: Path = Path("~/.daynimal/cache/images").expanduser()
+    image_cache_dir: Path = get_app_data_dir() / "cache" / "images"
     image_cache_max_size_mb: int = 500
     image_cache_hd: bool = True
 

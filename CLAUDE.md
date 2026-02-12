@@ -174,6 +174,16 @@ adb shell am force-stop com.daynimal.daynimal
 
 **Note**: BlueStacks is incompatible with Flet apps (white screen). Use Android Studio emulator (AVD) instead. On Windows, use Unix-style paths for adb/emulator in Git Bash (e.g. `"/c/Users/.../Android/sdk/platform-tools/adb"`).
 
+**Clicking buttons in the emulator via ADB**: Flet uses Flutter rendering — `adb shell input tap X Y` requires exact pixel coordinates. Do NOT guess coordinates from screenshots. Instead:
+1. Dump the UI hierarchy: `adb shell uiautomator dump //sdcard/ui.xml && adb shell cat //sdcard/ui.xml`
+2. Find the button's `bounds="[left,top][right,bottom]"` in the XML
+3. Compute center: `x = (left + right) / 2`, `y = (top + bottom) / 2`
+4. Tap: `adb shell input tap <x> <y>`
+
+On Windows/Git Bash, use `//sdcard/` (double slash) to prevent path conversion by MSYS.
+
+**Emulator screenshots**: Save screenshots to `tmp/` (git-ignored), not the project root. Example: `adb exec-out screencap -p > tmp/screenshot.png`
+
 ## Architecture
 
 ### Three-Layer Data Architecture

@@ -6,15 +6,24 @@ stdout/stderr, and exceptions for easier debugging of the Flet application.
 """
 
 import logging
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
 
 
+def _default_log_dir() -> str:
+    """Répertoire de logs par défaut, mobile-aware."""
+    flet_data = os.getenv("FLET_APP_STORAGE_DATA")
+    if flet_data:
+        return str(Path(flet_data) / "logs")
+    return "logs"
+
+
 class FletDebugger:
     """Centralized debugging system for Flet applications."""
 
-    def __init__(self, log_dir: str = "logs", log_to_console: bool = True):
+    def __init__(self, log_dir: str | None = None, log_to_console: bool = True):
         """
         Initialize the Flet debugger.
 
@@ -22,7 +31,7 @@ class FletDebugger:
             log_dir: Directory to store log files
             log_to_console: Whether to also output logs to console
         """
-        self.log_dir = Path(log_dir)
+        self.log_dir = Path(log_dir if log_dir is not None else _default_log_dir())
         self.log_dir.mkdir(exist_ok=True)
 
         # Generate log filename with timestamp
@@ -129,7 +138,7 @@ class FletDebugger:
 _debugger = None
 
 
-def get_debugger(log_dir: str = "logs", log_to_console: bool = True) -> FletDebugger:
+def get_debugger(log_dir: str | None = None, log_to_console: bool = True) -> FletDebugger:
     """
     Get or create the global debugger instance.
 
