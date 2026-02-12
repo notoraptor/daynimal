@@ -180,6 +180,7 @@ Sur Windows/Git Bash, utiliser des chemins Unix : `"/c/Users/.../Android/sdk/pla
 - [x] Tests emulateur Android (AVD via Android Studio emulator) — ecran premier lancement OK
 - [x] Tester telechargement DB depuis ecran premier lancement — OK (fix parsing manifest dict)
 - [x] Tester navigation complete apres installation DB — ecran principal avec 6 onglets OK
+- [x] UX onboarding premier lancement : accueil + "Commencer" → progression ("Preparation des donnees sur les animaux...") avec barre reelle (poids : download ~70%, build ~30%) → "Tout est pret !" (2s) → transition auto vers animal du jour
 - [ ] Tests appareil reel
 - [ ] Ajustements UI/UX mobile (tailles, touch targets, navigation)
 

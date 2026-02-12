@@ -7,11 +7,42 @@ import flet as ft
 from daynimal.ui.views.base import BaseView
 
 
+# Global progress weights for each stage (total = 1.0)
+# Download stages ~70%, build stages ~30%
+_STAGE_WEIGHTS = {
+    "download_manifest": 0.02,
+    "download_taxa": 0.35,
+    "download_vernacular": 0.33,
+    "decompress": 0.05,
+    "build_db": 0.15,
+    "build_fts": 0.08,
+    "cleanup": 0.02,
+}
+_STAGE_ORDER = list(_STAGE_WEIGHTS.keys())
+
+
+def _global_progress(stage: str, local_progress: float | None) -> float | None:
+    """Convert a per-stage progress to a global 0.0–1.0 progress."""
+    if stage not in _STAGE_WEIGHTS:
+        return None
+    # Sum weights of all completed stages before current one
+    base = sum(
+        _STAGE_WEIGHTS[s] for s in _STAGE_ORDER[: _STAGE_ORDER.index(stage)]
+    )
+    weight = _STAGE_WEIGHTS[stage]
+    if local_progress is None:
+        # Indeterminate within this stage — return base (start of stage)
+        return base
+    return base + weight * local_progress
+
+
 class SetupView(BaseView):
     """View displayed on first launch when no database is found.
 
-    Shows a welcome message and allows the user to download and install
-    the minimal database from GitHub Releases.
+    Three-step onboarding flow:
+    1. Welcome screen with "Commencer" button
+    2. Progress screen with real progress bar
+    3. "Tout est prêt !" then auto-navigate to animal of the day
     """
 
     def __init__(self, page, app_state, on_setup_complete, debugger=None):
@@ -26,19 +57,13 @@ class SetupView(BaseView):
         super().__init__(page, app_state, debugger)
         self.on_setup_complete = on_setup_complete
 
-        # UI elements
-        self.install_button = ft.Button(
-            "Installer la base de données",
-            icon=ft.Icons.DOWNLOAD,
-            on_click=self._on_install_click,
-            style=ft.ButtonStyle(padding=20),
-        )
-        self.progress_bar = ft.ProgressBar(visible=False, width=400)
-        self.status_text = ft.Text("", size=14, visible=False)
-        self.error_container = ft.Column(controls=[], visible=False)
-
     def build(self) -> ft.Control:
-        """Build the setup view UI."""
+        """Build the setup view UI — shows welcome screen."""
+        self._show_welcome()
+        return self.container
+
+    def _show_welcome(self):
+        """Display welcome screen with Commencer button."""
         self.container.controls = [
             ft.Container(
                 content=ft.Column(
@@ -51,17 +76,18 @@ class SetupView(BaseView):
                             text_align=ft.TextAlign.CENTER,
                         ),
                         ft.Text(
-                            "Découvrez un animal chaque jour.\n"
-                            "Pour commencer, installez la base de données (~13 MB).",
+                            "Découvrez un animal chaque jour.",
                             size=16,
                             text_align=ft.TextAlign.CENTER,
                             color=ft.Colors.GREY_600,
                         ),
-                        ft.Container(height=20),
-                        self.install_button,
-                        self.progress_bar,
-                        self.status_text,
-                        self.error_container,
+                        ft.Container(height=30),
+                        ft.Button(
+                            "Commencer",
+                            icon=ft.Icons.ARROW_FORWARD,
+                            on_click=self._on_start_click,
+                            style=ft.ButtonStyle(padding=20),
+                        ),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=10,
@@ -71,21 +97,43 @@ class SetupView(BaseView):
                 expand=True,
             )
         ]
-        return self.container
 
-    def _on_install_click(self, e):
-        """Handle install button click — launch async setup."""
+    def _on_start_click(self, e):
+        """Handle Commencer button click — launch async setup."""
         asyncio.create_task(self._start_setup())
 
     async def _start_setup(self):
-        """Run the download and setup process."""
-        # Show progress, hide button and errors
-        self.install_button.visible = False
-        self.progress_bar.visible = True
-        self.progress_bar.value = None  # Indeterminate
-        self.status_text.visible = True
-        self.status_text.value = "Préparation..."
-        self.error_container.visible = False
+        """Run the download and setup process with real progress."""
+        # Switch to progress screen
+        self.progress_bar = ft.ProgressBar(value=0, width=400)
+        self.status_text = ft.Text(
+            "Préparation des données sur les animaux...",
+            size=14,
+            color=ft.Colors.GREY_600,
+        )
+        self.container.controls = [
+            ft.Container(
+                content=ft.Column(
+                    controls=[
+                        ft.Icon(ft.Icons.PETS, size=80, color=ft.Colors.PRIMARY),
+                        ft.Text(
+                            "Installation en cours",
+                            size=24,
+                            weight=ft.FontWeight.BOLD,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        ft.Container(height=20),
+                        self.progress_bar,
+                        self.status_text,
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=10,
+                ),
+                padding=40,
+                alignment=ft.Alignment(0, 0),
+                expand=True,
+            )
+        ]
         self.page.update()
         await asyncio.sleep(0.1)
 
@@ -94,45 +142,84 @@ class SetupView(BaseView):
 
             await asyncio.to_thread(download_and_setup_db, self._update_progress)
 
-            # Success
-            self.status_text.value = "Installation terminée !"
-            self.progress_bar.value = 1.0
+            # Show success screen
+            self.container.controls = [
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(
+                                ft.Icons.CHECK_CIRCLE,
+                                size=80,
+                                color=ft.Colors.PRIMARY,
+                            ),
+                            ft.Text(
+                                "Tout est prêt !",
+                                size=28,
+                                weight=ft.FontWeight.BOLD,
+                                text_align=ft.TextAlign.CENTER,
+                            ),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=40,
+                    alignment=ft.Alignment(0, 0),
+                    expand=True,
+                )
+            ]
             self.page.update()
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(2)
 
             self.on_setup_complete()
 
         except Exception as error:
             self.log_error("setup", error)
-            self.progress_bar.visible = False
-            self.status_text.visible = False
-            self.error_container.visible = True
-            self.error_container.controls = [
-                ft.Icon(ft.Icons.ERROR, size=40, color=ft.Colors.ERROR),
-                ft.Text(
-                    "Erreur lors de l'installation", size=18, color=ft.Colors.ERROR
-                ),
-                ft.Text(str(error), size=12, color=ft.Colors.GREY_600),
-                ft.Button(
-                    "Réessayer", icon=ft.Icons.REFRESH, on_click=self._on_install_click
-                ),
+            self.container.controls = [
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(
+                                ft.Icons.ERROR, size=40, color=ft.Colors.ERROR
+                            ),
+                            ft.Text(
+                                "Erreur lors de l'installation",
+                                size=18,
+                                color=ft.Colors.ERROR,
+                            ),
+                            ft.Text(
+                                str(error), size=12, color=ft.Colors.GREY_600
+                            ),
+                            ft.Button(
+                                "Réessayer",
+                                icon=ft.Icons.REFRESH,
+                                on_click=self._on_start_click,
+                            ),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=40,
+                    alignment=ft.Alignment(0, 0),
+                    expand=True,
+                )
             ]
-            self.install_button.visible = False
             self.page.update()
 
     def _update_progress(self, stage: str, progress: float | None):
-        """Update UI with progress from download_and_setup_db."""
+        """Update UI with weighted global progress."""
         stage_labels = {
-            "download_manifest": "Téléchargement du manifeste...",
-            "download_taxa": "Téléchargement des taxons...",
-            "download_vernacular": "Téléchargement des noms vernaculaires...",
-            "decompress": "Décompression...",
-            "build_db": "Construction de la base de données...",
-            "build_fts": "Indexation pour la recherche...",
-            "cleanup": "Nettoyage...",
+            "download_manifest": "Connexion au serveur...",
+            "download_taxa": "Téléchargement des données...",
+            "download_vernacular": "Téléchargement des noms d'animaux...",
+            "decompress": "Préparation des fichiers...",
+            "build_db": "Construction de la base de connaissances...",
+            "build_fts": "Activation de la recherche...",
+            "cleanup": "Finalisation...",
         }
         self.status_text.value = stage_labels.get(stage, stage)
-        self.progress_bar.value = progress  # None = indeterminate
+        global_val = _global_progress(stage, progress)
+        if global_val is not None:
+            self.progress_bar.value = global_val
         try:
             self.page.update()
         except Exception:
