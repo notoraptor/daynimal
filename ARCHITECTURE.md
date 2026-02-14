@@ -266,6 +266,7 @@
 - logging (used 6 times)
 - sys (used 5 times)
 - dataclasses (used 4 times)
+- os (used 4 times)
 - hashlib (used 3 times)
 - json (used 3 times)
 - re (used 3 times)
@@ -275,7 +276,6 @@
 - abc (used 2 times)
 - csv (used 2 times)
 - gzip (used 2 times)
-- os (used 2 times)
 - ast (used 1 times)
 - collections (used 1 times)
 - concurrent (used 1 times)
@@ -325,7 +325,7 @@ def _show_error(page, error)  # Show error visually on the page (critical for mo
 ```python
 def main()  # Main entry point for the Flet app.
 ```
-- calls: `DaynimalApp`, `_show_error`, `ft.app`
+- calls: `DaynimalApp`, `_show_error`, `ft.run`
 
 ### Module: daynimal.attribution
 > Attribution management for legal compliance.
@@ -381,6 +381,14 @@ def get_app_legal_notice(format)  # Get the application's legal notice for displ
 ```python
 class Settings(BaseSettings)
 ```
+```python
+def get_app_data_dir()  # Répertoire de données persistantes (DB, config, cache).
+```
+- calls: `Path`, `os.getenv`
+```python
+def get_app_temp_dir()  # Répertoire temporaire (téléchargements, décompression).
+```
+- calls: `Path`, `os.getenv`
 
 ### Module: daynimal.connectivity
 > Network connectivity detection for offline mode.
@@ -487,7 +495,7 @@ def download_file(url, dest, progress_callback)  # Download a file with streamin
 ```python
 def download_and_setup_db(progress_callback)  # Download distribution files and build the minimal database.
 ```
-- calls: `Path`, `ValueError`, `_download_progress`, `_progress`, `build_database`, `download_file`, `gzip.open`, `init_fts`, `json.loads`, `open`, `progress_callback`, `save_db_config`, `shutil.copyfileobj`, `shutil.rmtree`, `verify_checksum`
+- calls: `ValueError`, `_download_progress`, `_progress`, `build_database`, `download_file`, `get_app_data_dir`, `get_app_temp_dir`, `gzip.open`, `init_fts`, `isinstance`, `json.loads`, `open`, `progress_callback`, `save_db_config`, `shutil.copyfileobj`, `shutil.rmtree`, `str`, `verify_checksum`
 
 ### Module: daynimal.db.generate_distribution
 > Generate distribution TSV files from raw sources (GBIF + TAXREF).
@@ -635,7 +643,7 @@ def get_session()  # Create and return a new database session.
 ```python
 class FletDebugger  # Centralized debugging system for Flet applications.
     def __init__(self, log_dir, log_to_console)  # Initialize the Flet debugger.
-    # calls: Path, datetime.now, datetime.now.strftime, self._setup_logging, self.log_dir.mkdir
+    # calls: Path, _default_log_dir, datetime.now, datetime.now.strftime, self._setup_logging, self.log_dir.mkdir
     def _setup_logging(self, log_to_console)  # Configure Python logging with file and optional console handlers.
     # calls: logging.FileHandler, logging.Formatter, logging.StreamHandler, logging.basicConfig, logging.getLogger, self.logger.addHandler, self.logger.handlers.clear, self.logger.setLevel
     def log_app_start(self)  # Log application startup.
@@ -656,6 +664,10 @@ class FletDebugger  # Centralized debugging system for Flet applications.
     def print_log_location(self)  # Print the log file location to console.
     # calls: print, self.log_file.absolute
 ```
+```python
+def _default_log_dir()  # Répertoire de logs par défaut, mobile-aware.
+```
+- calls: `Path`, `os.getenv`, `str`
 ```python
 def get_debugger(log_dir, log_to_console)  # Get or create the global debugger instance.
 ```
@@ -1309,17 +1321,23 @@ class SettingsView(BaseView)  # View for app settings, preferences, and credits.
 ```python
 class SetupView(BaseView)  # View displayed on first launch when no database is found.
     def __init__(self, page, app_state, on_setup_complete, debugger)  # Initialize SetupView.
-    # calls: ft.Button, ft.ButtonStyle, ft.Column, ft.ProgressBar, ft.Text, super, super.__init__
-    def build(self)  # Build the setup view UI.
-    # calls: ft.Alignment, ft.Column, ft.Container, ft.Icon, ft.Text
-    def _on_install_click(self, e)  # Handle install button click — launch async setup.
+    # calls: super, super.__init__
+    def build(self)  # Build the setup view UI — shows welcome screen.
+    # calls: self._show_welcome
+    def _show_welcome(self)  # Display welcome screen with Commencer button.
+    # calls: ft.Alignment, ft.Button, ft.ButtonStyle, ft.Column, ft.Container, ft.Icon, ft.Text
+    def _on_start_click(self, e)  # Handle Commencer button click — launch async setup.
     # calls: asyncio.create_task, self._start_setup
-    async def _start_setup(self)  # Run the download and setup process.
-    # calls: asyncio.sleep, asyncio.to_thread, ft.Button, ft.Icon, ft.Text, self.log_error, self.on_setup_complete, self.page.update, str
-    def _update_progress(self, stage, progress)  # Update UI with progress from download_and_setup_db.
-    # calls: self.page.update
+    async def _start_setup(self)  # Run the download and setup process with real progress.
+    # calls: asyncio.sleep, asyncio.to_thread, ft.Alignment, ft.Animation, ft.Button, ft.Column, ft.Container, ft.Icon, ft.ProgressBar, ft.Text, self.log_error, self.on_setup_complete, self.page.update, str
+    def _update_progress(self, stage, progress)  # Update UI with weighted global progress.
+    # calls: _global_progress, self.page.update
     async def refresh(self)  # No-op refresh.
 ```
+```python
+def _global_progress(stage, local_progress)  # Convert a per-stage progress to a global 0.0–1.0 progress.
+```
+- calls: `sum`
 
 ### Module: daynimal.ui.views.stats_view
 > Statistics view for displaying database statistics.
