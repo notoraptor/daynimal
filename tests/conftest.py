@@ -161,6 +161,30 @@ def mock_phylopic_client(mock_http_client):
 
 
 @pytest.fixture
+def mock_phylopic_local(monkeypatch):
+    """Mock the PhyloPic local lookup to avoid loading the full CSV."""
+    from daynimal.schemas import CommonsImage, ImageSource, License
+
+    def mock_get_silhouette(taxon):
+        return CommonsImage(
+            filename="phylopic_test1234.svg",
+            url="https://images.phylopic.org/images/test/vector.svg",
+            thumbnail_url="https://images.phylopic.org/images/test/vector.svg",
+            author="Test Author",
+            license=License.CC0,
+            attribution_required=False,
+            description="Silhouette via PhyloPic",
+            image_source=ImageSource.PHYLOPIC,
+            source_page_url="https://www.phylopic.org/images/test1234",
+            mime_type="image/svg+xml",
+        )
+
+    monkeypatch.setattr(
+        "daynimal.repository.get_phylopic_silhouette", mock_get_silhouette
+    )
+
+
+@pytest.fixture
 def session():
     """
     Provide a clean in-memory SQLite database session for each test.

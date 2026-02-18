@@ -71,6 +71,7 @@
 - `generate_architecture`
 
 ### scripts
+- `scripts.download_phylopic` — Download all PhyloPic SVG silhouettes with metadata into a zip file.
 - `scripts.prepare_release` — Prepare distribution files for GitHub Release.
 
 ## 2. Entry Points
@@ -82,6 +83,7 @@
 - debug.debug_filter
 - debug.run_app_debug
 - debug.view_logs
+- scripts.download_phylopic
 - scripts.prepare_release
 
 ## 3. Internal Dependencies
@@ -140,6 +142,7 @@
 - depends on `daynimal.db.first_launch`
 - depends on `daynimal.db.generate_distribution`
 - depends on `daynimal.db.init_fts`
+- depends on `daynimal.db.models`
 - depends on `daynimal.repository`
 
 ### daynimal.notifications
@@ -282,37 +285,39 @@
 
 ## 4. External Dependencies
 - flet (used 16 times)
-- pathlib (used 13 times)
+- pathlib (used 14 times)
 - asyncio (used 11 times)
 - typing (used 11 times)
 - datetime (used 9 times)
+- logging (used 9 times)
 - sqlalchemy (used 9 times)
 - argparse (used 8 times)
-- logging (used 8 times)
-- httpx (used 7 times)
+- httpx (used 8 times)
 - traceback (used 7 times)
-- sys (used 5 times)
+- sys (used 6 times)
 - dataclasses (used 4 times)
 - os (used 4 times)
 - re (used 4 times)
+- time (used 4 times)
+- csv (used 3 times)
 - hashlib (used 3 times)
 - json (used 3 times)
 - subprocess (used 3 times)
 - threading (used 3 times)
-- time (used 3 times)
+- zipfile (used 3 times)
 - abc (used 2 times)
-- csv (used 2 times)
 - gzip (used 2 times)
+- io (used 2 times)
 - shutil (used 2 times)
-- zipfile (used 2 times)
+- __future__ (used 1 times)
 - ast (used 1 times)
 - collections (used 1 times)
 - concurrent (used 1 times)
 - contextlib (used 1 times)
 - enum (used 1 times)
-- io (used 1 times)
 - math (used 1 times)
 - plyer (used 1 times)
+- pydantic (used 1 times)
 - pydantic_settings (used 1 times)
 - random (used 1 times)
 - sqlite3 (used 1 times)
@@ -810,13 +815,17 @@ def cmd_history(page, per_page)  # Show history of viewed animals.
 ```
 - calls: `AnimalRepository`, `print`
 ```python
+def cmd_clear_cache()  # Clear the enrichment cache so animals are re-fetched from APIs.
+```
+- calls: `AnimalRepository`, `TaxonModel.is_enriched.is_`, `print`
+```python
 def create_parser()  # Create and configure the argument parser.
 ```
 - calls: `argparse.ArgumentParser`
 ```python
 def main()  # Main entry point.
 ```
-- calls: `SystemExit`, `cmd_credits`, `cmd_history`, `cmd_info`, `cmd_random`, `cmd_search`, `cmd_setup`, `cmd_stats`, `cmd_today`, `create_parser`, `print`, `resolve_database`, `temporary_database`
+- calls: `SystemExit`, `cmd_clear_cache`, `cmd_credits`, `cmd_history`, `cmd_info`, `cmd_random`, `cmd_search`, `cmd_setup`, `cmd_stats`, `cmd_today`, `create_parser`, `print`, `resolve_database`, `temporary_database`
 
 ### Module: daynimal.notifications
 > Notification service for daily animal reminders.
@@ -898,7 +907,7 @@ class AnimalRepository  # Repository for accessing animal information.
     def _fetch_and_cache_wikipedia(self, taxon_id, scientific_name)  # Fetch Wikipedia and cache it.
     # calls: self._save_cache, self.connectivity.set_offline, self.wikipedia.get_by_taxonomy
     def _fetch_and_cache_images(self, taxon_id, scientific_name, wikidata)  # Fetch images with cascade: Commons → GBIF Media → PhyloPic.
-    # calls: self._save_cache, self.commons.get_by_taxonomy, self.commons.get_images_for_wikidata, self.connectivity.set_offline, self.gbif_media.get_media_for_taxon, self.image_cache.cache_images, self.phylopic.get_silhouettes_for_taxon
+    # calls: rank_images, self._save_cache, self.commons.get_by_source_id, self.commons.get_by_taxonomy, self.commons.get_images_for_wikidata, self.connectivity.set_offline, self.gbif_media.get_media_for_taxon, self.image_cache.cache_images, self.phylopic.get_silhouettes_for_taxon
     def _save_cache(self, taxon_id, source, data)  # Save data to enrichment cache.
     # calls: EnrichmentCacheModel, datetime.now, isinstance, json.dumps, self._to_dict, self.session.add, self.session.commit, self.session.query, self.session.query.filter, self.session.rollback
     def _to_dict(self, obj)  # Convert dataclass to dict, handling enums.
@@ -1061,6 +1070,10 @@ class CommonsAPI(DataSource)  # Client for Wikimedia Commons API.
     # calls: any
     def _parse_license(self, license_text)  # Parse license text to License enum.
 ```
+```python
+def rank_images(images, p18_filename)  # Rank images: P18 first, then by assessment quality, photos before drawings.
+```
+- calls: `sorted`
 
 ### Module: daynimal.sources.gbif_media
 > GBIF Media API client.
@@ -1663,6 +1676,40 @@ def detect_layer(path)  # Group modules by their actual parent directory.
 def generate()
 ```
 - calls: `Counter`, `_extract_known_names`, `_parse_imports_from_tree`, `_parse_tree`, `ast.get_docstring`, `defaultdict`, `detect_layer`, `extract_signatures_and_calls`, `find_python_files`, `len`, `list`, `open`, `print`, `resolve_import`, `set`, `sorted`, `tuple`, `zip`
+
+### Module: scripts.download_phylopic
+> Download all PhyloPic SVG silhouettes with metadata into a zip file.
+> 
+> Usage:
+>     uv run python scripts/download_phylopic.py
+> 
+> Output:
+>     data/phylopic_dump.zip containing:
+>     - svgs/<uuid>.svg          (all SVG silhouettes)
+>     - phylopic_metadata.csv    (metadata: uuid, taxon, license, attribution, etc.)
+```python
+def fetch_json(client, url, params)  # Fetch JSON from URL with retry on 429/503.
+```
+- calls: `float`, `range`, `time.sleep`
+```python
+def fetch_svg(client, url)  # Download SVG content.
+```
+- calls: `float`, `range`, `time.sleep`
+```python
+def get_build_number(client)  # Get current PhyloPic build number.
+```
+- calls: `fetch_json`
+```python
+def iter_all_images(client, build)  # Iterate over all images, page by page, yielding each image item.
+```
+- calls: `fetch_json`, `range`, `str`, `time.sleep`
+```python
+def extract_metadata(item)  # Extract metadata from an image item.
+```
+```python
+def main()
+```
+- calls: `csv.DictWriter`, `enumerate`, `extract_metadata`, `fetch_svg`, `get_build_number`, `httpx.Client`, `io.StringIO`, `iter_all_images`, `len`, `sum`, `time.sleep`, `zipfile.ZipFile`
 
 ### Module: scripts.prepare_release
 > Prepare distribution files for GitHub Release.

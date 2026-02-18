@@ -41,7 +41,7 @@ from daynimal.sources.wikidata import WikidataAPI
 from daynimal.sources.wikipedia import WikipediaAPI
 from daynimal.sources.commons import CommonsAPI
 from daynimal.sources.gbif_media import GbifMediaAPI
-from daynimal.sources.phylopic import PhyloPicAPI
+from daynimal.sources.phylopic_local import get_silhouette_for_taxon as get_phylopic_silhouette
 
 # Logger for this module
 logger = logging.getLogger(__name__)
@@ -74,7 +74,6 @@ class AnimalRepository:
         self._wikipedia: WikipediaAPI | None = None
         self._commons: CommonsAPI | None = None
         self._gbif_media: GbifMediaAPI | None = None
-        self._phylopic: PhyloPicAPI | None = None
         self.connectivity = ConnectivityService()
         self.image_cache = ImageCacheService(session=self.session)
 
@@ -102,12 +101,6 @@ class AnimalRepository:
             self._gbif_media = GbifMediaAPI()
         return self._gbif_media
 
-    @property
-    def phylopic(self) -> PhyloPicAPI:
-        if self._phylopic is None:
-            self._phylopic = PhyloPicAPI()
-        return self._phylopic
-
     def close(self):
         """Close all connections."""
         if self._wikidata:
@@ -118,8 +111,6 @@ class AnimalRepository:
             self._commons.close()
         if self._gbif_media:
             self._gbif_media.close()
-        if self._phylopic:
-            self._phylopic.close()
         self.image_cache.close()
         self.session.close()
 
@@ -562,7 +553,7 @@ class AnimalRepository:
         # Fetch images (depends on wikidata, so must be after)
         if needs_images:
             animal.images = self._fetch_and_cache_images(
-                taxon_model.taxon_id, scientific_name, animal.wikidata
+                taxon_model.taxon_id, scientific_name, animal.wikidata, animal.taxon
             )
 
         # Mark as enriched
@@ -660,9 +651,10 @@ class AnimalRepository:
             return None
 
     def _fetch_and_cache_images(
-        self, taxon_id: int, scientific_name: str, wikidata: WikidataEntity | None
+        self, taxon_id: int, scientific_name: str, wikidata: WikidataEntity | None,
+        taxon: Taxon | None = None,
     ) -> list[CommonsImage]:
-        """Fetch images with cascade: Commons → GBIF Media → PhyloPic."""
+        """Fetch images with cascade: Commons → GBIF Media → PhyloPic (local)."""
         try:
             images = []
             p18_filename = wikidata.image_filename if wikidata else None
@@ -694,13 +686,15 @@ class AnimalRepository:
                         f"Error fetching GBIF Media for {scientific_name}: {e}"
                     )
 
-            # 4. Last resort: PhyloPic silhouettes
-            if not images:
+            # 4. Last resort: PhyloPic silhouettes (local CSV lookup)
+            if not images and taxon:
                 try:
-                    images = self.phylopic.get_silhouettes_for_taxon(taxon_id, limit=1)
+                    silhouette = get_phylopic_silhouette(taxon)
+                    if silhouette:
+                        images = [silhouette]
                 except Exception as e:
                     logger.warning(
-                        f"Error fetching PhyloPic for {scientific_name}: {e}"
+                        f"Error looking up PhyloPic for {scientific_name}: {e}"
                     )
 
             # Insert P18 if not already in the list
