@@ -1,12 +1,12 @@
 # Roadmap : Application Mobile/Desktop
 
-**Derniere mise a jour** : 2026-02-17
+**Derniere mise a jour** : 2026-02-18
 
 ---
 
 ## Etat actuel
 
-Application Flet desktop fonctionnelle avec 6 onglets (Aujourd'hui, Historique, Favoris, Recherche, Statistiques, Parametres). Architecture modulaire, 524 tests (55% couverture), infrastructure mobile prete (cache images, mode hors ligne, distribution TSV). Chemins mobile-aware (`get_app_data_dir()`, `get_app_temp_dir()`), detection mobile via `is_mobile()`. Build mobile valide sur emulateur Android (premier lancement + telechargement DB OK). Setup CLI etendu (`daynimal setup --mode full|minimal --no-taxref`). Desktop sans DB : ecran informatif avec commandes CLI (setup auto reserve au mobile). Navbar fixe en bas (scroll deplace vers le contenu).
+Application Flet desktop fonctionnelle avec 6 onglets (Aujourd'hui, Historique, Favoris, Recherche, Statistiques, Parametres). Architecture modulaire, 596 tests (55% couverture), infrastructure mobile prete (cache images, mode hors ligne, distribution TSV). Chemins mobile-aware (`get_app_data_dir()`, `get_app_temp_dir()`), detection mobile via `is_mobile()`. Build mobile valide sur emulateur Android (premier lancement + telechargement DB OK). Setup CLI etendu (`daynimal setup --mode full|minimal --no-taxref`). Desktop sans DB : ecran informatif avec commandes CLI (setup auto reserve au mobile). Navbar fixe en bas (scroll deplace vers le contenu). Chargement paresseux des images (1 seule image au chargement, galerie a la demande). Silhouettes PhyloPic locales en fallback. Recherche FTS5 amelioree (pertinence, classement).
 
 **Prochaine etape** : tests appareil reel et ajustements UI mobile (Phase 3).
 
@@ -121,7 +121,7 @@ Tables : `taxa`, `vernacular_names`, `enrichment_cache`, `animal_history`, `favo
 
 ### Phase 1 : Application desktop (completee 2026-02-07)
 
-App Flet avec 6 onglets : Aujourd'hui (animal du jour + aleatoire, carousel), Historique (paginee), Favoris, Recherche (FTS5), Statistiques, Parametres (theme clair/sombre, credits). DB minimale 163K especes, chargement async.
+App Flet avec 6 onglets : Aujourd'hui (animal du jour + aleatoire, image unique + galerie a la demande), Historique (paginee), Favoris, Recherche (FTS5), Statistiques, Parametres (theme clair/sombre, credits). DB minimale 163K especes, chargement async.
 
 ### Phase 2a : Stabilisation et refactoring (completee fev 2026)
 
@@ -130,14 +130,14 @@ App Flet avec 6 onglets : Aujourd'hui (animal du jour + aleatoire, carousel), Hi
 - **Tests** : 50 → 499 tests (55% couverture). Modules critiques a 93-100% : attribution, repository, schemas, sources, CLI
 - **Corrections mineures** : CLI history double parsing, mutation globale settings
 
-Reste non prioritaire : tests des 8 modules UI a 0% (`app_controller`, `today_view`, `history_view`, `favorites_view`, `settings_view`, `stats_view`, `animal_display`, `image_carousel`) — complexe car async/Flet.
+Reste non prioritaire : tests des modules UI a 0% (`app_controller`, `today_view`, `history_view`, `favorites_view`, `settings_view`, `stats_view`, `animal_display`, `image_carousel`, `image_gallery_dialog`) — complexe car async/Flet.
 
 ### Phase 2b : Features essentielles mobile (completee fev 2026)
 
 - **Robustesse HTTP** : `retry_with_backoff()` dans `sources/base.py`, backoff exponentiel 429/503, degradation gracieuse. 17 tests.
 - **Distribution mobile** : script `prepare_release.py`, TSV.gz heberges sur GitHub Releases, checksums SHA256.
 - **Premier lancement** : module `first_launch.py` (resolution DB, telechargement streaming, verification SHA256, build DB + FTS5). `SetupView` dans GUI, commande `setup` en CLI. 13 tests.
-- **Cache d'images** : `ImageCacheService` avec LRU (500 MB configurable), mode HD/thumbnails, integration UI et Settings. 14 tests.
+- **Cache d'images** : `ImageCacheService` avec LRU (500 MB configurable), mode HD/thumbnails, integration UI et Settings. 22 tests.
 - **Mode hors ligne** : `ConnectivityService` (HEAD wikidata.org, cache 60s), bandeau UI, skip enrichissement, toggle "Forcer hors ligne" dans Parametres. 11 tests.
 
 ### Phase 2c : Features secondaires (completee fev 2026)
@@ -145,6 +145,15 @@ Reste non prioritaire : tests des 8 modules UI a 0% (`app_controller`, `today_vi
 - **Pagination** : composant `PaginationBar` reutilisable, integre dans HistoryView et FavoritesView (per_page=20). 6 tests.
 - **Notifications desktop** : `NotificationService` via plyer, heure personnalisable, switch activation. 13 tests.
 - **Partage desktop** : copier texte formate, ouvrir Wikipedia, copier chemin image locale. Attribution legale automatique. 5 tests.
+
+### Phase 2d : Polissage UI et performances (completee fev 2026)
+
+- **Chargement paresseux des images** : seule la premiere image est telechargee a l'enrichissement. Bouton "Plus d'images" ouvre un `ImageGalleryDialog` avec progress bar puis carousel. `cache_single_image()`, `cache_images_with_progress()`, `are_all_cached()` dans `ImageCacheService`. 8 tests ajoutes.
+- **Silhouettes PhyloPic locales** : CSV local pour fallback quand aucune image Commons/Wikidata. Evite les appels API PhyloPic.
+- **Classement des images** : `rank_images()` dans `sources/commons.py` priorise P18 Wikidata, puis par qualite/pertinence.
+- **Recherche amelioree** : meilleure pertinence FTS5, classement des resultats.
+- **Fix fermeture app** : arret propre du repository et des connexions HTTP.
+- **UI factorisee** : composant `view_header()` partage, `AnimalDisplay` pour les cartes d'animaux (historique, favoris, recherche).
 
 ---
 
@@ -340,7 +349,7 @@ Items retires de la roadmap car deja implementes ou generiques :
 - ~~Optimisations performances~~ (ex-Phase 2c) : pagination lazy, thumbnails vs HD, index SQLite, cache memoire — **tout deja implemente**
 - ~~Tests unitaires des nouvelles fonctionnalites~~ (ex-Phase 2d) : pratique courante, pas une tache specifique
 - ~~Tests d'integration~~ (ex-Phase 2d) : idem
-- ~~Optimisation performances chargement images~~ (ex-Phase 2d) : deja fait via ImageCacheService
+- ~~Optimisation performances chargement images~~ (ex-Phase 2d) : implemente via ImageCacheService + chargement paresseux (Phase 2d)
 - ~~Correction de bugs~~ (ex-Phase 2d) : pratique courante
 
 ---
@@ -405,4 +414,4 @@ Si Flet pose probleme a l'avenir :
 
 ---
 
-*Statut : Phases 1 a 2c completees — Phase 3 en cours (build mobile valide sur emulateur, tests appareil reel a suivre)*
+*Statut : Phases 1 a 2d completees — Phase 3 en cours (build mobile valide sur emulateur, tests appareil reel a suivre)*
