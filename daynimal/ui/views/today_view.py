@@ -83,18 +83,27 @@ class TodayView(BaseView):
                                 "Bienvenue sur Daynimal !",
                                 size=24,
                                 weight=ft.FontWeight.BOLD,
+                                text_align=ft.TextAlign.CENTER,
                             ),
-                            ft.Text("Découvrez un animal chaque jour", size=16),
+                            ft.Text(
+                                "Découvrez un animal chaque jour",
+                                size=16,
+                                text_align=ft.TextAlign.CENTER,
+                            ),
                             ft.Text(
                                 "Cliquez sur 'Animal du jour' pour commencer",
                                 size=14,
                                 color=ft.Colors.BLUE,
+                                text_align=ft.TextAlign.CENTER,
                             ),
                         ],
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        alignment=ft.MainAxisAlignment.CENTER,
                         spacing=15,
                     ),
                     padding=40,
+                    expand=True,
+                    alignment=ft.Alignment(0, 0),
                 )
             ]
 
@@ -141,9 +150,12 @@ class TodayView(BaseView):
                         ),
                     ],
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    alignment=ft.MainAxisAlignment.CENTER,
                     spacing=20,
                 ),
                 padding=40,
+                expand=True,
+                alignment=ft.Alignment(0, 0),
             )
         ]
         self.page.update()

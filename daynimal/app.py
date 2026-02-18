@@ -20,6 +20,9 @@ if "daynimal" not in sys.modules:
     _pkg.__file__ = os.path.join(_app_dir, "__init__.py")
     sys.modules["daynimal"] = _pkg
 
+import asyncio
+import traceback
+
 import flet as ft
 
 
@@ -250,10 +253,35 @@ class DaynimalApp:
                 self.debugger.logger.error(f"Error during close cleanup: {error}")
 
 
+def _install_asyncio_exception_handler():
+    """Print all unhandled async exceptions to the terminal.
+
+    Flet catches exceptions from event handlers and shows them in the UI,
+    but doesn't print them to the terminal. This installs a handler that
+    also prints them to stderr so they can be read/copied from the CLI.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+
+    def handler(loop, context):
+        exc = context.get("exception")
+        if exc:
+            print("\n--- Unhandled Flet exception ---", file=sys.stderr, flush=True)
+            traceback.print_exception(
+                type(exc), exc, exc.__traceback__, file=sys.stderr
+            )
+            print("--------------------------------\n", file=sys.stderr, flush=True)
+
+    loop.set_exception_handler(handler)
+
+
 def main():
     """Main entry point for the Flet app."""
 
     def app_main(page: ft.Page):
+        _install_asyncio_exception_handler()
         try:
             DaynimalApp(page)
         except Exception as e:

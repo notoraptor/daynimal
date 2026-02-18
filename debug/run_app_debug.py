@@ -75,6 +75,9 @@ def main():
         from daynimal.app import DaynimalApp
 
         def app_main(page: ft.Page):
+            from daynimal.app import _install_asyncio_exception_handler
+
+            _install_asyncio_exception_handler()
             # Store debugger reference in page for access from app
             page.data = {"debugger": debugger}
             DaynimalApp(page)
