@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 
 def get_app_data_dir() -> Path:
@@ -59,9 +60,7 @@ class Settings(BaseSettings):
     image_cache_max_size_mb: int = 500
     image_cache_hd: bool = True
 
-    class Config:
-        env_prefix = "DAYNIMAL_"
-        env_file = ".env"
+    model_config = ConfigDict(env_prefix="DAYNIMAL_", env_file=".env")
 
 
 settings = Settings()

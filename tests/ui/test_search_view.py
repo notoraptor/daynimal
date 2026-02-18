@@ -143,6 +143,8 @@ def test_on_submit_triggers_search():
     with patch("daynimal.ui.views.search_view.asyncio.create_task") as mock_task:
         view._on_submit(MagicMock())
         mock_task.assert_called_once()
+        # Close the coroutine to avoid RuntimeWarning
+        mock_task.call_args[0][0].close()
 
 
 def test_on_submit_ignores_empty_query():
@@ -165,6 +167,8 @@ def test_on_search_click_triggers_search():
     with patch("daynimal.ui.views.search_view.asyncio.create_task") as mock_task:
         view._on_search_click(MagicMock())
         mock_task.assert_called_once()
+        # Close the coroutine to avoid RuntimeWarning
+        mock_task.call_args[0][0].close()
 
 
 def test_on_search_click_ignores_empty_query():

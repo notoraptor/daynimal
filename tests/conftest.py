@@ -182,6 +182,7 @@ def session():
     # Cleanup
     session.close()
     Base.metadata.drop_all(engine)
+    engine.dispose()
 
 
 @pytest.fixture
@@ -471,7 +472,24 @@ def repo_with_cache(populated_session, mock_enrichment_data):
 
     populated_session.commit()
 
-    return repo
+    yield repo
+
+    repo.close()
+
+
+@pytest.fixture
+def repo(populated_session):
+    """
+    Provide an AnimalRepository backed by the populated in-memory session.
+
+    Properly closes the repository (and its lazy-initialized API clients)
+    after the test finishes to avoid ResourceWarning on unclosed connections.
+    """
+    from daynimal.repository import AnimalRepository
+
+    repo = AnimalRepository(session=populated_session)
+    yield repo
+    repo.close()
 
 
 @pytest.fixture

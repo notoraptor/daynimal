@@ -27,24 +27,23 @@ from daynimal.db.models import TaxonModel, EnrichmentCacheModel
 
 def test_enrich_already_enriched(populated_session, sync_executor):
     """is_enriched=True → pas de re-fetch."""
-    repo = AnimalRepository(session=populated_session)
+    with AnimalRepository(session=populated_session) as repo:
+        # Mark taxon 1 as enriched
+        taxon_model = populated_session.get(TaxonModel, 1)
+        taxon_model.is_enriched = True
+        populated_session.commit()
 
-    # Mark taxon 1 as enriched
-    taxon_model = populated_session.get(TaxonModel, 1)
-    taxon_model.is_enriched = True
-    populated_session.commit()
+        taxon = repo._model_to_taxon(taxon_model)
+        animal = AnimalInfo(taxon=taxon, is_enriched=True)
 
-    taxon = repo._model_to_taxon(taxon_model)
-    animal = AnimalInfo(taxon=taxon, is_enriched=True)
+        with patch.object(repo, "_get_cached_wikidata") as mock_cached_wd:
+            with patch.object(repo, "_fetch_and_cache_wikidata"):
+                repo._enrich(animal, taxon_model)
 
-    with patch.object(repo, "_get_cached_wikidata") as mock_cached_wd:
-        with patch.object(repo, "_fetch_and_cache_wikidata"):
-            repo._enrich(animal, taxon_model)
-
-            # Should not fetch if already enriched (but will check cache)
-            assert mock_cached_wd.called
-            # API fetch should not be called for already enriched
-            # (though in current implementation it still checks cache)
+                # Should not fetch if already enriched (but will check cache)
+                assert mock_cached_wd.called
+                # API fetch should not be called for already enriched
+                # (though in current implementation it still checks cache)
 
 
 def test_enrich_empty_canonical_name(populated_session, sync_executor):
@@ -330,18 +329,17 @@ def test_get_cached_wikidata_not_found(populated_session):
 
 def test_get_cached_wikidata_corrupted(populated_session):
     """JSON invalide → JSONDecodeError raised."""
-    repo = AnimalRepository(session=populated_session)
+    with AnimalRepository(session=populated_session) as repo:
+        # Add corrupted cache
+        corrupted_cache = EnrichmentCacheModel(
+            taxon_id=1, source="wikidata", data="{invalid json"
+        )
+        populated_session.add(corrupted_cache)
+        populated_session.commit()
 
-    # Add corrupted cache
-    corrupted_cache = EnrichmentCacheModel(
-        taxon_id=1, source="wikidata", data="{invalid json"
-    )
-    populated_session.add(corrupted_cache)
-    populated_session.commit()
-
-    # Should raise JSONDecodeError on corrupted JSON
-    with pytest.raises(json.JSONDecodeError):
-        repo._get_cached_wikidata(1)
+        # Should raise JSONDecodeError on corrupted JSON
+        with pytest.raises(json.JSONDecodeError):
+            repo._get_cached_wikidata(1)
 
 
 def test_get_cached_wikipedia_exists(repo_with_cache):
@@ -598,15 +596,14 @@ def test_fetch_and_cache_images_fallback_search(
 
 def test_fetch_and_cache_images_empty_result(populated_session):
     """API retourne [] → cache empty list."""
-    repo = AnimalRepository(session=populated_session)
+    with AnimalRepository(session=populated_session) as repo:
+        with patch.object(repo.commons, "get_by_taxonomy", return_value=[]):
+            with patch.object(repo, "_save_cache") as mock_save:
+                result = repo._fetch_and_cache_images(1, "Test species", None)
 
-    with patch.object(repo.commons, "get_by_taxonomy", return_value=[]):
-        with patch.object(repo, "_save_cache") as mock_save:
-            result = repo._fetch_and_cache_images(1, "Test species", None)
-
-            assert result == []
-            # Empty list is NOT cached (only non-empty results are cached)
-            assert not mock_save.called
+                assert result == []
+                # Empty list is NOT cached (only non-empty results are cached)
+                assert not mock_save.called
 
 
 def test_fetch_and_cache_images_exception(populated_session):

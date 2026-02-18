@@ -21,6 +21,7 @@ def db_session():
     session = sessionmaker(bind=engine)()
     yield session
     session.close()
+    engine.dispose()
 
 
 @pytest.fixture

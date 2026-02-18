@@ -65,16 +65,15 @@ def test_get_by_id_synonym_handling(populated_session):
 
 def test_get_by_id_vernacular_names_loaded(populated_session):
     """Noms vernaculaires chargés et groupés par langue."""
-    repo = AnimalRepository(session=populated_session)
+    with AnimalRepository(session=populated_session) as repo:
+        animal = repo.get_by_id(1, enrich=False)
 
-    animal = repo.get_by_id(1, enrich=False)
-
-    assert animal is not None
-    assert "en" in animal.taxon.vernacular_names
-    assert "fr" in animal.taxon.vernacular_names
-    assert "es" in animal.taxon.vernacular_names
-    assert "Species 1 English" in animal.taxon.vernacular_names["en"]
-    assert "Espèce 1" in animal.taxon.vernacular_names["fr"]
+        assert animal is not None
+        assert "en" in animal.taxon.vernacular_names
+        assert "fr" in animal.taxon.vernacular_names
+        assert "es" in animal.taxon.vernacular_names
+        assert "Species 1 English" in animal.taxon.vernacular_names["en"]
+        assert "Espèce 1" in animal.taxon.vernacular_names["fr"]
 
 
 # =============================================================================

@@ -56,11 +56,10 @@ def is_db_valid(db_path: Path) -> bool:
     if not db_path.exists() or db_path.stat().st_size == 0:
         return False
     try:
-        conn = sqlite3.connect(str(db_path))
-        cursor = conn.execute("SELECT COUNT(*) FROM taxa")
-        count = cursor.fetchone()[0]
-        conn.close()
-        return count > 0
+        with sqlite3.connect(str(db_path)) as conn:
+            cursor = conn.execute("SELECT COUNT(*) FROM taxa")
+            count = cursor.fetchone()[0]
+            return count > 0
     except Exception:
         return False
 
