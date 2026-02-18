@@ -23,14 +23,7 @@ class StatsView(BaseView):
             debugger: Optional debugger instance for logging
         """
         super().__init__(page, app_state, debugger)
-        self.stats_container = ft.Row(
-            controls=[],
-            spacing=15,
-            wrap=True,
-            run_spacing=15,
-            alignment=ft.MainAxisAlignment.CENTER,
-            vertical_alignment=ft.CrossAxisAlignment.START,  # Align cards to top
-        )
+        self.stats_container = ft.Column(controls=[], spacing=10)
         self.cached_stats: dict | None = None
 
     def build(self) -> ft.Control:
@@ -57,129 +50,69 @@ class StatsView(BaseView):
 
         return content
 
+    def _stat_card(self, icon, color, value: str, label: str, subtitle: str = ""):
+        """Build a compact horizontal stat card."""
+        texts = [
+            ft.Text(
+                value, size=22, weight=ft.FontWeight.BOLD, color=color, no_wrap=True
+            ),
+            ft.Text(label, size=14, color=ft.Colors.GREY_500),
+        ]
+        if subtitle:
+            texts.append(ft.Text(subtitle, size=12, color=ft.Colors.GREY_500))
+
+        icon_circle = ft.Container(
+            content=ft.Icon(icon, size=24, color=ft.Colors.WHITE),
+            width=44,
+            height=44,
+            border_radius=22,
+            bgcolor=color,
+            alignment=ft.Alignment(0, 0),
+        )
+
+        return ft.Card(
+            content=ft.Container(
+                content=ft.Row(
+                    controls=[
+                        icon_circle,
+                        ft.Column(controls=texts, spacing=2, tight=True),
+                    ],
+                    spacing=15,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                padding=ft.Padding(left=20, right=20, top=14, bottom=14),
+            )
+        )
+
     def _display_stats(self, stats: dict):
         """Display statistics cards."""
-        controls = []
-
-        # Uniform card height for consistent layout
-        card_min_height = 220
-
-        # Total taxa
-        controls.append(
-            ft.Card(
-                content=ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            ft.Icon(ft.Icons.PETS, size=50, color=ft.Colors.PRIMARY),
-                            ft.Text(
-                                f"{stats['total_taxa']:,}",
-                                size=32,
-                                weight=ft.FontWeight.BOLD,
-                                color=ft.Colors.PRIMARY,
-                                no_wrap=True,
-                            ),
-                            ft.Text("Taxa totaux", size=16, color=ft.Colors.GREY_500),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=5,
-                        tight=True,
-                    ),
-                    padding=30,
-                    height=card_min_height,
-                )
-            )
-        )
-
-        # Species count
-        controls.append(
-            ft.Card(
-                content=ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            ft.Icon(ft.Icons.FAVORITE, size=50, color=ft.Colors.BLUE),
-                            ft.Text(
-                                f"{stats['species_count']:,}",
-                                size=32,
-                                weight=ft.FontWeight.BOLD,
-                                color=ft.Colors.BLUE,
-                                no_wrap=True,
-                            ),
-                            ft.Text("Espèces", size=16, color=ft.Colors.GREY_500),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=5,
-                        tight=True,
-                    ),
-                    padding=30,
-                    height=card_min_height,
-                )
-            )
-        )
-
-        # Enriched count
-        controls.append(
-            ft.Card(
-                content=ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            ft.Icon(ft.Icons.INFO, size=50, color=ft.Colors.GREEN_500),
-                            ft.Text(
-                                f"{stats['enriched_count']:,}",
-                                size=32,
-                                weight=ft.FontWeight.BOLD,
-                                color=ft.Colors.GREEN_500,
-                                no_wrap=True,
-                            ),
-                            ft.Text(
-                                "Animaux enrichis", size=16, color=ft.Colors.GREY_500
-                            ),
-                            ft.Text(
-                                stats["enrichment_progress"],
-                                size=14,
-                                color=ft.Colors.GREY_500,
-                            ),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=5,
-                        tight=True,
-                    ),
-                    padding=30,
-                    height=card_min_height,
-                )
-            )
-        )
-
-        # Vernacular names
-        controls.append(
-            ft.Card(
-                content=ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            ft.Icon(
-                                ft.Icons.TRANSLATE, size=50, color=ft.Colors.AMBER_500
-                            ),
-                            ft.Text(
-                                f"{stats['vernacular_names']:,}",
-                                size=32,
-                                weight=ft.FontWeight.BOLD,
-                                color=ft.Colors.AMBER_500,
-                                no_wrap=True,
-                            ),
-                            ft.Text(
-                                "Noms vernaculaires", size=16, color=ft.Colors.GREY_500
-                            ),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=5,
-                        tight=True,
-                    ),
-                    padding=30,
-                    height=card_min_height,
-                )
-            )
-        )
-
-        self.stats_container.controls = controls
+        self.stats_container.controls = [
+            self._stat_card(
+                ft.Icons.PETS,
+                ft.Colors.PRIMARY,
+                f"{stats['total_taxa']:,}",
+                "Taxa totaux",
+            ),
+            self._stat_card(
+                ft.Icons.FAVORITE,
+                ft.Colors.BLUE,
+                f"{stats['species_count']:,}",
+                "Espèces",
+            ),
+            self._stat_card(
+                ft.Icons.INFO,
+                ft.Colors.GREEN_500,
+                f"{stats['enriched_count']:,}",
+                "Animaux enrichis",
+                subtitle=stats["enrichment_progress"],
+            ),
+            self._stat_card(
+                ft.Icons.TRANSLATE,
+                ft.Colors.AMBER_500,
+                f"{stats['vernacular_names']:,}",
+                "Noms vernaculaires",
+            ),
+        ]
 
     async def load_stats(self):
         """Load statistics from repository."""
