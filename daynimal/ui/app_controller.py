@@ -311,18 +311,12 @@ class AppController:
                 # Remove from favorites
                 success = repo.remove_favorite(taxon_id)
                 if success:
-                    snack_bar = ft.SnackBar(content=ft.Text("Retiré des favoris"))
-                    self.page.snack_bar = snack_bar
-                    snack_bar.open = True
-                    self.page.update()
+                    self.page.show_dialog(ft.SnackBar(ft.Text("Retiré des favoris")))
             else:
                 # Add to favorites
                 success = repo.add_favorite(taxon_id)
                 if success:
-                    snack_bar = ft.SnackBar(content=ft.Text("Ajouté aux favoris"))
-                    self.page.snack_bar = snack_bar
-                    snack_bar.open = True
-                    self.page.update()
+                    self.page.show_dialog(ft.SnackBar(ft.Text("Ajouté aux favoris")))
 
         except Exception as error:
             error_msg = f"Error in on_favorite_toggle: {error}"
@@ -336,12 +330,9 @@ class AppController:
                 print(f"Traceback:\n{error_traceback}")
 
             # Show error snackbar
-            snack_bar = ft.SnackBar(
-                content=ft.Text(f"Erreur: {str(error)}"), bgcolor=ft.Colors.ERROR
+            self.page.show_dialog(
+                ft.SnackBar(ft.Text(f"Erreur: {str(error)}"), bgcolor=ft.Colors.ERROR)
             )
-            self.page.snack_bar = snack_bar
-            snack_bar.open = True
-            self.page.update()
 
     def _update_offline_banner(self):
         """Update offline banner visibility based on connectivity state."""

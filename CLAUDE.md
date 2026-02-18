@@ -16,6 +16,7 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for complete structure, function/class 
 - At the start, **always** re-generate `ARCHITECTURE.md` with following command: `uv run generate_architecture.py`
 - At the start, **always** read [`docs/MOBILE_DESKTOP_ROADMAP.md`](docs/MOBILE_DESKTOP_ROADMAP.md) to understand current priorities and planned features.
 - For Android build, emulator setup, and ADB testing, refer to [`docs/ANDROID_DEV_GUIDE.md`](docs/ANDROID_DEV_GUIDE.md).
+- **CRITICAL**: Before ANY modification of code UI (Flet), **always** read [`docs/FLET_API_GUIDE.md`](docs/FLET_API_GUIDE.md) for the current API (Flet 0.80+). Ne JAMAIS deviner l'API Flet — toujours consulter ce guide en premier.
 
 **CRITICAL: Environment Management**:
 - This project uses **uv** for dependency management with a local `.venv`

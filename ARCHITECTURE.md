@@ -25,14 +25,21 @@
 - `daynimal.db.models`
 - `daynimal.db.session`
 
+### daynimal/resources
+- `daynimal.resources.__init__` — Embedded data resources for Daynimal.
+
 ### daynimal/sources
 - `daynimal.sources.__init__`
 - `daynimal.sources.base` — Base class for external data sources.
 - `daynimal.sources.commons` — Wikimedia Commons API client.
 - `daynimal.sources.gbif_media` — GBIF Media API client.
-- `daynimal.sources.phylopic` — PhyloPic API client.
+- `daynimal.sources.phylopic_local` — Local PhyloPic lookup service.
 - `daynimal.sources.wikidata` — Wikidata API client.
 - `daynimal.sources.wikipedia` — Wikipedia API client.
+
+### daynimal/sources/legacy
+- `daynimal.sources.legacy.__init__` — Legacy API clients (kept for reference, no longer used in production).
+- `daynimal.sources.legacy.phylopic` — PhyloPic API client.
 
 ### daynimal/ui
 - `daynimal.ui.__init__` — UI module for Daynimal Flet application.
@@ -156,7 +163,7 @@
 - depends on `daynimal.schemas`
 - depends on `daynimal.sources.commons`
 - depends on `daynimal.sources.gbif_media`
-- depends on `daynimal.sources.phylopic`
+- depends on `daynimal.sources.phylopic_local`
 - depends on `daynimal.sources.wikidata`
 - depends on `daynimal.sources.wikipedia`
 
@@ -177,10 +184,13 @@
 - depends on `daynimal.schemas`
 - depends on `daynimal.sources.base`
 
-### daynimal.sources.phylopic
+### daynimal.sources.legacy.phylopic
 - depends on `daynimal.config`
 - depends on `daynimal.schemas`
 - depends on `daynimal.sources.base`
+
+### daynimal.sources.phylopic_local
+- depends on `daynimal.schemas`
 
 ### daynimal.sources.wikidata
 - depends on `daynimal.schemas`
@@ -285,21 +295,21 @@
 
 ## 4. External Dependencies
 - flet (used 16 times)
-- pathlib (used 14 times)
+- pathlib (used 15 times)
 - asyncio (used 11 times)
 - typing (used 11 times)
+- logging (used 10 times)
 - datetime (used 9 times)
-- logging (used 9 times)
 - sqlalchemy (used 9 times)
 - argparse (used 8 times)
 - httpx (used 8 times)
 - traceback (used 7 times)
 - sys (used 6 times)
+- csv (used 4 times)
 - dataclasses (used 4 times)
 - os (used 4 times)
 - re (used 4 times)
 - time (used 4 times)
-- csv (used 3 times)
 - hashlib (used 3 times)
 - json (used 3 times)
 - subprocess (used 3 times)
@@ -874,11 +884,8 @@ class AnimalRepository  # Repository for accessing animal information.
     @property
     def gbif_media(self)
     # calls: GbifMediaAPI
-    @property
-    def phylopic(self)
-    # calls: PhyloPicAPI
     def close(self)  # Close all connections.
-    # calls: self._commons.close, self._gbif_media.close, self._phylopic.close, self._wikidata.close, self._wikipedia.close, self.image_cache.close, self.session.close
+    # calls: self._commons.close, self._gbif_media.close, self._wikidata.close, self._wikipedia.close, self.image_cache.close, self.session.close
     def __enter__(self)
     def __exit__(self, exc_type, exc_val, exc_tb)
     # calls: self.close
@@ -906,8 +913,8 @@ class AnimalRepository  # Repository for accessing animal information.
     # calls: self._save_cache, self.connectivity.set_offline, self.wikidata.get_by_taxonomy
     def _fetch_and_cache_wikipedia(self, taxon_id, scientific_name)  # Fetch Wikipedia and cache it.
     # calls: self._save_cache, self.connectivity.set_offline, self.wikipedia.get_by_taxonomy
-    def _fetch_and_cache_images(self, taxon_id, scientific_name, wikidata)  # Fetch images with cascade: Commons → GBIF Media → PhyloPic.
-    # calls: rank_images, self._save_cache, self.commons.get_by_source_id, self.commons.get_by_taxonomy, self.commons.get_images_for_wikidata, self.connectivity.set_offline, self.gbif_media.get_media_for_taxon, self.image_cache.cache_images, self.phylopic.get_silhouettes_for_taxon
+    def _fetch_and_cache_images(self, taxon_id, scientific_name, wikidata, taxon)  # Fetch images with cascade: Commons → GBIF Media → PhyloPic (local).
+    # calls: get_phylopic_silhouette, rank_images, self._save_cache, self.commons.get_by_source_id, self.commons.get_by_taxonomy, self.commons.get_images_for_wikidata, self.connectivity.set_offline, self.gbif_media.get_media_for_taxon, self.image_cache.cache_images
     def _save_cache(self, taxon_id, source, data)  # Save data to enrichment cache.
     # calls: EnrichmentCacheModel, datetime.now, isinstance, json.dumps, self._to_dict, self.session.add, self.session.commit, self.session.query, self.session.query.filter, self.session.rollback
     def _to_dict(self, obj)  # Convert dataclass to dict, handling enums.
@@ -1102,7 +1109,7 @@ class GbifMediaAPI(DataSource)  # Client for GBIF Media API.
 def _parse_gbif_license(license_url)  # Parse a GBIF license URL to a License enum.
 ```
 
-### Module: daynimal.sources.phylopic
+### Module: daynimal.sources.legacy.phylopic
 > PhyloPic API client.
 > 
 > Fetches silhouette images from PhyloPic (https://www.phylopic.org/)
@@ -1142,6 +1149,36 @@ class PhyloPicAPI(DataSource)  # Client for PhyloPic API.
 ```python
 def _parse_phylopic_license(license_url)  # Parse a PhyloPic license URL to a License enum.
 ```
+
+### Module: daynimal.sources.phylopic_local
+> Local PhyloPic lookup service.
+> 
+> Replaces the PhyloPic API client with a local CSV-based lookup.
+> The CSV contains ~11,950 silhouette metadata entries downloaded from PhyloPic.
+> Taxonomy traversal is done locally using the Taxon hierarchy fields.
+```python
+def _parse_phylopic_license(license_url)  # Parse a PhyloPic license URL to a License enum.
+```
+```python
+def _load_csv()  # Load PhyloPic metadata CSV into two dicts.
+```
+- calls: `Path`, `Path.resolve`, `csv.DictReader`, `len`, `open`
+```python
+def _get_lookups()  # Get or initialize the lookup dicts (lazy singleton).
+```
+- calls: `_load_csv`
+```python
+def _row_to_image(row)  # Convert a CSV row to a CommonsImage, or None if license is rejected.
+```
+- calls: `CommonsImage`, `_parse_phylopic_license`
+```python
+def _find_in_lookups(key, specific, general)  # Try to find a valid image for a key, preferring specific over general.
+```
+- calls: `_row_to_image`
+```python
+def get_silhouette_for_taxon(taxon)  # Look up a PhyloPic silhouette for the given taxon.
+```
+- calls: `_find_in_lookups`, `_get_lookups`, `getattr`
 
 ### Module: daynimal.sources.wikidata
 > Wikidata API client.
@@ -1534,11 +1571,11 @@ class TodayView(BaseView)  # View for displaying the animal of the day or random
     def _build_share_text(animal)  # Build formatted share text for an animal.
     # calls: len
     async def _on_copy_text(self, e)  # Copy formatted animal text to clipboard.
-    # calls: ft.SnackBar, ft.Text, self._build_share_text, self.page.open, self.page.set_clipboard, self.page.update
+    # calls: ft.Clipboard, ft.Clipboard.set, ft.SnackBar, ft.Text, self._build_share_text, self.page.open, self.page.update
     def _on_open_wikipedia(self, e)  # Open Wikipedia article in default browser.
     # calls: self.page.launch_url
     async def _on_copy_image(self, e)  # Copy local image path to clipboard.
-    # calls: ft.SnackBar, ft.Text, self.app_state.image_cache.get_local_path, self.page.open, self.page.set_clipboard, self.page.update, str
+    # calls: ft.Clipboard, ft.Clipboard.set, ft.SnackBar, ft.Text, self.app_state.image_cache.get_local_path, self.page.open, self.page.update, str
 ```
 
 ### Module: debug.debug_filter

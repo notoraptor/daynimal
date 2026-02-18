@@ -1,396 +1,564 @@
 # Flet API Guide for Daynimal
 
-Guide pratique pour l'API Flet basé sur l'expérience du développement de l'application Daynimal.
+**Version Flet : 0.80.5** — Ce guide documente l'API telle qu'utilisee dans le projet.
+**IMPORTANT** : Claude Code DOIT consulter ce fichier avant toute modification de code UI.
 
-## Version Flet
+---
 
-Daynimal utilise **Flet >=0.25.0** qui a introduit des changements majeurs :
-- Migration de variables vers **Enums**
-- Syntaxe : `ft.Colors.PRIMARY` (pas `ft.colors.PRIMARY`)
-- Syntaxe : `ft.Icons.FAVORITE` (pas `ft.icons.FAVORITE`)
+## Changements critiques (Flet 0.80 vs anciennes versions)
 
-## Quick Reference
+| Ancien (OBSOLETE)                          | Nouveau (CORRECT)                                |
+|--------------------------------------------|--------------------------------------------------|
+| `page.open(snackbar)`                      | `page.show_dialog(snackbar)`                     |
+| `page.snack_bar = sb; sb.open = True`      | `page.show_dialog(sb)`                           |
+| `page.close_dialog()`                      | `page.pop_dialog()`                              |
+| `ft.app(target=main)`                      | `ft.run(main=main)`                              |
+| `page.update_async()`                      | `page.update()`                                  |
+| `ft.ImageFit.CONTAIN`                      | `"contain"` (string)                             |
+| `ft.colors.GREY_700` (lowercase)           | `ft.Colors.GREY_700` (Enum majuscule)            |
+| `ft.icons.TODAY` (lowercase)               | `ft.Icons.CALENDAR_TODAY` (Enum majuscule)       |
+| `ft.ElevatedButton("text")`                | `ft.Button("text")`                              |
+| `ft.TextButton("text")`                    | `ft.Button("text")`                              |
+| `ft.alignment.center`                      | `ft.Alignment.CENTER` ou `ft.Alignment(0, 0)`   |
+| `page.launch_url(url)` (sync)              | `await page.launch_url(url)` (async)             |
+| `page.window_width = 420`                  | `page.window.width = 420`                        |
 
-### ✅ Couleurs garanties
+**Proprietes supprimees de Page** : `page.snack_bar`, `page.dialog`, `page.open()`.
+
+**BUG decorateur @deprecated dans Flet 0.80** :
+Le decorateur `@deprecated` wrappe les fonctions async dans un wrapper **sync**.
+Consequence : `page.launch_url()` retourne une coroutine non-executee.
+- **NE PAS** faire `await page.launch_url(url)` (ne fonctionne pas)
+- **FAIRE** : `page.run_task(ft.UrlLauncher().launch_url, url)`
+  (`run_task` attend une **fonction coroutine + args**, pas une coroutine deja appelee)
+
+**Deprecations annoncees (0.90+)** :
+- `page.launch_url()` → `UrlLauncher().launch_url()` (service)
+- `page.window` → possiblement renomme (verifier lors de la migration)
+
+---
+
+## Page — Methodes et proprietes
+
+### Methodes
+
+| Methode              | Async | Description                                         |
+|----------------------|-------|-----------------------------------------------------|
+| `page.add(*controls)`| Non   | Ajoute des controles a la page                      |
+| `page.update()`      | Non   | Rafraichit l'UI (toujours sync, meme dans async)    |
+| `page.show_dialog(d)`| Non   | Affiche un dialog/snackbar                          |
+| `page.pop_dialog()`  | Non   | Ferme le dernier dialog ouvert                      |
+| `page.launch_url(u)` | **Oui**\* | Ouvre une URL — voir bug @deprecated ci-dessus  |
+| `page.go(route)`     | Non   | Change la route                                     |
+| `page.run_task(coro)` | Non  | Execute une coroutine dans l'event loop             |
+| `page.run_thread(fn)` | Non  | Execute une fonction dans un thread pool            |
+
+### Proprietes
+
+| Propriete             | Type                    | Description                            |
+|-----------------------|-------------------------|----------------------------------------|
+| `page.title`          | `str`                   | Titre de la fenetre                    |
+| `page.padding`        | `int` ou `Padding`      | Padding de la page                     |
+| `page.scroll`         | `ScrollMode` ou `None`  | Mode de scroll                         |
+| `page.theme_mode`     | `ThemeMode`             | DARK, LIGHT, SYSTEM                    |
+| `page.navigation_bar` | `NavigationBar`         | Barre de navigation en bas             |
+| `page.controls`       | `list`                  | Liste des controles enfants            |
+| `page.overlay`        | `list`                  | Controles en superposition             |
+| `page.data`           | `any`                   | Donnees libres (pour passer du contexte) |
+| `page.route`          | `str`                   | Route actuelle (read-only)             |
+| `page.platform`       | `PagePlatform`          | OS de l'app (read-only)               |
+| `page.web`            | `bool`                  | True si web (read-only)               |
+
+### Fenetre (desktop)
 
 ```python
-# Theme colors (toujours disponibles)
+page.window.width = 420
+page.window.height = 820
+await page.window.close()  # async!
+```
+
+Proprietes : `width`, `height`, `resizable`, `maximized`, `minimized`.
+
+### Evenements Page
+
+```python
+page.on_route_change = handler       # changement de route
+page.on_keyboard_event = handler     # touche pressee
+page.on_disconnect = handler         # utilisateur ferme l'onglet web
+page.on_close = handler              # session expire
+```
+
+---
+
+## SnackBar
+
+**IMPORTANT** : Afficher avec `page.show_dialog()`, PAS `page.open()`.
+
+```python
+# Basique
+page.show_dialog(ft.SnackBar(ft.Text("Message !")))
+
+# Avec couleur de fond
+page.show_dialog(
+    ft.SnackBar(ft.Text("Erreur !"), bgcolor=ft.Colors.ERROR)
+)
+
+# Avec action
+page.show_dialog(
+    ft.SnackBar(
+        content=ft.Text("Fichier supprime"),
+        action=ft.SnackBarAction(
+            label="Annuler",
+            on_click=lambda e: print("Annule !"),
+        ),
+        duration=4000,       # ms (defaut: 4000)
+        persist=False,       # True = reste jusqu'a interaction
+    )
+)
+```
+
+Proprietes : `content`, `action`, `duration`, `bgcolor`, `persist`, `behavior` (FIXED/FLOATING), `show_close_icon`, `dismiss_direction`.
+
+---
+
+## AlertDialog
+
+```python
+dialog = ft.AlertDialog(
+    title=ft.Text("Confirmer"),
+    content=ft.Text("Voulez-vous continuer ?"),
+    actions=[
+        ft.Button("Oui", on_click=lambda e: page.pop_dialog()),
+        ft.Button("Non", on_click=lambda e: page.pop_dialog()),
+    ],
+    modal=True,  # True = clic exterieur ne ferme pas
+)
+page.show_dialog(dialog)
+
+# Fermer :
+page.pop_dialog()
+```
+
+---
+
+## Clipboard
+
+Le clipboard est un **service async**. Il doit etre utilise dans des handlers async.
+
+```python
+# Copier du texte
+await ft.Clipboard().set("texte a copier")
+
+# Lire le clipboard
+text = await ft.Clipboard().get()
+```
+
+Les deux methodes (`set` et `get`) sont **async**.
+
+---
+
+## Boutons
+
+### Button (bouton standard)
+
+```python
+ft.Button(
+    content="Mon bouton",        # ou text direct : ft.Button("Mon bouton")
+    icon=ft.Icons.CALENDAR_TODAY,
+    on_click=self.handler,
+    disabled=False,
+    tooltip="Info-bulle",
+    style=ft.ButtonStyle(
+        color=ft.Colors.WHITE,
+        bgcolor=ft.Colors.PRIMARY,
+        padding=ft.Padding.all(10),
+        shape=ft.RoundedRectangleBorder(radius=10),
+    ),
+)
+```
+
+Variantes : `ft.FilledButton`, `ft.OutlinedButton`, `ft.FilledTonalButton`.
+
+### IconButton
+
+```python
+ft.IconButton(
+    icon=ft.Icons.FAVORITE,
+    icon_size=24,               # defaut: 24
+    icon_color=ft.Colors.RED,
+    on_click=self.handler,
+    disabled=False,
+    tooltip="Ajouter aux favoris",
+    selected=False,                        # toggle state
+    selected_icon=ft.Icons.FAVORITE_BORDER,  # icone quand selected=True
+)
+```
+
+### Evenements communs aux boutons
+
+`on_click`, `on_long_press`, `on_hover`, `on_focus`, `on_blur`.
+
+---
+
+## TextField
+
+```python
+ft.TextField(
+    label="Rechercher",
+    hint_text="Nom d'animal...",
+    value="",                    # valeur initiale
+    prefix_icon=ft.Icons.SEARCH,
+    autofocus=True,
+    expand=True,                 # remplit l'espace disponible
+    on_submit=self._on_submit,   # touche Entree
+    on_change=self._on_change,   # a chaque caractere
+    on_focus=self._on_focus,
+    on_blur=self._on_blur,
+    read_only=False,
+    password=False,
+    multiline=False,
+    max_length=100,
+)
+```
+
+---
+
+## Image
+
+```python
+ft.Image(
+    src="https://example.com/image.jpg",  # URL, chemin local, ou base64
+    width=400,
+    height=300,
+    fit="contain",           # string, pas enum : "contain", "cover", "fill", etc.
+    border_radius=10,
+    error_content=ft.Container(
+        content=ft.Column([
+            ft.Icon(ft.Icons.IMAGE, size=60, color=ft.Colors.GREY_500),
+            ft.Text("Image non disponible"),
+        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+        width=400,
+        height=300,
+        bgcolor=ft.Colors.GREY_200,
+    ),
+)
+```
+
+Proprietes : `src`, `width`, `height`, `fit`, `border_radius`, `error_content`, `placeholder_src`, `semantics_label`.
+
+---
+
+## NavigationBar
+
+```python
+page.navigation_bar = ft.NavigationBar(
+    selected_index=0,
+    on_change=self.on_nav_change,
+    label_behavior=ft.NavigationBarLabelBehavior.ALWAYS_HIDE,
+    destinations=[
+        ft.NavigationBarDestination(icon=ft.Icons.HOME, label="Accueil"),
+        ft.NavigationBarDestination(icon=ft.Icons.HISTORY, label="Historique"),
+        ft.NavigationBarDestination(icon=ft.Icons.FAVORITE, label="Favoris"),
+        ft.NavigationBarDestination(icon=ft.Icons.SEARCH, label="Recherche"),
+        ft.NavigationBarDestination(icon=ft.Icons.BAR_CHART, label="Stats"),
+        ft.NavigationBarDestination(icon=ft.Icons.SETTINGS, label="Parametres"),
+    ],
+)
+```
+
+`NavigationBarLabelBehavior` : `ALWAYS_SHOW`, `ALWAYS_HIDE`, `ONLY_SHOW_SELECTED`.
+
+---
+
+## Switch
+
+```python
+ft.Switch(
+    label="Mode sombre",
+    value=False,
+    on_change=self._on_theme_toggle,
+    label_position=ft.LabelPosition.LEFT,  # ou RIGHT
+)
+
+# Dans le handler :
+def _on_theme_toggle(self, e):
+    is_dark = e.control.value  # bool
+```
+
+---
+
+## Layout
+
+### Container
+
+```python
+ft.Container(
+    content=ft.Text("Contenu"),
+    padding=20,                       # int ou ft.Padding(...)
+    margin=ft.Margin(left=10),
+    bgcolor=ft.Colors.GREY_200,
+    border_radius=10,
+    border=ft.Border.all(1, ft.Colors.GREY_400),
+    alignment=ft.Alignment.CENTER,
+    width=300,
+    height=200,
+    expand=False,
+    ink=True,                         # ripple effect au clic
+    on_click=self.handler,
+)
+```
+
+### Column
+
+```python
+ft.Column(
+    controls=[...],
+    spacing=10,
+    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+    scroll=ft.ScrollMode.AUTO,        # rend la colonne scrollable
+    expand=True,
+    tight=True,                       # hauteur minimum
+)
+```
+
+### Row
+
+```python
+ft.Row(
+    controls=[...],
+    spacing=10,
+    alignment=ft.MainAxisAlignment.CENTER,
+    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+    wrap=True,                        # wrap sur plusieurs lignes
+)
+```
+
+### Padding et Margin
+
+```python
+ft.Padding(left=10, top=5, right=10, bottom=5)
+ft.Padding.symmetric(horizontal=20, vertical=10)
+ft.Padding.all(15)
+
+ft.Margin(left=10, top=5, right=10, bottom=5)
+ft.Margin.symmetric(horizontal=20, vertical=10)
+```
+
+### Alignment
+
+```python
+ft.Alignment.CENTER              # centre
+ft.Alignment(0, 0)               # equivalent, (x, y) de -1 a 1
+ft.MainAxisAlignment.CENTER      # pour Row/Column
+ft.MainAxisAlignment.SPACE_BETWEEN
+ft.CrossAxisAlignment.CENTER
+ft.CrossAxisAlignment.STRETCH
+```
+
+---
+
+## Indicateurs de progression
+
+### ProgressRing (circulaire)
+
+```python
+# Indetermine (spinner)
+ft.ProgressRing(width=40, height=40)
+
+# Avec progression
+ft.ProgressRing(value=0.5, width=40, height=40, stroke_width=4)
+```
+
+### ProgressBar (lineaire)
+
+```python
+# Indetermine
+ft.ProgressBar(width=400)
+
+# Avec progression
+ft.ProgressBar(value=0.7, width=400)
+```
+
+---
+
+## Themes et couleurs
+
+### ThemeMode
+
+```python
+page.theme_mode = ft.ThemeMode.DARK    # sombre
+page.theme_mode = ft.ThemeMode.LIGHT   # clair
+page.theme_mode = ft.ThemeMode.SYSTEM  # suit l'OS
+```
+
+### Couleurs garanties
+
+```python
+# Theme
 ft.Colors.PRIMARY
 ft.Colors.ERROR
 
-# Basic colors
+# Basiques
 ft.Colors.WHITE
 ft.Colors.BLACK
 
-# Grey palette (50-900)
-ft.Colors.GREY_50
-ft.Colors.GREY_200   # Light grey for backgrounds
-ft.Colors.GREY_500   # Medium grey for text
-ft.Colors.GREY_700
-ft.Colors.GREY_900
-
-# Blue palette (50-900)
-ft.Colors.BLUE
-ft.Colors.BLUE_400
-ft.Colors.BLUE_700
-
-# Other full palettes
-ft.Colors.RED_500
+# Palettes (50 a 900)
+ft.Colors.GREY_50, ft.Colors.GREY_200, ft.Colors.GREY_500, ft.Colors.GREY_700, ft.Colors.GREY_900
+ft.Colors.BLUE, ft.Colors.BLUE_400, ft.Colors.BLUE_700
+ft.Colors.RED, ft.Colors.RED_500
 ft.Colors.GREEN_500
 ft.Colors.AMBER_500
 ```
 
-### ✅ Icônes confirmées
+### A EVITER (causent des erreurs)
+
+```python
+ft.Colors.OUTLINE            # non garanti
+ft.Colors.SURFACE_VARIANT    # n'existe pas
+ft.Colors.SECONDARY          # acces direct non fiable
+```
+
+---
+
+## Icones garanties
 
 ```python
 # Navigation
-ft.Icons.CALENDAR_TODAY  # Pour "Animal du jour"
-ft.Icons.SHUFFLE         # Pour "Animal aléatoire"
-ft.Icons.SEARCH
-ft.Icons.HISTORY
-ft.Icons.SETTINGS
+ft.Icons.HOME, ft.Icons.HISTORY, ft.Icons.SEARCH, ft.Icons.SETTINGS
+ft.Icons.CALENDAR_TODAY, ft.Icons.SHUFFLE, ft.Icons.BAR_CHART
+ft.Icons.ARROW_BACK, ft.Icons.ARROW_FORWARD
 
-# Media & Content
-ft.Icons.IMAGE          # Générique pour toutes images
-ft.Icons.FAVORITE       # Cœur, likes, favoris
+# Favoris
+ft.Icons.FAVORITE, ft.Icons.FAVORITE_BORDER
+
+# Media
+ft.Icons.IMAGE, ft.Icons.CONTENT_COPY, ft.Icons.LANGUAGE
 
 # Status
-ft.Icons.ERROR          # Erreurs
-ft.Icons.INFO           # Informations
-ft.Icons.WARNING        # Avertissements
+ft.Icons.ERROR, ft.Icons.INFO, ft.Icons.WARNING, ft.Icons.CHECK_CIRCLE
 
 # Actions
-ft.Icons.CLOSE
-ft.Icons.REFRESH
-ft.Icons.ADD
+ft.Icons.CLOSE, ft.Icons.REFRESH, ft.Icons.ADD, ft.Icons.PETS
+
+# Divers
+ft.Icons.WIFI_OFF, ft.Icons.ACCOUNT_TREE, ft.Icons.SEARCH_OFF
 ```
 
-### ❌ À ÉVITER
+### Icones qui N'EXISTENT PAS
 
 ```python
-# Ces couleurs ont causé des erreurs dans Daynimal
-ft.Colors.OUTLINE           # Non garanti
-ft.Colors.SURFACE_VARIANT   # N'existe pas
-ft.Colors.SECONDARY         # Accès direct non fiable
-
-# Ces icônes n'existent pas
 ft.Icons.HIDE_IMAGE
 ft.Icons.IMAGE_NOT_SUPPORTED
 ft.Icons.BROKEN_IMAGE
 ```
 
-## Architecture Async/Await
+---
 
-### Pattern pour indicateurs de chargement
+## Architecture async/await
 
-**❌ Problème : Code synchrone**
+### Regles fondamentales
+
+1. `page.update()` est **toujours sync**, meme dans une fonction async
+2. Apres `page.update()`, faire `await asyncio.sleep(0.1)` pour forcer le refresh UI
+3. Utiliser `asyncio.to_thread(fn)` pour les operations bloquantes (DB, I/O)
+4. Les event handlers UI peuvent etre `async def handler(self, e)`
+5. `page.launch_url()` est async mais cassé par `@deprecated` — utiliser `page.run_task(ft.UrlLauncher().launch_url, url)`
+6. `ft.Clipboard().set()` et `.get()` sont **async** — toujours `await`
+7. `page.window.close()` est **async** — toujours `await`
+8. `page.show_dialog()` est **sync** — pas de `await`
+9. `page.pop_dialog()` est **sync** — pas de `await`
+10. `page.update()` est **sync** — pas de `await`
+
+### Pattern chargement async
+
 ```python
-def load_data(self):
-    # L'UI reste figée pendant tout le traitement
-    data = fetch_from_database()  # Bloque l'UI
-    self.display(data)
-```
-
-**✅ Solution : Async/await**
-```python
-async def load_data(self):
-    # 1. Afficher l'indicateur de chargement
-    self.container.controls = [
-        ft.ProgressRing(),
-        ft.Text("Chargement en cours...")
-    ]
-    self.page.update()  # ← Toujours synchrone même dans async
-
-    # 2. IMPORTANT: Forcer le refresh de l'UI
-    await asyncio.sleep(0.1)  # Donne le temps à Flet de rafraîchir
-
-    # 3. Traiter dans un thread séparé
-    def fetch():
-        with Repository() as repo:
-            return repo.get_data()
-
-    data = await asyncio.to_thread(fetch)  # Non-bloquant
-
-    # 4. Afficher le résultat
-    self.display(data)
+async def load_data(self, e=None):
+    # 1. Afficher loading
+    self.container.controls = [ft.ProgressRing(width=40, height=40)]
     self.page.update()
-```
+    await asyncio.sleep(0.1)  # laisser Flet rafraichir
 
-### Règles importantes
+    try:
+        # 2. Operation bloquante dans un thread
+        data = await asyncio.to_thread(self._fetch_data)
 
-1. **`self.page.update()` reste synchrone** même dans les fonctions async
-2. **Toujours `await asyncio.sleep(0.1)`** après un `.update()` pour forcer le refresh
-3. **Utiliser `asyncio.to_thread()`** pour les opérations bloquantes (DB, I/O)
-4. **Déclarer les event handlers comme `async`** : `async def on_click(self, e)`
-
-### Exemple complet : Bouton avec loading
-
-```python
-class MyApp:
-    def __init__(self, page: ft.Page):
-        self.page = page
-        self.button = ft.Button(
-            "Charger",
-            on_click=self.load_data  # ← async handler
-        )
-        self.content = ft.Column()
-        self.page.add(self.button, self.content)
-
-    async def load_data(self, e):
-        # Show loading
-        self.content.controls = [
-            ft.Container(
-                content=ft.Column([
-                    ft.ProgressRing(width=60, height=60),
-                    ft.Text("Chargement...", size=18, weight=ft.FontWeight.BOLD),
-                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                padding=40,
-            )
+        # 3. Afficher le resultat
+        self.container.controls = [ft.Text(data.name)]
+    except Exception as error:
+        self.container.controls = [
+            ft.Icon(ft.Icons.ERROR, color=ft.Colors.ERROR),
+            ft.Text(f"Erreur: {error}"),
         ]
+    finally:
         self.page.update()
-        await asyncio.sleep(0.1)
-
-        try:
-            # Fetch data in background
-            def fetch():
-                with AnimalRepository() as repo:
-                    return repo.get_animal_of_the_day()
-
-            animal = await asyncio.to_thread(fetch)
-
-            # Display result
-            self.content.controls = [
-                ft.Text(animal.display_name, size=24),
-                ft.Text(animal.taxon.scientific_name, italic=True),
-            ]
-
-        except Exception as error:
-            # Show error
-            self.content.controls = [
-                ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
-                ft.Text(f"Erreur: {error}", color=ft.Colors.ERROR),
-            ]
-
-        finally:
-            self.page.update()
 ```
 
-## Gestion des images
+---
 
-### Affichage avec fallback
+## Entree de l'application
 
 ```python
-ft.Image(
-    src=image_url,
-    width=400,
-    height=300,
-    fit="contain",
-    border_radius=10,
-    error_content=ft.Container(
-        content=ft.Column([
-            ft.Icon(ft.Icons.IMAGE, size=60, color=ft.Colors.ERROR),
-            ft.Text("Erreur de chargement", color=ft.Colors.ERROR),
-        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-        width=400,
-        height=300,
-        bgcolor=ft.Colors.GREY_200,
-        border_radius=10,
-        padding=20,
-    ),
-)
+import flet as ft
+
+def main(page: ft.Page):
+    page.title = "Daynimal"
+    page.add(ft.Text("Hello"))
+
+ft.run(main=main)
+
+# Ou avec async main :
+async def main(page: ft.Page):
+    page.title = "Daynimal"
+    page.add(ft.Text("Hello"))
+
+ft.run(main=main)
 ```
 
-### Placeholder quand aucune image
+---
+
+## ScrollMode
 
 ```python
-if animal.images:
-    # Afficher l'image
-    controls.append(ft.Image(src=animal.images[0].url, ...))
-else:
-    # Placeholder
-    controls.append(
-        ft.Container(
-            content=ft.Column([
-                ft.Icon(ft.Icons.IMAGE, size=60, color=ft.Colors.GREY_500),
-                ft.Text("Aucune image disponible", size=16, weight=ft.FontWeight.BOLD),
-                ft.Text("Cet animal n'a pas encore d'image", size=12, color=ft.Colors.GREY_500),
-            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10),
-            padding=30,
-            bgcolor=ft.Colors.GREY_200,
-            border_radius=10,
-        )
-    )
+ft.ScrollMode.AUTO       # scroll si contenu depasse
+ft.ScrollMode.ALWAYS     # scrollbar toujours visible
+ft.ScrollMode.HIDDEN     # scroll possible, scrollbar cachee
+ft.ScrollMode.ADAPTIVE   # scrollbar visible au survol
 ```
 
-## Layout & Styling
+---
 
-### Container avec padding et background
+## FontWeight
 
 ```python
-ft.Container(
-    content=ft.Text("Contenu"),
-    padding=20,
-    bgcolor=ft.Colors.GREY_200,
-    border_radius=10,
-)
+ft.FontWeight.BOLD       # gras
+ft.FontWeight.NORMAL     # normal
+ft.FontWeight.W_500      # medium
+ft.FontWeight.W_300      # light
+# W_100 a W_900 disponibles
 ```
 
-### Column avec spacing
-
-```python
-ft.Column(
-    controls=[
-        ft.Text("Titre"),
-        ft.Text("Sous-titre"),
-    ],
-    spacing=10,
-    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-)
-```
-
-### Row pour boutons
-
-```python
-ft.Row(
-    controls=[
-        ft.Button("Action 1", on_click=handler1),
-        ft.Button("Action 2", on_click=handler2),
-    ],
-    spacing=10,
-)
-```
-
-### Boutons stylisés
-
-```python
-ft.Button(
-    "Mon bouton",
-    icon=ft.Icons.CALENDAR_TODAY,
-    on_click=self.handler,
-    style=ft.ButtonStyle(
-        color=ft.Colors.WHITE,
-        bgcolor=ft.Colors.PRIMARY,
-    ),
-)
-```
+---
 
 ## Debugging
 
-### Erreur : `'super' object has no attribute '__getattr__'`
+### `'super' object has no attribute '__getattr__'`
 
-**Cause :** Icône ou couleur inexistante dans votre version de Flet
-
-**Solutions :**
-1. Vérifier dans [Flet Icons Browser](https://flet-icons-browser.fly.dev/)
-2. Consulter la liste des icônes/couleurs garanties ci-dessus
-3. Remplacer par une alternative :
-   - `HIDE_IMAGE` → `IMAGE`
-   - `OUTLINE` → `GREY_500`
-   - `SURFACE_VARIANT` → `GREY_200`
+Cause : icone ou couleur inexistante. Verifier dans les listes garanties ci-dessus.
 
 ### Indicateur de chargement invisible
 
-**Cause :** Code synchrone bloque l'UI
+Cause : code synchrone bloque l'UI. Solution : async/await + `asyncio.to_thread()`.
 
-**Solution :** Utiliser async/await + `asyncio.to_thread()` (voir section Architecture)
+### SnackBar ne s'affiche pas
 
-### Print ne s'affiche pas
+Cause : utilisation de l'ancien API (`page.open()` ou `page.snack_bar`).
+Solution : `page.show_dialog(ft.SnackBar(ft.Text("...")))`.
 
-**Cause :** Flet ne redirige pas stdout vers l'UI
+---
 
-**Solutions :**
-1. Regarder le terminal où `flet run` est lancé
-2. Ajouter des `ft.Text()` dans l'UI pour debug visuel
-3. Utiliser des fichiers de log
+## Ressources
 
-## Resources
-
-- **Icons Browser** : https://flet-icons-browser.fly.dev/
 - **Flet Docs** : https://docs.flet.dev/
+- **Icons Browser** : https://flet-icons-browser.fly.dev/
 - **Colors Reference** : https://docs.flet.dev/types/colors/
 - **Icons Reference** : https://docs.flet.dev/types/icons/
-- **Flutter Icons** (base de Flet) : https://api.flutter.dev/flutter/material/Icons-class.html
-
-## Patterns Daynimal
-
-### Structure de l'app
-
-```python
-class DaynimalApp:
-    def __init__(self, page: ft.Page):
-        self.page = page
-        self.page.title = "Daynimal"
-        self.page.padding = 20
-        self.page.scroll = ft.ScrollMode.AUTO
-
-        self.current_animal = None
-        self.build()
-
-    def build(self):
-        # Créer les composants
-        self.header = ft.Text("🦁 Daynimal", size=32, weight=ft.FontWeight.BOLD)
-        self.container = ft.Column(controls=[], spacing=10)
-
-        # Layout principal
-        self.page.add(
-            ft.Column([
-                self.header,
-                ft.Divider(),
-                self.container,
-            ], spacing=20)
-        )
-
-    async def load_animal(self, mode: str):
-        # Pattern de chargement async (voir section Architecture)
-        pass
-
-def main():
-    def app_main(page: ft.Page):
-        DaynimalApp(page)
-
-    ft.run(main=app_main)  # ← Syntaxe moderne
-```
-
-### Attribution légale
-
-```python
-# Toujours afficher les crédits (requis par licences)
-controls.append(
-    ft.Text(
-        "Données: GBIF Backbone Taxonomy (CC-BY 4.0)",
-        size=12,
-        color=ft.Colors.GREY_500,
-        italic=True,
-    )
-)
-```
-
-## Migrations API historiques
-
-Corrections appliquees lors de migrations Flet :
-
-| Ancien (obsolete) | Nouveau (correct) |
-|---|---|
-| `ft.app(target=main)` | `ft.run(main=main)` |
-| `page.update_async()` | `page.update()` |
-| `ft.ImageFit.CONTAIN` | `"contain"` (string) |
-| `ft.colors.GREY_700` (lowercase) | `ft.Colors.GREY_700` (Enum) |
-| `ft.icons.TODAY` (lowercase) | `ft.Icons.CALENDAR_TODAY` (Enum) |
-
-## Checklist mise a jour Flet
-
-Lors de futures mises a jour de Flet, verifier :
-1. Compatibilite des icones utilisees
-2. Compatibilite des couleurs utilisees
-3. API async/await (changements de signature)
-4. Documentation : https://docs.flet.dev/
-
-## Notes importantes
-
-1. **Enum syntax** : Toujours `ft.Colors.XXX` et `ft.Icons.XXX` (majuscules)
-2. **Async/await** : Nécessaire pour indicateurs de chargement
-3. **`asyncio.to_thread()`** : Pour opérations bloquantes (DB, I/O)
-4. **`page.update()`** : Reste synchrone même dans async
-5. **Icons Browser** : Votre meilleur ami pour vérifier les icônes
-6. **Palettes complètes** : `GREY_50-900`, `BLUE_50-900` sont garanties
-7. **Error handling** : Toujours wrapper dans try/except et afficher dans l'UI

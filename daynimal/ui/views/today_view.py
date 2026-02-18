@@ -265,23 +265,6 @@ class TodayView(BaseView):
             )
         )
 
-        # Copy image path button (disabled if no cached image)
-        has_cached_image = False
-        if animal.images and self.app_state and self.app_state.image_cache:
-            first_image = animal.images[0]
-            url = first_image.thumbnail_url or first_image.url
-            local_path = self.app_state.image_cache.get_local_path(url)
-            has_cached_image = local_path is not None
-
-        share_buttons.append(
-            ft.IconButton(
-                icon=ft.Icons.IMAGE,
-                icon_size=24,
-                tooltip="Copier le chemin de l'image",
-                on_click=self._on_copy_image if has_cached_image else None,
-                disabled=not has_cached_image,
-            )
-        )
 
         controls.insert(
             first_divider_index + 1,
@@ -368,26 +351,15 @@ class TodayView(BaseView):
         if not self.current_animal:
             return
         text = self._build_share_text(self.current_animal)
-        self.page.set_clipboard(text)
-        self.page.open(ft.SnackBar(content=ft.Text("Texte copié !")))
-        self.page.update()
+        await ft.Clipboard().set(text)
+        self.page.show_dialog(ft.SnackBar(ft.Text("Texte copié !")))
 
     def _on_open_wikipedia(self, e):
         """Open Wikipedia article in default browser."""
         if not self.current_animal or not self.current_animal.wikipedia:
             return
-        self.page.launch_url(self.current_animal.wikipedia.article_url)
+        url = self.current_animal.wikipedia.article_url
+        # page.launch_url() is async internally but wrapped in a sync
+        # @deprecated decorator — use the underlying UrlLauncher directly
+        self.page.run_task(ft.UrlLauncher().launch_url, url)
 
-    async def _on_copy_image(self, e):
-        """Copy local image path to clipboard."""
-        if not self.current_animal or not self.current_animal.images:
-            return
-        if not self.app_state or not self.app_state.image_cache:
-            return
-        first_image = self.current_animal.images[0]
-        url = first_image.thumbnail_url or first_image.url
-        local_path = self.app_state.image_cache.get_local_path(url)
-        if local_path:
-            self.page.set_clipboard(str(local_path))
-            self.page.open(ft.SnackBar(content=ft.Text("Chemin de l'image copié !")))
-            self.page.update()
