@@ -177,6 +177,18 @@ class SettingsView(BaseView):
                             size=10,
                             color=ft.Colors.GREY_600,
                         ),
+                        ft.Text("📷 GBIF Media - Photos d'occurrences", size=12),
+                        ft.Text(
+                            "   Photos : CC0, CC-BY, CC-BY-SA",
+                            size=10,
+                            color=ft.Colors.GREY_600,
+                        ),
+                        ft.Text("🦎 PhyloPic - Silhouettes", size=12),
+                        ft.Text(
+                            "   Silhouettes : CC0, CC-BY, CC-BY-SA",
+                            size=10,
+                            color=ft.Colors.GREY_600,
+                        ),
                     ],
                     spacing=8,
                 ),

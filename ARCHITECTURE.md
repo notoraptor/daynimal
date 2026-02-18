@@ -29,6 +29,8 @@
 - `daynimal.sources.__init__`
 - `daynimal.sources.base` — Base class for external data sources.
 - `daynimal.sources.commons` — Wikimedia Commons API client.
+- `daynimal.sources.gbif_media` — GBIF Media API client.
+- `daynimal.sources.phylopic` — PhyloPic API client.
 - `daynimal.sources.wikidata` — Wikidata API client.
 - `daynimal.sources.wikipedia` — Wikipedia API client.
 
@@ -134,7 +136,10 @@
 - depends on `daynimal.__init__`
 - depends on `daynimal.attribution`
 - depends on `daynimal.config`
+- depends on `daynimal.db.build_db`
 - depends on `daynimal.db.first_launch`
+- depends on `daynimal.db.generate_distribution`
+- depends on `daynimal.db.init_fts`
 - depends on `daynimal.repository`
 
 ### daynimal.notifications
@@ -147,6 +152,8 @@
 - depends on `daynimal.image_cache`
 - depends on `daynimal.schemas`
 - depends on `daynimal.sources.commons`
+- depends on `daynimal.sources.gbif_media`
+- depends on `daynimal.sources.phylopic`
 - depends on `daynimal.sources.wikidata`
 - depends on `daynimal.sources.wikipedia`
 
@@ -160,6 +167,15 @@
 - depends on `daynimal.config`
 
 ### daynimal.sources.commons
+- depends on `daynimal.schemas`
+- depends on `daynimal.sources.base`
+
+### daynimal.sources.gbif_media
+- depends on `daynimal.schemas`
+- depends on `daynimal.sources.base`
+
+### daynimal.sources.phylopic
+- depends on `daynimal.config`
 - depends on `daynimal.schemas`
 - depends on `daynimal.sources.base`
 
@@ -191,6 +207,7 @@
 - depends on `daynimal.ui.components.widgets`
 
 ### daynimal.ui.components.animal_card
+- depends on `daynimal.config`
 - depends on `daynimal.schemas`
 
 ### daynimal.ui.components.animal_display
@@ -217,21 +234,27 @@
 - depends on `daynimal.ui.state`
 
 ### daynimal.ui.views.favorites_view
+- depends on `daynimal.ui.components.animal_card`
 - depends on `daynimal.ui.components.pagination`
+- depends on `daynimal.ui.components.widgets`
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.base`
 
 ### daynimal.ui.views.history_view
+- depends on `daynimal.ui.components.animal_card`
 - depends on `daynimal.ui.components.pagination`
+- depends on `daynimal.ui.components.widgets`
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.base`
 
 ### daynimal.ui.views.search_view
 - depends on `daynimal.ui.components.animal_card`
+- depends on `daynimal.ui.components.widgets`
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.base`
 
 ### daynimal.ui.views.settings_view
+- depends on `daynimal.ui.components.widgets`
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.base`
 
@@ -240,6 +263,7 @@
 - depends on `daynimal.ui.views.base`
 
 ### daynimal.ui.views.stats_view
+- depends on `daynimal.ui.components.widgets`
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.base`
 
@@ -247,6 +271,7 @@
 - depends on `daynimal.schemas`
 - depends on `daynimal.ui.components.animal_display`
 - depends on `daynimal.ui.components.image_carousel`
+- depends on `daynimal.ui.components.widgets`
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.base`
 
@@ -256,27 +281,29 @@
 
 ## 4. External Dependencies
 - flet (used 16 times)
-- pathlib (used 12 times)
+- pathlib (used 13 times)
+- asyncio (used 11 times)
 - typing (used 11 times)
-- asyncio (used 10 times)
 - datetime (used 9 times)
 - sqlalchemy (used 9 times)
 - argparse (used 8 times)
+- logging (used 8 times)
+- httpx (used 7 times)
 - traceback (used 7 times)
-- httpx (used 6 times)
-- logging (used 6 times)
 - sys (used 5 times)
 - dataclasses (used 4 times)
 - os (used 4 times)
+- re (used 4 times)
 - hashlib (used 3 times)
 - json (used 3 times)
-- re (used 3 times)
 - subprocess (used 3 times)
 - threading (used 3 times)
 - time (used 3 times)
 - abc (used 2 times)
 - csv (used 2 times)
 - gzip (used 2 times)
+- shutil (used 2 times)
+- zipfile (used 2 times)
 - ast (used 1 times)
 - collections (used 1 times)
 - concurrent (used 1 times)
@@ -287,11 +314,9 @@
 - plyer (used 1 times)
 - pydantic_settings (used 1 times)
 - random (used 1 times)
-- shutil (used 1 times)
 - sqlite3 (used 1 times)
 - types (used 1 times)
 - unicodedata (used 1 times)
-- zipfile (used 1 times)
 
 ## 5. Signatures and Calls
 
@@ -303,7 +328,7 @@
 ```python
 class DaynimalApp  # Main application class for Daynimal Flet app.
     def __init__(self, page)
-    # calls: hasattr, isinstance, self.build, self.debugger.logger.info
+    # calls: hasattr, is_mobile, isinstance, self.build, self.debugger.logger.info
     def build(self)  # Build the user interface.
     # calls: AppState, SetupView, is_mobile, resolve_database, self._build_desktop_no_db_screen, self._build_main_app, self._load_theme, self.page.add, self.page.update, self.setup_view.build
     def _build_desktop_no_db_screen(self)  # Show an informational screen when DB is missing on desktop.
@@ -328,9 +353,13 @@ def _show_error(page, error)  # Show error visually on the page (critical for mo
 ```
 - calls: `ft.Column`, `ft.Text`, `str`, `traceback.format_exc`
 ```python
+def _install_asyncio_exception_handler()  # Print all unhandled async exceptions to the terminal.
+```
+- calls: `asyncio.get_running_loop`, `print`, `traceback.print_exception`, `type`
+```python
 def main()  # Main entry point for the Flet app.
 ```
-- calls: `DaynimalApp`, `_show_error`, `ft.run`
+- calls: `DaynimalApp`, `_install_asyncio_exception_handler`, `_show_error`, `ft.run`
 
 ### Module: daynimal.attribution
 > Attribution management for legal compliance.
@@ -372,6 +401,14 @@ def create_wikidata_attribution(qid)  # Create attribution for a specific Wikida
 - calls: `AttributionInfo`, `datetime.now`
 ```python
 def create_wikipedia_attribution(title, language, url, modified)  # Create attribution for a Wikipedia article.
+```
+- calls: `AttributionInfo`, `datetime.now`
+```python
+def create_gbif_media_attribution(author, license, url)  # Create attribution for a GBIF Media image.
+```
+- calls: `AttributionInfo`, `datetime.now`
+```python
+def create_phylopic_attribution(author, license, url)  # Create attribution for a PhyloPic silhouette.
 ```
 - calls: `AttributionInfo`, `datetime.now`
 ```python
@@ -756,9 +793,17 @@ def cmd_credits()  # Show full legal credits and licenses.
 ```
 - calls: `get_app_legal_notice`, `print`
 ```python
-def cmd_setup()  # Download and set up the minimal database.
+def cmd_setup(mode, no_taxref)  # Download and set up the database.
 ```
-- calls: `SystemExit`, `download_and_setup_db`, `print`, `resolve_database`
+- calls: `_setup_full`, `_setup_minimal`, `print`, `resolve_database`
+```python
+def _setup_minimal()  # Download pre-built minimal database from GitHub Releases.
+```
+- calls: `SystemExit`, `download_and_setup_db`, `print`
+```python
+def _setup_full(no_taxref)  # Build full database from GBIF backbone + optional TAXREF.
+```
+- calls: `Path`, `SystemExit`, `build_database`, `download_file`, `generate_distribution`, `init_fts`, `open`, `print`, `save_db_config`, `shutil.copyfileobj`, `zipfile.ZipFile`
 ```python
 def cmd_history(page, per_page)  # Show history of viewed animals.
 ```
@@ -816,8 +861,14 @@ class AnimalRepository  # Repository for accessing animal information.
     @property
     def commons(self)
     # calls: CommonsAPI
+    @property
+    def gbif_media(self)
+    # calls: GbifMediaAPI
+    @property
+    def phylopic(self)
+    # calls: PhyloPicAPI
     def close(self)  # Close all connections.
-    # calls: self._commons.close, self._wikidata.close, self._wikipedia.close, self.image_cache.close, self.session.close
+    # calls: self._commons.close, self._gbif_media.close, self._phylopic.close, self._wikidata.close, self._wikipedia.close, self.image_cache.close, self.session.close
     def __enter__(self)
     def __exit__(self, exc_type, exc_val, exc_tb)
     # calls: self.close
@@ -845,8 +896,8 @@ class AnimalRepository  # Repository for accessing animal information.
     # calls: self._save_cache, self.connectivity.set_offline, self.wikidata.get_by_taxonomy
     def _fetch_and_cache_wikipedia(self, taxon_id, scientific_name)  # Fetch Wikipedia and cache it.
     # calls: self._save_cache, self.connectivity.set_offline, self.wikipedia.get_by_taxonomy
-    def _fetch_and_cache_images(self, taxon_id, scientific_name, wikidata)  # Fetch Commons images and cache them.
-    # calls: self._save_cache, self.commons.get_by_taxonomy, self.commons.get_images_for_wikidata, self.connectivity.set_offline, self.image_cache.cache_images
+    def _fetch_and_cache_images(self, taxon_id, scientific_name, wikidata)  # Fetch images with cascade: Commons → GBIF Media → PhyloPic.
+    # calls: self._save_cache, self.commons.get_by_taxonomy, self.commons.get_images_for_wikidata, self.connectivity.set_offline, self.gbif_media.get_media_for_taxon, self.image_cache.cache_images, self.phylopic.get_silhouettes_for_taxon
     def _save_cache(self, taxon_id, source, data)  # Save data to enrichment cache.
     # calls: EnrichmentCacheModel, datetime.now, isinstance, json.dumps, self._to_dict, self.session.add, self.session.commit, self.session.query, self.session.query.filter, self.session.rollback
     def _to_dict(self, obj)  # Convert dataclass to dict, handling enums.
@@ -894,6 +945,9 @@ class ConservationStatus(str, Enum)  # IUCN Red List categories.
 class License(str, Enum)  # Licenses compatible with commercial use.
 ```
 ```python
+class ImageSource(str, Enum)  # Source of an image.
+```
+```python
 @dataclass
 class Taxon  # Core taxonomic data from GBIF Backbone.
 ```
@@ -914,12 +968,15 @@ class WikipediaArticle  # Data retrieved from Wikipedia.
 ```
 ```python
 @dataclass
-class CommonsImage  # Image data from Wikimedia Commons.
+class CommonsImage  # Image data from Wikimedia Commons, GBIF, or PhyloPic.
     @property
-    def commons_page_url(self)  # URL to the image's page on Wikimedia Commons.
+    def commons_page_url(self)  # URL to the image's source page.
     # calls: self.filename.replace
     @property
     def license_url(self)  # URL to the license.
+    @property
+    def source_label(self)  # Human-readable label for the image source.
+    # calls: ImageSource, isinstance, self._SOURCE_LABELS.get
     def get_attribution_text(self)  # Generate required attribution text for this image.
     # calls: hasattr
     def get_attribution_html(self)  # Generate HTML attribution with proper links.
@@ -1002,6 +1059,74 @@ class CommonsAPI(DataSource)  # Client for Wikimedia Commons API.
     def _is_valid_image_url(self, url)  # Check if URL points to a valid image file.
     # calls: any
     def _parse_license(self, license_text)  # Parse license text to License enum.
+```
+
+### Module: daynimal.sources.gbif_media
+> GBIF Media API client.
+> 
+> Fetches images from GBIF's species media endpoint as a fallback
+> when Wikimedia Commons has no images for a species.
+> 
+> Only images with commercial-use-compatible licenses are returned:
+> CC0, CC-BY, CC-BY-SA, Public Domain. Images with NC or ND clauses
+> are rejected.
+```python
+class GbifMediaAPI(DataSource)  # Client for GBIF Media API.
+    @property
+    def source_name(self)
+    @property
+    def license(self)
+    def get_by_source_id(self, source_id)  # Not applicable for GBIF Media — use get_media_for_taxon instead.
+    def get_by_taxonomy(self, scientific_name)  # Not applicable — use get_media_for_taxon with a taxon key.
+    def search(self, query, limit)  # Not applicable — use get_media_for_taxon with a taxon key.
+    def get_media_for_taxon(self, taxon_key, limit)  # Fetch images for a GBIF taxon, filtering for commercial-use licenses.
+    # calls: len, max, self._parse_media_item, self._request_with_retry
+    def _parse_media_item(self, item)  # Parse a GBIF media item to a CommonsImage.
+    # calls: CommonsImage, _parse_gbif_license, len, re.sub, re.sub.strip
+```
+```python
+def _parse_gbif_license(license_url)  # Parse a GBIF license URL to a License enum.
+```
+
+### Module: daynimal.sources.phylopic
+> PhyloPic API client.
+> 
+> Fetches silhouette images from PhyloPic (https://www.phylopic.org/)
+> as a last-resort fallback when no photos are available.
+> 
+> PhyloPic provides free silhouette images of organisms, organized by
+> phylogenetic taxonomy. When no image exists for the exact species,
+> we traverse up the GBIF taxonomy (genus → family → order → class)
+> to find the closest available silhouette.
+> 
+> Only images with commercial-use-compatible licenses are returned.
+```python
+class PhyloPicAPI(DataSource)  # Client for PhyloPic API.
+    @property
+    def client(self)  # Lazy-initialized HTTP client with redirect support.
+    # calls: httpx.Client
+    @property
+    def source_name(self)
+    @property
+    def license(self)
+    def get_by_source_id(self, source_id)  # Not applicable — use get_silhouettes_for_taxon instead.
+    def get_by_taxonomy(self, scientific_name)  # Not applicable — use get_silhouettes_for_taxon with a GBIF key.
+    def search(self, query, limit)  # Not applicable — use get_silhouettes_for_taxon with a GBIF key.
+    def get_silhouettes_for_taxon(self, gbif_key, limit)  # Fetch silhouette images for a GBIF taxon key.
+    # calls: self._get_parent_keys, self._try_resolve_and_get_image
+    def _try_resolve_and_get_image(self, gbif_key)  # Try to resolve a GBIF key and get its PhyloPic image.
+    # calls: self._get_node_image, self._resolve_gbif_key
+    def _get_parent_keys(self, gbif_key)  # Fetch parent taxon keys from GBIF API.
+    # calls: self._request_with_retry
+    def _resolve_gbif_key(self, gbif_key)  # Resolve a GBIF species key to a PhyloPic node UUID.
+    # calls: len, self._request_with_retry, str
+    def _get_node_image(self, node_uuid)  # Fetch the primary image for a PhyloPic node.
+    # calls: self._parse_image, self._request_with_retry
+    def _parse_image(self, image_data)  # Parse a PhyloPic image object to a CommonsImage.
+    # calls: CommonsImage, _parse_phylopic_license, float, int
+```
+```python
+def _parse_phylopic_license(license_url)  # Parse a PhyloPic license URL to a License enum.
 ```
 
 ### Module: daynimal.sources.wikidata
@@ -1110,7 +1235,10 @@ class AppController  # Main application controller.
 ```python
 class AnimalCard(ft.Card)  # Reusable animal card for displaying an animal in a list.
     def __init__(self, animal, on_click, metadata_icon, metadata_text, metadata_icon_color)  # Initialize animal card.
-    # calls: ft.Column, ft.Container, ft.Icon, ft.Row, ft.Text, on_click, super, super.__init__
+    # calls: _get_display_name, ft.Column, ft.Container, ft.Icon, ft.Row, ft.Text, on_click, super, super.__init__
+```
+```python
+def _get_display_name(taxon)  # Return the best display name for a taxon.
 ```
 ```python
 def create_history_card(animal, on_click, viewed_at_str)  # Create an animal card for History view.
@@ -1123,7 +1251,7 @@ def create_favorite_card(animal, on_click)  # Create an animal card for Favorite
 ```python
 def create_search_card(animal, on_click)  # Create an animal card for Search view.
 ```
-- calls: `AnimalCard`, `iter`, `len`, `next`
+- calls: `AnimalCard`
 
 ### Module: daynimal.ui.components.animal_display
 > Animal display component for showing detailed animal information.
@@ -1148,7 +1276,7 @@ class AnimalDisplay  # Component for displaying detailed animal information.
 class ImageCarousel  # Image carousel with navigation controls.
     def __init__(self, images, current_index, on_index_change, animal_display_name, animal_taxon_id, image_cache)  # Initialize ImageCarousel.
     def build(self)  # Build the carousel UI.
-    # calls: ft.Column, ft.Container, ft.IconButton, ft.Image, ft.Row, ft.Text, len, self._build_empty_state, self._build_error_content, self.image_cache.get_local_path, str
+    # calls: ft.Column, ft.Container, ft.IconButton, ft.Image, ft.Padding, ft.Row, ft.Text, len, self._build_empty_state, self._build_error_content, self.image_cache.get_local_path, str
     def _build_empty_state(self)  # Build the empty state UI when no images available.
     # calls: ft.Column, ft.Container, ft.Icon, ft.Text
     def _build_error_content(self, image)  # Build the error content for failed image loads.
@@ -1191,6 +1319,10 @@ class EmptyStateWidget(ft.Container)  # Empty state widget.
     def __init__(self, icon, title, description, icon_size, icon_color)  # Initialize empty state widget.
     # calls: ft.Column, ft.Icon, ft.Text, super, super.__init__
 ```
+```python
+def view_header(title)  # Standard page header used by all views.
+```
+- calls: `ft.Container`, `ft.Row`, `ft.Text`
 
 ### Module: daynimal.ui.state
 > Application state management for Daynimal UI.
@@ -1256,12 +1388,12 @@ class FavoritesView(BaseView)  # View for displaying and managing favorite anima
     def __init__(self, page, app_state, on_animal_click, debugger)  # Initialize FavoritesView.
     # calls: ft.Column, ft.Container, super, super.__init__
     def build(self)  # Build the favorites view UI.
-    # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, ft.Row, ft.Text, self.load_favorites
+    # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, self.load_favorites, view_header
     async def load_favorites(self)  # Load favorites from repository.
-    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, ft.Card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Row, ft.Text, print, self.app_state.repository.get_favorites, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, create_favorite_card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self.app_state.repository.get_favorites, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
     def _on_page_change(self, new_page)  # Handle page change from pagination bar.
     # calls: asyncio.create_task, self.load_favorites
-    def _on_favorite_item_click(self, e)  # Handle click on a favorite item.
+    def _on_item_click(self, taxon_id)  # Handle click on a favorite item.
     # calls: print, self.debugger.log_error, self.debugger.logger.error, self.debugger.logger.info, self.on_animal_click, traceback.format_exc
 ```
 
@@ -1272,12 +1404,12 @@ class HistoryView(BaseView)  # View for displaying and managing animal viewing h
     def __init__(self, page, app_state, on_animal_click, debugger)  # Initialize HistoryView.
     # calls: ft.Column, ft.Container, super, super.__init__
     def build(self)  # Build the history view UI.
-    # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, ft.Row, ft.Text, self.load_history
+    # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, self.load_history, view_header
     async def load_history(self)  # Load history from repository.
-    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, ft.Card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Row, ft.Text, print, self.app_state.repository.get_history, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, create_history_card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self.app_state.repository.get_history, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
     def _on_page_change(self, new_page)  # Handle page change from pagination bar.
     # calls: asyncio.create_task, self.load_history
-    def _on_history_item_click(self, e)  # Handle click on history item - load animal and switch to Today view.
+    def _on_item_click(self, taxon_id)  # Handle click on a history item.
     # calls: print, self.debugger.log_error, self.debugger.logger.error, self.debugger.logger.info, self.on_animal_click, traceback.format_exc
 ```
 
@@ -1291,7 +1423,7 @@ class SearchView(BaseView)  # Search view with search field and results list.
     def __init__(self, page, app_state, on_result_click, debugger)  # Initialize search view.
     # calls: ft.Column, ft.IconButton, ft.TextField, super, super.__init__
     def build(self)  # Build the search view UI.
-    # calls: ft.Container, ft.Divider, ft.Icon, ft.Padding, ft.Row, ft.Text, self.show_empty_search_state
+    # calls: ft.Container, ft.Divider, ft.Padding, ft.Row, self.show_empty_search_state, view_header
     async def refresh(self)  # Refresh search view (no-op for search view).
     def _on_submit(self, e)  # Handle Enter key in search field.
     # calls: asyncio.create_task, self.perform_search, self.search_field.value.strip
@@ -1312,7 +1444,7 @@ class SettingsView(BaseView)  # View for app settings, preferences, and credits.
     def build(self)  # Build the settings view UI.
     # calls: asyncio.create_task, self._load_settings
     async def _load_settings(self)  # Load settings and build the UI.
-    # calls: asyncio.to_thread, ft.Button, ft.Column, ft.Container, ft.Divider, ft.Dropdown, ft.Icon, ft.Padding, ft.Row, ft.Switch, ft.Text, ft.dropdown.Option, print, range, self.app_state.image_cache.get_cache_size, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: asyncio.to_thread, ft.Button, ft.Column, ft.Container, ft.Divider, ft.Dropdown, ft.Icon, ft.Padding, ft.Row, ft.Switch, ft.Text, ft.dropdown.Option, print, range, self.app_state.image_cache.get_cache_size, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc, view_header
     def _on_clear_cache(self, e)  # Handle clear cache button click.
     # calls: asyncio.create_task, self._load_settings, self.app_state.image_cache.clear, self.debugger.log_error, self.debugger.logger.info
     def _on_offline_toggle(self, e)  # Handle forced offline mode toggle.
@@ -1353,11 +1485,13 @@ def _global_progress(stage, local_progress)  # Convert a per-stage progress to a
 ```python
 class StatsView(BaseView)  # View for displaying database statistics with responsive cards.
     def __init__(self, page, app_state, debugger)  # Initialize StatsView.
-    # calls: ft.Row, super, super.__init__
+    # calls: ft.Column, super, super.__init__
     def build(self)  # Build the statistics view UI.
-    # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, ft.Row, ft.Text, self._display_stats, self.load_stats, self.page.update
+    # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, self._display_stats, self.load_stats, self.page.update, view_header
+    def _stat_card(self, icon, color, value, label, subtitle)  # Build a compact horizontal stat card.
+    # calls: ft.Alignment, ft.Card, ft.Column, ft.Container, ft.Icon, ft.Padding, ft.Row, ft.Text
     def _display_stats(self, stats)  # Display statistics cards.
-    # calls: ft.Card, ft.Column, ft.Container, ft.Icon, ft.Text
+    # calls: self._stat_card
     async def load_stats(self)  # Load statistics from repository.
     # calls: asyncio.sleep, asyncio.to_thread, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self._display_stats, self.app_state.repository.get_stats, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
 ```
@@ -1369,13 +1503,13 @@ class TodayView(BaseView)  # View for displaying the animal of the day or random
     def __init__(self, page, app_state, on_favorite_toggle, debugger)  # Initialize TodayView.
     # calls: ft.Column, super, super.__init__
     def build(self)  # Build the today view UI.
-    # calls: ft.Button, ft.ButtonStyle, ft.Column, ft.Container, ft.Divider, ft.Icon, ft.Padding, ft.Row, ft.Text, self._display_animal
+    # calls: ft.Alignment, ft.Button, ft.ButtonStyle, ft.Column, ft.Container, ft.Divider, ft.Icon, ft.Padding, ft.Row, ft.Text, self._display_animal, view_header
     async def _load_today_animal(self, e)  # Load today's animal.
     # calls: self._load_animal_for_today_view
     async def _load_random_animal(self, e)  # Load a random animal.
     # calls: self._load_animal_for_today_view
     async def _load_animal_for_today_view(self, mode)  # Load and display an animal in the Today view.
-    # calls: asyncio.sleep, asyncio.to_thread, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self._display_animal, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.on_load_complete, self.page.update, str, traceback.format_exc
+    # calls: asyncio.sleep, asyncio.to_thread, ft.Alignment, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self._display_animal, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.on_load_complete, self.page.update, str, traceback.format_exc
     def _display_animal(self, animal)  # Display animal information in the Today view.
     # calls: AnimalDisplay, ImageCarousel, ft.Container, ft.Divider, ft.IconButton, ft.Padding, ft.Row, ft.Text, len, self.app_state.image_cache.get_local_path, self.app_state.repository.is_favorite, self.page.update
     def _on_favorite_toggle(self, e)  # Handle favorite button toggle.
@@ -1445,7 +1579,7 @@ def main()  # Main entry point.
 ```python
 def main()  # Launch the Flet app with debugging enabled.
 ```
-- calls: `DaynimalApp`, `argparse.ArgumentParser`, `ft.run`, `get_debugger`, `print`, `subprocess.Popen`
+- calls: `DaynimalApp`, `_install_asyncio_exception_handler`, `argparse.ArgumentParser`, `ft.run`, `get_debugger`, `print`, `subprocess.Popen`
 
 ### Module: debug.view_logs
 > Utility script to view Daynimal logs.

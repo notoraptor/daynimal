@@ -137,6 +137,30 @@ def mock_commons_client(mock_http_client):
 
 
 @pytest.fixture
+def mock_gbif_media_client(mock_http_client):
+    """Pre-configured mock client for GBIF Media API tests."""
+    from tests.fixtures.gbif_media_responses import GBIF_MEDIA_MIXED_LICENSES
+
+    mock_http_client.add_response("api.gbif.org", GBIF_MEDIA_MIXED_LICENSES)
+
+    return mock_http_client
+
+
+@pytest.fixture
+def mock_phylopic_client(mock_http_client):
+    """Pre-configured mock client for PhyloPic API tests."""
+    from tests.fixtures.phylopic_responses import (
+        PHYLOPIC_RESOLVE_SUCCESS,
+        PHYLOPIC_NODE_WITH_IMAGE,
+    )
+
+    mock_http_client.add_response("resolve/gbif.org", PHYLOPIC_RESOLVE_SUCCESS)
+    mock_http_client.add_response("api.phylopic.org/nodes", PHYLOPIC_NODE_WITH_IMAGE)
+
+    return mock_http_client
+
+
+@pytest.fixture
 def session():
     """
     Provide a clean in-memory SQLite database session for each test.

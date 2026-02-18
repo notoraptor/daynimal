@@ -210,6 +210,54 @@ def create_wikipedia_attribution(
     )
 
 
+def create_gbif_media_attribution(
+    author: str | None, license: License | None, url: str | None = None
+) -> AttributionInfo:
+    """Create attribution for a GBIF Media image."""
+    if license is None:
+        license = License.CC_BY
+
+    license_urls = {
+        License.CC0: "https://creativecommons.org/publicdomain/zero/1.0/",
+        License.PUBLIC_DOMAIN: "https://creativecommons.org/publicdomain/mark/1.0/",
+        License.CC_BY: "https://creativecommons.org/licenses/by/4.0/",
+        License.CC_BY_SA: "https://creativecommons.org/licenses/by-sa/4.0/",
+    }
+
+    return AttributionInfo(
+        source_name="GBIF",
+        license=license,
+        license_url=license_urls.get(license, license_urls[License.CC_BY]),
+        author=author or "Unknown author",
+        source_url=url or "https://www.gbif.org/",
+        access_date=datetime.now(UTC),
+    )
+
+
+def create_phylopic_attribution(
+    author: str | None, license: License | None, url: str | None = None
+) -> AttributionInfo:
+    """Create attribution for a PhyloPic silhouette."""
+    if license is None:
+        license = License.CC0
+
+    license_urls = {
+        License.CC0: "https://creativecommons.org/publicdomain/zero/1.0/",
+        License.PUBLIC_DOMAIN: "https://creativecommons.org/publicdomain/mark/1.0/",
+        License.CC_BY: "https://creativecommons.org/licenses/by/4.0/",
+        License.CC_BY_SA: "https://creativecommons.org/licenses/by-sa/4.0/",
+    }
+
+    return AttributionInfo(
+        source_name="PhyloPic",
+        license=license,
+        license_url=license_urls.get(license, license_urls[License.CC0]),
+        author=author or "Unknown author",
+        source_url=url or "https://www.phylopic.org/",
+        access_date=datetime.now(UTC),
+    )
+
+
 def create_commons_attribution(
     filename: str, author: str | None, license: License | None, url: str | None = None
 ) -> AttributionInfo:
@@ -280,6 +328,16 @@ This application uses data from the following sources:
    Various licenses (CC-BY, CC-BY-SA, CC0, Public Domain)
    Individual image credits and licenses provided with each image
    https://commons.wikimedia.org/
+
+6. GBIF MEDIA
+   Occurrence photos from GBIF
+   Various licenses (CC0, CC-BY, CC-BY-SA)
+   https://www.gbif.org/
+
+7. PHYLOPIC
+   Silhouette images from PhyloPic
+   Various licenses (CC0, CC-BY, CC-BY-SA)
+   https://www.phylopic.org/
 
 For specific attributions, see the credits displayed with each animal entry.
 """

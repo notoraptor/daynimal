@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Callable
 
 import flet as ft
 
-from daynimal.schemas import CommonsImage
+from daynimal.schemas import CommonsImage, ImageSource
 
 if TYPE_CHECKING:
     from daynimal.image_cache import ImageCacheService
@@ -107,10 +107,23 @@ class ImageCarousel:
                     if total_images > 1
                     else ft.Container()
                 ),
-                # Image credit
+                # Silhouette badge (PhyloPic only)
+                (
+                    ft.Container(
+                        content=ft.Text(
+                            "Silhouette", size=10, color=ft.Colors.GREY_700
+                        ),
+                        bgcolor=ft.Colors.GREY_300,
+                        border_radius=8,
+                        padding=ft.Padding(left=8, right=8, top=2, bottom=2),
+                    )
+                    if current_image.image_source == ImageSource.PHYLOPIC
+                    else ft.Container()
+                ),
+                # Image credit with source
                 (
                     ft.Text(
-                        f"Crédit: {current_image.author}",
+                        f"Crédit: {current_image.author} — {current_image.source_label}",
                         size=12,
                         color=ft.Colors.GREY_500,
                         italic=True,
@@ -135,7 +148,7 @@ class ImageCarousel:
                         "Aucune image disponible", size=16, weight=ft.FontWeight.BOLD
                     ),
                     ft.Text(
-                        "Cet animal n'a pas encore d'image dans Wikimedia Commons",
+                        "Aucune image trouvée dans nos sources",
                         size=12,
                         color=ft.Colors.GREY_500,
                     ),

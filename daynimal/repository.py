@@ -40,6 +40,8 @@ from daynimal.image_cache import ImageCacheService
 from daynimal.sources.wikidata import WikidataAPI
 from daynimal.sources.wikipedia import WikipediaAPI
 from daynimal.sources.commons import CommonsAPI
+from daynimal.sources.gbif_media import GbifMediaAPI
+from daynimal.sources.phylopic import PhyloPicAPI
 
 # Logger for this module
 logger = logging.getLogger(__name__)
@@ -71,6 +73,8 @@ class AnimalRepository:
         self._wikidata: WikidataAPI | None = None
         self._wikipedia: WikipediaAPI | None = None
         self._commons: CommonsAPI | None = None
+        self._gbif_media: GbifMediaAPI | None = None
+        self._phylopic: PhyloPicAPI | None = None
         self.connectivity = ConnectivityService()
         self.image_cache = ImageCacheService(session=self.session)
 
@@ -92,6 +96,18 @@ class AnimalRepository:
             self._commons = CommonsAPI()
         return self._commons
 
+    @property
+    def gbif_media(self) -> GbifMediaAPI:
+        if self._gbif_media is None:
+            self._gbif_media = GbifMediaAPI()
+        return self._gbif_media
+
+    @property
+    def phylopic(self) -> PhyloPicAPI:
+        if self._phylopic is None:
+            self._phylopic = PhyloPicAPI()
+        return self._phylopic
+
     def close(self):
         """Close all connections."""
         if self._wikidata:
@@ -100,6 +116,10 @@ class AnimalRepository:
             self._wikipedia.close()
         if self._commons:
             self._commons.close()
+        if self._gbif_media:
+            self._gbif_media.close()
+        if self._phylopic:
+            self._phylopic.close()
         self.image_cache.close()
         self.session.close()
 
@@ -642,17 +662,35 @@ class AnimalRepository:
     def _fetch_and_cache_images(
         self, taxon_id: int, scientific_name: str, wikidata: WikidataEntity | None
     ) -> list[CommonsImage]:
-        """Fetch Commons images and cache them."""
+        """Fetch images with cascade: Commons → GBIF Media → PhyloPic."""
         try:
             images = []
 
-            # Try Wikidata-linked images first
+            # 1. Try Wikidata-linked images first (Wikimedia Commons)
             if wikidata and wikidata.qid:
                 images = self.commons.get_images_for_wikidata(wikidata.qid, limit=5)
 
-            # Fall back to category/search
+            # 2. Fall back to Commons category/search
             if not images:
                 images = self.commons.get_by_taxonomy(scientific_name, limit=5)
+
+            # 3. Fall back to GBIF Media API
+            if not images:
+                try:
+                    images = self.gbif_media.get_media_for_taxon(taxon_id, limit=5)
+                except Exception as e:
+                    logger.warning(
+                        f"Error fetching GBIF Media for {scientific_name}: {e}"
+                    )
+
+            # 4. Last resort: PhyloPic silhouettes
+            if not images:
+                try:
+                    images = self.phylopic.get_silhouettes_for_taxon(taxon_id, limit=1)
+                except Exception as e:
+                    logger.warning(
+                        f"Error fetching PhyloPic for {scientific_name}: {e}"
+                    )
 
             if images:
                 self._save_cache(taxon_id, "commons", images)
@@ -664,10 +702,10 @@ class AnimalRepository:
             return images
         except httpx.RequestError:
             self.connectivity.set_offline()
-            logger.warning(f"Network error fetching Commons for {scientific_name}")
+            logger.warning(f"Network error fetching images for {scientific_name}")
             return []
         except Exception as e:
-            logger.warning(f"Error fetching Commons images for {scientific_name}: {e}")
+            logger.warning(f"Error fetching images for {scientific_name}: {e}")
             return []
 
     def _save_cache(self, taxon_id: int, source: str, data) -> None:

@@ -37,6 +37,14 @@ class License(str, Enum):
     PUBLIC_DOMAIN = "PUBLIC_DOMAIN"
 
 
+class ImageSource(str, Enum):
+    """Source of an image."""
+
+    COMMONS = "commons"
+    GBIF = "gbif"
+    PHYLOPIC = "phylopic"
+
+
 # --- GBIF / Taxonomy schemas ---
 
 
@@ -156,7 +164,7 @@ class WikipediaArticle:
 
 @dataclass
 class CommonsImage:
-    """Image data from Wikimedia Commons."""
+    """Image data from Wikimedia Commons, GBIF, or PhyloPic."""
 
     filename: str
     url: str
@@ -175,9 +183,21 @@ class CommonsImage:
     # Description
     description: str | None = None
 
+    # Image source (default COMMONS for cache retrocompatibility)
+    image_source: ImageSource = ImageSource.COMMONS
+    source_page_url: str | None = None
+
+    _SOURCE_LABELS = {
+        ImageSource.COMMONS: "Wikimedia Commons",
+        ImageSource.GBIF: "GBIF",
+        ImageSource.PHYLOPIC: "PhyloPic",
+    }
+
     @property
     def commons_page_url(self) -> str:
-        """URL to the image's page on Wikimedia Commons."""
+        """URL to the image's source page."""
+        if self.source_page_url:
+            return self.source_page_url
         safe_filename = self.filename.replace(" ", "_")
         return f"https://commons.wikimedia.org/wiki/File:{safe_filename}"
 
@@ -192,6 +212,18 @@ class CommonsImage:
         }
         return urls.get(self.license, urls[License.CC_BY_SA])
 
+    @property
+    def source_label(self) -> str:
+        """Human-readable label for the image source."""
+        # Handle both enum and string (from cache)
+        source = self.image_source
+        if isinstance(source, str):
+            try:
+                source = ImageSource(source)
+            except ValueError:
+                return source
+        return self._SOURCE_LABELS.get(source, "Wikimedia Commons")
+
     def get_attribution_text(self) -> str:
         """
         Generate required attribution text for this image.
@@ -204,9 +236,7 @@ class CommonsImage:
             if self.license
             else "CC-BY-SA"
         )
-        return (
-            f'"{self.filename}" by {author_str}, via Wikimedia Commons ({license_str})'
-        )
+        return f'"{self.filename}" by {author_str}, via {self.source_label} ({license_str})'
 
     def get_attribution_html(self) -> str:
         """Generate HTML attribution with proper links."""
@@ -219,8 +249,7 @@ class CommonsImage:
         )
         return (
             f'<a href="{self.commons_page_url}">{self.filename}</a> '
-            f"by {author_str}, via "
-            f'<a href="https://commons.wikimedia.org">Wikimedia Commons</a> '
+            f"by {author_str}, via {self.source_label} "
             f'(<a href="{self.license_url}">{license_str}</a>)'
         )
 
@@ -395,7 +424,7 @@ class AnimalInfo:
         if self.images:
             result["images"] = [
                 {
-                    "source": "Wikimedia Commons",
+                    "source": img.source_label,
                     "license": img.license.value if img.license else "CC-BY-SA",
                     "filename": img.filename,
                     "author": img.author or "Unknown",

@@ -12,6 +12,7 @@ from daynimal.schemas import (
     WikidataEntity,
     WikipediaArticle,
     CommonsImage,
+    ImageSource,
     License,
     TaxonomicRank,
 )
@@ -286,3 +287,125 @@ class TestCommonsImageAttribution:
         )
 
         assert "Wolf_in_snow.jpg" in image.commons_page_url
+
+    def test_commons_page_url_uses_source_page_url_when_set(self):
+        """Test that source_page_url overrides default commons URL."""
+        image = CommonsImage(
+            filename="wolf.jpg",
+            url="https://example.com/wolf.jpg",
+            license=License.CC_BY,
+            source_page_url="https://www.gbif.org/occurrence/123",
+        )
+
+        assert image.commons_page_url == "https://www.gbif.org/occurrence/123"
+
+
+class TestImageSourceAttribution:
+    """Tests for attribution with different image sources."""
+
+    def test_commons_attribution_text(self):
+        """Test attribution text for Commons image."""
+        image = CommonsImage(
+            filename="Wolf.jpg",
+            url="https://example.com/wolf.jpg",
+            author="John Doe",
+            license=License.CC_BY_SA,
+            image_source=ImageSource.COMMONS,
+        )
+
+        text = image.get_attribution_text()
+        assert "Wikimedia Commons" in text
+        assert "John Doe" in text
+
+    def test_gbif_attribution_text(self):
+        """Test attribution text for GBIF image."""
+        image = CommonsImage(
+            filename="wolf.jpg",
+            url="https://example.com/wolf.jpg",
+            author="GBIF Author",
+            license=License.CC_BY,
+            image_source=ImageSource.GBIF,
+        )
+
+        text = image.get_attribution_text()
+        assert "GBIF" in text
+        assert "GBIF Author" in text
+        assert "Wikimedia Commons" not in text
+
+    def test_phylopic_attribution_text(self):
+        """Test attribution text for PhyloPic image."""
+        image = CommonsImage(
+            filename="silhouette.png",
+            url="https://images.phylopic.org/images/uuid/raster/1024x1024.png",
+            author="T. Michael Keesey",
+            license=License.CC0,
+            image_source=ImageSource.PHYLOPIC,
+        )
+
+        text = image.get_attribution_text()
+        assert "PhyloPic" in text
+        assert "T. Michael Keesey" in text
+        assert "Wikimedia Commons" not in text
+
+    def test_gbif_attribution_html(self):
+        """Test HTML attribution for GBIF image."""
+        image = CommonsImage(
+            filename="wolf.jpg",
+            url="https://example.com/wolf.jpg",
+            author="GBIF Author",
+            license=License.CC_BY,
+            image_source=ImageSource.GBIF,
+        )
+
+        html = image.get_attribution_html()
+        assert "GBIF" in html
+
+    def test_source_label_property(self):
+        """Test source_label property for each source."""
+        for source, expected_label in [
+            (ImageSource.COMMONS, "Wikimedia Commons"),
+            (ImageSource.GBIF, "GBIF"),
+            (ImageSource.PHYLOPIC, "PhyloPic"),
+        ]:
+            image = CommonsImage(
+                filename="test.jpg",
+                url="https://example.com/test.jpg",
+                license=License.CC_BY,
+                image_source=source,
+            )
+            assert image.source_label == expected_label
+
+    def test_default_image_source_is_commons(self):
+        """Test that default image_source is COMMONS for cache retrocompatibility."""
+        image = CommonsImage(
+            filename="test.jpg",
+            url="https://example.com/test.jpg",
+            license=License.CC_BY,
+        )
+        assert image.image_source == ImageSource.COMMONS
+
+    def test_source_label_handles_string_from_cache(self):
+        """Test source_label when image_source is a string (from cache deserialization)."""
+        image = CommonsImage(
+            filename="test.jpg",
+            url="https://example.com/test.jpg",
+            license=License.CC_BY,
+            image_source="gbif",
+        )
+        assert image.source_label == "GBIF"
+
+    def test_animal_info_summary_uses_source_label(self):
+        """Test that AnimalInfo.get_required_attributions_summary uses source_label."""
+        taxon = Taxon(taxon_id=1, scientific_name="Canis lupus")
+        images = [
+            CommonsImage(
+                filename="wolf.jpg",
+                url="https://example.com/wolf.jpg",
+                author="Author",
+                license=License.CC_BY,
+                image_source=ImageSource.GBIF,
+            )
+        ]
+        animal = AnimalInfo(taxon=taxon, images=images)
+        summary = animal.get_required_attributions_summary()
+        assert summary["images"][0]["source"] == "GBIF"
