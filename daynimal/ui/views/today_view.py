@@ -265,7 +265,6 @@ class TodayView(BaseView):
             )
         )
 
-
         controls.insert(
             first_divider_index + 1,
             ft.Container(
@@ -362,4 +361,3 @@ class TodayView(BaseView):
         # page.launch_url() is async internally but wrapped in a sync
         # @deprecated decorator — use the underlying UrlLauncher directly
         self.page.run_task(ft.UrlLauncher().launch_url, url)
-

@@ -40,9 +40,15 @@ def retry_with_backoff(
             # Check if we should retry based on status code
             if response.status_code in (429, 503):
                 if attempt < max_retries - 1:
-                    # TODO: Respecter le header Retry-After si présent (429)
-                    #   retry_after = response.headers.get("Retry-After")
-                    delay = backoff_base * (2**attempt)
+                    # Respect Retry-After header if present
+                    retry_after = response.headers.get("Retry-After")
+                    if retry_after:
+                        try:
+                            delay = float(retry_after)
+                        except (ValueError, TypeError):
+                            delay = backoff_base * (2**attempt)
+                    else:
+                        delay = backoff_base * (2**attempt)
                     logger.warning(
                         f"HTTP {response.status_code} error, retrying in {delay}s "
                         f"(attempt {attempt + 1}/{max_retries})"

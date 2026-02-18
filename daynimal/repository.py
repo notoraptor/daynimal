@@ -17,7 +17,7 @@ from datetime import datetime, UTC
 
 import httpx
 from sqlalchemy import func, or_, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from daynimal.db.models import (
     TaxonModel,
@@ -41,7 +41,9 @@ from daynimal.sources.wikidata import WikidataAPI
 from daynimal.sources.wikipedia import WikipediaAPI
 from daynimal.sources.commons import CommonsAPI
 from daynimal.sources.gbif_media import GbifMediaAPI
-from daynimal.sources.phylopic_local import get_silhouette_for_taxon as get_phylopic_silhouette
+from daynimal.sources.phylopic_local import (
+    get_silhouette_for_taxon as get_phylopic_silhouette,
+)
 
 # Logger for this module
 logger = logging.getLogger(__name__)
@@ -178,8 +180,10 @@ class AnimalRepository:
         """
         Search for animals by name (scientific or vernacular) using FTS5.
 
-        Uses SQLite FTS5 for fast full-text search. Falls back to LIKE queries
-        if the FTS table hasn't been initialized yet.
+        Uses SQLite FTS5 for fast full-text search with relevance ranking.
+        Results are scored by: exact vernacular name match, BM25 text
+        relevance, vernacular name count (popularity proxy), and species
+        rank priority. Falls back to LIKE queries if FTS is unavailable.
 
         Args:
             query: Search query
@@ -187,119 +191,175 @@ class AnimalRepository:
         """
         # Try FTS5 first (fast full-text search)
         try:
-            # Try with original query first, then with normalized (no accents) version
-            queries_to_try = [query]
-            normalized = remove_accents(query)
-            if normalized != query:
-                queries_to_try.append(normalized)
-
-            all_results = []
-            seen_ids = set()
-
-            for search_query in queries_to_try:
-                # Try exact match first, then with wildcard
-                for use_wildcard in [False, True]:
-                    if use_wildcard:
-                        fts_query = f"{search_query}*"
-                    else:
-                        fts_query = search_query
-
-                    fts_results = self.session.execute(
-                        text("""
-                            SELECT taxon_id
-                            FROM taxa_fts
-                            WHERE taxa_fts MATCH :query
-                            ORDER BY rank
-                            LIMIT :limit
-                        """),
-                        {"query": fts_query, "limit": limit},
-                    ).fetchall()
-
-                    if fts_results:
-                        # Get taxa by IDs preserving FTS5 ranking order
-                        taxon_ids = [
-                            row[0] for row in fts_results if row[0] not in seen_ids
-                        ]
-                        if not taxon_ids:
-                            continue
-
-                        seen_ids.update(taxon_ids)
-
-                        taxon_models = (
-                            self.session.query(TaxonModel)
-                            .filter(TaxonModel.taxon_id.in_(taxon_ids))
-                            .all()
-                        )
-
-                        # Preserve FTS5 ranking order
-                        id_to_model = {m.taxon_id: m for m in taxon_models}
-                        for taxon_id in taxon_ids:
-                            if taxon_id in id_to_model:
-                                model = id_to_model[taxon_id]
-                                # Filter: name must actually contain the search term
-                                search_lower = search_query.lower()
-                                name_matches = (
-                                    search_lower in model.scientific_name.lower()
-                                    or (
-                                        model.canonical_name
-                                        and search_lower in model.canonical_name.lower()
-                                    )
-                                )
-
-                                # Check vernacular names
-                                if not name_matches and model.vernacular_names:
-                                    for vn in model.vernacular_names:
-                                        if vn.name and search_lower in vn.name.lower():
-                                            name_matches = True
-                                            break
-
-                                if name_matches:
-                                    taxon = self._model_to_taxon(model)
-                                    all_results.append(AnimalInfo(taxon=taxon))
-
-                        # If exact match found results, don't try wildcard
-                        if all_results and not use_wildcard:
-                            break
-
-                # If we found results, don't try the next query variant
-                if all_results:
-                    break
-
-            if all_results:
-                # Prioritize results based on:
-                # 1. Species rank over other ranks
-                # 2. Vernacular name matches over scientific name matches
-                species_results = [
-                    r for r in all_results if r.taxon.rank == TaxonomicRank.SPECIES
-                ]
-
-                # If we have species, prefer them
-                if species_results:
-                    # If the original query is very short (< 7 chars), it's likely an incomplete common name
-                    # Return only species to avoid genus/family names (e.g., "guepar" should find guepard species, not Guepar genus)
-                    if len(query) < 7:
-                        return species_results[:limit]
-                    # Otherwise return species first, then others
-                    other_results = [
-                        r for r in all_results if r.taxon.rank != TaxonomicRank.SPECIES
-                    ]
-                    return (species_results + other_results)[:limit]
-
-                # If no species found but query is short, it's probably wrong - return empty
-                if len(query) < 7:
-                    return []
-
-                return all_results[:limit]
-
+            results = self._search_fts5(query, limit)
+            if results is not None:
+                return results
         except Exception:
             # FTS table doesn't exist - fall back to old method
-            # Silently fallback (avoid spamming user on every search)
             pass
 
         # Fallback: slower LIKE-based search
+        return self._search_like(query, limit)
+
+    def _search_fts5(self, query: str, limit: int) -> list[AnimalInfo] | None:
+        """Search using FTS5 with relevance ranking.
+
+        Returns None if no results found (to allow fallback to wildcard
+        or normalized queries). Returns empty list if search was
+        performed but yielded no matches after filtering.
+        """
+        # Try with original query first, then with normalized (no accents)
+        queries_to_try = [query]
+        normalized = remove_accents(query)
+        if normalized != query:
+            queries_to_try.append(normalized)
+
+        # Fetch a larger candidate set for re-ranking.
+        # Must be large enough to capture high-relevance results that BM25
+        # ranks low (e.g. "eagle" exact match at FTS5 position 102 of 237).
+        fetch_limit = max(limit * 10, 300)
+
+        for search_query in queries_to_try:
+            for use_wildcard in [False, True]:
+                fts_query = f"{search_query}*" if use_wildcard else search_query
+
+                fts_results = self.session.execute(
+                    text("""
+                        SELECT taxon_id
+                        FROM taxa_fts
+                        WHERE taxa_fts MATCH :query
+                        ORDER BY rank
+                        LIMIT :limit
+                    """),
+                    {"query": fts_query, "limit": fetch_limit},
+                ).fetchall()
+
+                if not fts_results:
+                    continue
+
+                taxon_ids = [row[0] for row in fts_results]
+                taxon_models = (
+                    self.session.query(TaxonModel)
+                    .options(joinedload(TaxonModel.vernacular_names))
+                    .filter(TaxonModel.taxon_id.in_(taxon_ids))
+                    .all()
+                )
+                id_to_model = {m.taxon_id: m for m in taxon_models}
+
+                # Filter and score results
+                scored = []
+                search_lower = search_query.lower()
+
+                for taxon_id in taxon_ids:
+                    model = id_to_model.get(taxon_id)
+                    if not model:
+                        continue
+
+                    score = self._relevance_score(model, search_lower)
+                    if score is None:
+                        continue  # name doesn't match at all
+
+                    scored.append((score, model))
+
+                if not scored:
+                    if not use_wildcard:
+                        continue  # try wildcard
+                    continue  # try next query variant
+
+                # Sort by score descending (higher = more relevant)
+                scored.sort(key=lambda x: x[0], reverse=True)
+
+                # For short queries, only return species to avoid
+                # genus/family noise (e.g. "lion" → species, not genus)
+                if len(query) < 7:
+                    scored = [
+                        (s, m)
+                        for s, m in scored
+                        if m.rank == TaxonomicRank.SPECIES.value
+                    ]
+                    if not scored:
+                        return []
+
+                results = []
+                for _score, model in scored[:limit]:
+                    taxon = self._model_to_taxon(model)
+                    results.append(AnimalInfo(taxon=taxon))
+
+                return results
+
+        return None
+
+    @staticmethod
+    def _relevance_score(model: "TaxonModel", query_lower: str) -> float | None:
+        """Compute a relevance score for a taxon model against a query.
+
+        Returns None if the query doesn't match the taxon at all.
+        Higher score = more relevant.
+
+        Scoring factors (fixed weights, additive):
+        - Exact vernacular name match: +200 per match
+          (name IS the query, e.g. "Tiger" == "tiger")
+        - Prefix vernacular name match: +150 per match
+          (name starts with query word, e.g. "Aigle royal")
+        - Canonical name contains query: +80
+        - Species rank: +30
+        - Popularity (vernacular name count): +min(vn_count, 250)
+        """
+        score = 0.0
+        matched = False
+        exact_vn_count = 0
+        prefix_vn_count = 0
+        query_prefix = query_lower + " "
+        query_prefix_hyphen = query_lower + "-"
+
+        # Check canonical name match (NOT scientific_name which includes
+        # author names like "Nielsen & Eagle, 1974" — false positives)
+        canonical = (model.canonical_name or "").lower()
+        has_canonical_match = query_lower in canonical
+
+        if has_canonical_match:
+            matched = True
+
+        # Check vernacular names
+        vn_count = 0
+        if model.vernacular_names:
+            vn_count = len(model.vernacular_names)
+            for vn in model.vernacular_names:
+                if not vn.name:
+                    continue
+                vn_lower = vn.name.lower()
+                if vn_lower == query_lower:
+                    exact_vn_count += 1
+                    matched = True
+                elif vn_lower.startswith(query_prefix) or vn_lower.startswith(
+                    query_prefix_hyphen
+                ):
+                    prefix_vn_count += 1
+                    matched = True
+                elif query_lower in vn_lower:
+                    matched = True
+
+        if not matched:
+            return None
+
+        # Build score with fixed weights (no multiplicative interaction).
+        # Prefix matches are capped to prevent species with many
+        # translations of a compound name (e.g. "Tiger Moray" in 17
+        # languages) from outranking the actual animal (Tiger, 10 exact).
+        score += exact_vn_count * 200
+        score += min(prefix_vn_count, 8) * 150
+        if has_canonical_match:
+            score += 80
+        if model.rank == TaxonomicRank.SPECIES.value:
+            score += 30
+        score += min(vn_count, 250)  # popularity proxy (capped)
+
+        return score
+
+    def _search_like(self, query: str, limit: int) -> list[AnimalInfo]:
+        """Fallback LIKE-based search when FTS5 is unavailable."""
         query_lower = query.lower()
 
-        # Search in canonical names
         taxon_matches = (
             self.session.query(TaxonModel)
             .filter(func.lower(TaxonModel.canonical_name).contains(query_lower))
@@ -307,7 +367,6 @@ class AnimalRepository:
             .all()
         )
 
-        # Search in vernacular names
         vernacular_matches = (
             self.session.query(TaxonModel)
             .join(VernacularNameModel)
@@ -316,7 +375,6 @@ class AnimalRepository:
             .all()
         )
 
-        # Combine and deduplicate
         seen_ids = set()
         results = []
 
@@ -651,7 +709,10 @@ class AnimalRepository:
             return None
 
     def _fetch_and_cache_images(
-        self, taxon_id: int, scientific_name: str, wikidata: WikidataEntity | None,
+        self,
+        taxon_id: int,
+        scientific_name: str,
+        wikidata: WikidataEntity | None,
         taxon: Taxon | None = None,
     ) -> list[CommonsImage]:
         """Fetch images with cascade: Commons → GBIF Media → PhyloPic (local)."""
@@ -880,8 +941,6 @@ class AnimalRepository:
         total = self.session.query(AnimalHistoryModel).count()
 
         # Get paginated results with eager loading of taxon
-        from sqlalchemy.orm import joinedload
-
         offset = (page - 1) * per_page
         history_entries = (
             self.session.query(AnimalHistoryModel)

@@ -242,6 +242,10 @@ class DaynimalApp:
             if self.debugger:
                 self.debugger.logger.error(f"Error during disconnect cleanup: {error}")
 
+        # Force exit: on Windows the asyncio proactor event loop hangs
+        # after the Flutter client disconnects (ConnectionResetError).
+        os._exit(0)
+
     def on_close(self, e):
         """Handle page close event."""
         if self.debugger:
@@ -268,6 +272,10 @@ def _install_asyncio_exception_handler():
     def handler(loop, context):
         exc = context.get("exception")
         if exc:
+            # ConnectionResetError is expected on Windows when the Flet
+            # window closes (Flutter disconnects before Python finishes).
+            if isinstance(exc, ConnectionResetError):
+                return
             print("\n--- Unhandled Flet exception ---", file=sys.stderr, flush=True)
             traceback.print_exception(
                 type(exc), exc, exc.__traceback__, file=sys.stderr

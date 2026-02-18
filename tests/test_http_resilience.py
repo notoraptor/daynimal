@@ -34,6 +34,7 @@ class TestRetryWithBackoff:
         # First two calls return 429, third succeeds
         response_429 = MagicMock(spec=httpx.Response)
         response_429.status_code = 429
+        response_429.headers = {}
         response_200 = MagicMock(spec=httpx.Response)
         response_200.status_code = 200
 
@@ -53,6 +54,7 @@ class TestRetryWithBackoff:
         """Test retry on 503 service unavailable."""
         response_503 = MagicMock(spec=httpx.Response)
         response_503.status_code = 503
+        response_503.headers = {}
         response_200 = MagicMock(spec=httpx.Response)
         response_200.status_code = 200
 
@@ -69,6 +71,7 @@ class TestRetryWithBackoff:
         """Test that None is returned after exhausting retries."""
         response_429 = MagicMock(spec=httpx.Response)
         response_429.status_code = 429
+        response_429.headers = {}
 
         func = MagicMock(return_value=response_429)
 

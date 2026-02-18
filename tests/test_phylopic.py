@@ -9,7 +9,10 @@ import pytest
 
 from daynimal.schemas import ImageSource, License, Taxon
 from daynimal.sources.legacy.phylopic import PhyloPicAPI
-from daynimal.sources.phylopic_local import _parse_phylopic_license, get_silhouette_for_taxon
+from daynimal.sources.phylopic_local import (
+    _parse_phylopic_license,
+    get_silhouette_for_taxon,
+)
 
 
 class TestParsePhyloPicLicense:
@@ -265,18 +268,24 @@ class TestPhyloPicLocal:
 
     def test_get_silhouette_exact_match(self, monkeypatch):
         """Test exact species name match in specific_node."""
-        self._patch_lookups(monkeypatch, specific={
-            "canis lupus": {
-                "uuid": "aaaa-bbbb",
-                "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-                "attribution": "Test Author",
-                "svg_vector_url": "https://images.phylopic.org/images/aaaa-bbbb/vector.svg",
-            }
-        })
+        self._patch_lookups(
+            monkeypatch,
+            specific={
+                "canis lupus": {
+                    "uuid": "aaaa-bbbb",
+                    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+                    "attribution": "Test Author",
+                    "svg_vector_url": "https://images.phylopic.org/images/aaaa-bbbb/vector.svg",
+                }
+            },
+        )
 
         taxon = Taxon(
-            taxon_id=1, scientific_name="Canis lupus", canonical_name="Canis lupus",
-            genus="Canis", family="Canidae",
+            taxon_id=1,
+            scientific_name="Canis lupus",
+            canonical_name="Canis lupus",
+            genus="Canis",
+            family="Canidae",
         )
         img = get_silhouette_for_taxon(taxon)
         assert img is not None
@@ -286,18 +295,24 @@ class TestPhyloPicLocal:
 
     def test_get_silhouette_falls_back_to_genus(self, monkeypatch):
         """Test fallback to genus when species not found."""
-        self._patch_lookups(monkeypatch, specific={
-            "canis": {
-                "uuid": "cccc-dddd",
-                "license_url": "https://creativecommons.org/licenses/by/4.0/",
-                "attribution": "Genus Author",
-                "svg_vector_url": "https://images.phylopic.org/images/cccc-dddd/vector.svg",
-            }
-        })
+        self._patch_lookups(
+            monkeypatch,
+            specific={
+                "canis": {
+                    "uuid": "cccc-dddd",
+                    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+                    "attribution": "Genus Author",
+                    "svg_vector_url": "https://images.phylopic.org/images/cccc-dddd/vector.svg",
+                }
+            },
+        )
 
         taxon = Taxon(
-            taxon_id=1, scientific_name="Canis lupus", canonical_name="Canis lupus",
-            genus="Canis", family="Canidae",
+            taxon_id=1,
+            scientific_name="Canis lupus",
+            canonical_name="Canis lupus",
+            genus="Canis",
+            family="Canidae",
         )
         img = get_silhouette_for_taxon(taxon)
         assert img is not None
@@ -305,20 +320,27 @@ class TestPhyloPicLocal:
 
     def test_get_silhouette_falls_back_to_general_node(self, monkeypatch):
         """Test fallback to general_node when specific_node has no match."""
-        self._patch_lookups(monkeypatch, general={
-            "coleoptera": {
-                "uuid": "eeee-ffff",
-                "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
-                "attribution": "Order Author",
-                "svg_vector_url": "https://images.phylopic.org/images/eeee-ffff/vector.svg",
-            }
-        })
+        self._patch_lookups(
+            monkeypatch,
+            general={
+                "coleoptera": {
+                    "uuid": "eeee-ffff",
+                    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+                    "attribution": "Order Author",
+                    "svg_vector_url": "https://images.phylopic.org/images/eeee-ffff/vector.svg",
+                }
+            },
+        )
 
         taxon = Taxon(
-            taxon_id=1, scientific_name="Ptilium brevicollis",
+            taxon_id=1,
+            scientific_name="Ptilium brevicollis",
             canonical_name="Ptilium brevicollis",
-            genus="Ptilium", family="Ptiliidae", order="Coleoptera",
-            class_="Insecta", phylum="Arthropoda",
+            genus="Ptilium",
+            family="Ptiliidae",
+            order="Coleoptera",
+            class_="Insecta",
+            phylum="Arthropoda",
         )
         img = get_silhouette_for_taxon(taxon)
         assert img is not None
@@ -347,8 +369,11 @@ class TestPhyloPicLocal:
         )
 
         taxon = Taxon(
-            taxon_id=1, scientific_name="Canis lupus", canonical_name="Canis lupus",
-            genus="Canis", family="Canidae",
+            taxon_id=1,
+            scientific_name="Canis lupus",
+            canonical_name="Canis lupus",
+            genus="Canis",
+            family="Canidae",
         )
         img = get_silhouette_for_taxon(taxon)
         assert img is not None
@@ -359,23 +384,27 @@ class TestPhyloPicLocal:
         self._patch_lookups(monkeypatch)
 
         taxon = Taxon(
-            taxon_id=1, scientific_name="Unknown species",
+            taxon_id=1,
+            scientific_name="Unknown species",
             canonical_name="Unknown species",
         )
         assert get_silhouette_for_taxon(taxon) is None
 
     def test_nc_license_rejected(self, monkeypatch):
         """Test that NC-licensed entries are skipped."""
-        self._patch_lookups(monkeypatch, specific={
-            "canis lupus": {
-                "uuid": "aaaa-bbbb",
-                "license_url": "https://creativecommons.org/licenses/by-nc/3.0/",
-                "attribution": "NC Author",
-                "svg_vector_url": "https://images.phylopic.org/images/aaaa-bbbb/vector.svg",
-            }
-        })
+        self._patch_lookups(
+            monkeypatch,
+            specific={
+                "canis lupus": {
+                    "uuid": "aaaa-bbbb",
+                    "license_url": "https://creativecommons.org/licenses/by-nc/3.0/",
+                    "attribution": "NC Author",
+                    "svg_vector_url": "https://images.phylopic.org/images/aaaa-bbbb/vector.svg",
+                }
+            },
+        )
 
         taxon = Taxon(
-            taxon_id=1, scientific_name="Canis lupus", canonical_name="Canis lupus",
+            taxon_id=1, scientific_name="Canis lupus", canonical_name="Canis lupus"
         )
         assert get_silhouette_for_taxon(taxon) is None

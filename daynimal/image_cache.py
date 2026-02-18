@@ -2,6 +2,7 @@
 
 import hashlib
 import logging
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -69,20 +70,21 @@ class ImageCacheService:
 
     def cache_images(self, images: list[CommonsImage]) -> None:
         """Download and cache images locally."""
+        # Collect all URLs to download
+        all_downloads: list[tuple[str, bool]] = []
         for image in images:
-            urls_to_cache = []
-            # Always cache thumbnail
             if image.thumbnail_url:
-                urls_to_cache.append((image.thumbnail_url, True))
-            # Cache original if HD mode
+                all_downloads.append((image.thumbnail_url, True))
             if self._cache_hd:
-                urls_to_cache.append((image.url, False))
+                all_downloads.append((image.url, False))
             elif not image.thumbnail_url:
-                # No thumbnail available, cache original as fallback
-                urls_to_cache.append((image.url, False))
+                all_downloads.append((image.url, False))
 
-            for url, is_thumb in urls_to_cache:
-                self._download_and_store(url, is_thumb)
+        # Download with rate limiting to avoid 429 from Wikimedia
+        for i, (url, is_thumb) in enumerate(all_downloads):
+            if i > 0:
+                time.sleep(0.5)
+            self._download_and_store(url, is_thumb)
 
         # Purge if over limit
         cache_size = self.get_cache_size()

@@ -20,6 +20,7 @@ class MockResponse:
     def __init__(self, json_data: dict, status_code: int = 200):
         self._json_data = json_data
         self.status_code = status_code
+        self.headers = {}
 
     @property
     def is_success(self) -> bool:

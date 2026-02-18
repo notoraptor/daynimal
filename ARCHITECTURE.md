@@ -894,7 +894,14 @@ class AnimalRepository  # Repository for accessing animal information.
     def get_by_name(self, scientific_name, enrich)  # Get animal by scientific name.
     # calls: AnimalInfo, or_, self._enrich, self._model_to_taxon, self.session.query, self.session.query.filter
     def search(self, query, limit)  # Search for animals by name (scientific or vernacular) using FTS5.
-    # calls: AnimalInfo, TaxonModel.taxon_id.in_, func.lower, func.lower.contains, len, remove_accents, self._model_to_taxon, self.session.execute, self.session.execute.fetchall, self.session.query, self.session.query.filter, self.session.query.join, set, text
+    # calls: self._search_fts5, self._search_like
+    def _search_fts5(self, query, limit)  # Search using FTS5 with relevance ranking.
+    # calls: AnimalInfo, TaxonModel.taxon_id.in_, joinedload, len, max, remove_accents, self._model_to_taxon, self._relevance_score, self.session.execute, self.session.execute.fetchall, self.session.query, self.session.query.options, text
+    @staticmethod
+    def _relevance_score(model, query_lower)  # Compute a relevance score for a taxon model against a query.
+    # calls: len, min
+    def _search_like(self, query, limit)  # Fallback LIKE-based search when FTS5 is unavailable.
+    # calls: AnimalInfo, func.lower, func.lower.contains, len, self._model_to_taxon, self.session.query, self.session.query.filter, self.session.query.join, set
     def get_random(self, rank, prefer_unenriched, enrich)  # Get a random animal using fast ID-based selection.
     # calls: AnimalInfo, self._enrich, self._get_random_by_id_range, self._model_to_taxon
     def _get_random_by_id_range(self, rank, is_enriched)  # Fast random selection by ID range.
@@ -1269,7 +1276,7 @@ class AppController  # Main application controller.
     async def _load_and_display_animal(self, taxon_id, source, enrich, add_to_history)  # Unified method to load and display an animal in Today view.
     # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, print, self._update_offline_banner, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.page.update, self.show_today_view, self.today_view._display_animal, str, traceback.format_exc
     def on_favorite_toggle(self, taxon_id, is_favorite)  # Handle favorite toggle from any view.
-    # calls: ft.SnackBar, ft.Text, print, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: ft.SnackBar, ft.Text, print, self.debugger.log_error, self.debugger.logger.error, self.page.show_dialog, str, traceback.format_exc
     def _update_offline_banner(self)  # Update offline banner visibility based on connectivity state.
     # calls: self.page.update
     async def _retry_connection(self, e)  # Retry network connection and reload current animal if back online.
@@ -1562,7 +1569,7 @@ class TodayView(BaseView)  # View for displaying the animal of the day or random
     async def _load_animal_for_today_view(self, mode)  # Load and display an animal in the Today view.
     # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, print, self._display_animal, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.on_load_complete, self.page.update, str, traceback.format_exc
     def _display_animal(self, animal)  # Display animal information in the Today view.
-    # calls: AnimalDisplay, ImageCarousel, ft.Container, ft.Divider, ft.IconButton, ft.Padding, ft.Row, ft.Text, len, self.app_state.image_cache.get_local_path, self.app_state.repository.is_favorite, self.page.update
+    # calls: AnimalDisplay, ImageCarousel, ft.Container, ft.Divider, ft.IconButton, ft.Padding, ft.Row, ft.Text, len, self.app_state.repository.is_favorite, self.page.update
     def _on_favorite_toggle(self, e)  # Handle favorite button toggle.
     # calls: self._display_animal, self.app_state.repository.is_favorite, self.on_favorite_toggle_callback
     def _on_image_index_change(self, new_index)  # Handle image index change in carousel.
@@ -1571,11 +1578,9 @@ class TodayView(BaseView)  # View for displaying the animal of the day or random
     def _build_share_text(animal)  # Build formatted share text for an animal.
     # calls: len
     async def _on_copy_text(self, e)  # Copy formatted animal text to clipboard.
-    # calls: ft.Clipboard, ft.Clipboard.set, ft.SnackBar, ft.Text, self._build_share_text, self.page.open, self.page.update
+    # calls: ft.Clipboard, ft.Clipboard.set, ft.SnackBar, ft.Text, self._build_share_text, self.page.show_dialog
     def _on_open_wikipedia(self, e)  # Open Wikipedia article in default browser.
-    # calls: self.page.launch_url
-    async def _on_copy_image(self, e)  # Copy local image path to clipboard.
-    # calls: ft.Clipboard, ft.Clipboard.set, ft.SnackBar, ft.Text, self.app_state.image_cache.get_local_path, self.page.open, self.page.update, str
+    # calls: ft.UrlLauncher, self.page.run_task
 ```
 
 ### Module: debug.debug_filter

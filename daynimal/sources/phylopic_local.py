@@ -37,6 +37,7 @@ def _parse_phylopic_license(license_url: str | None) -> License | None:
             return license_value
     return None
 
+
 logger = logging.getLogger(__name__)
 
 # Taxonomy fields to try, in order (species → genus → family → order → class → phylum)
@@ -53,7 +54,9 @@ def _load_csv() -> tuple[dict[str, dict], dict[str, dict]]:
         - general_lookup: keyed by general_node name (broader match, fallback)
         If multiple images match the same name, the first one wins.
     """
-    csv_path = Path(__file__).resolve().parent.parent / "resources" / "phylopic_metadata.csv"
+    csv_path = (
+        Path(__file__).resolve().parent.parent / "resources" / "phylopic_metadata.csv"
+    )
 
     specific: dict[str, dict] = {}
     general: dict[str, dict] = {}

@@ -13,16 +13,13 @@ Output:
 import csv
 import io
 import logging
-import sys
 import time
 import zipfile
 from pathlib import Path
 
 import httpx
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 API = "https://api.phylopic.org"
@@ -33,7 +30,9 @@ OUTPUT_ZIP = Path("data/phylopic_dump.zip")
 REQUEST_DELAY = 0.05  # 50ms between requests
 
 
-def fetch_json(client: httpx.Client, url: str, params: dict | None = None) -> dict | None:
+def fetch_json(
+    client: httpx.Client, url: str, params: dict | None = None
+) -> dict | None:
     """Fetch JSON from URL with retry on 429/503."""
     for attempt in range(3):
         try:
@@ -44,7 +43,7 @@ def fetch_json(client: httpx.Client, url: str, params: dict | None = None) -> di
                 time.sleep(wait)
                 continue
             if resp.status_code == 503:
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
                 continue
             if not resp.is_success:
                 logger.warning(f"HTTP {resp.status_code} for {url}")
@@ -52,7 +51,7 @@ def fetch_json(client: httpx.Client, url: str, params: dict | None = None) -> di
             return resp.json()
         except httpx.HTTPError as e:
             logger.warning(f"HTTP error: {e}")
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
     return None
 
 
@@ -69,7 +68,7 @@ def fetch_svg(client: httpx.Client, url: str) -> bytes | None:
                 return None
             return resp.content
         except httpx.HTTPError:
-            time.sleep(2 ** attempt)
+            time.sleep(2**attempt)
     return None
 
 
@@ -200,10 +199,15 @@ def main():
             writer = csv.DictWriter(
                 csv_buffer,
                 fieldnames=[
-                    "uuid", "specific_node", "general_node",
-                    "license_url", "attribution",
-                    "svg_source_url", "svg_source_sizes",
-                    "svg_vector_url", "created",
+                    "uuid",
+                    "specific_node",
+                    "general_node",
+                    "license_url",
+                    "attribution",
+                    "svg_source_url",
+                    "svg_source_sizes",
+                    "svg_vector_url",
+                    "created",
                 ],
             )
             writer.writeheader()
@@ -216,7 +220,9 @@ def main():
 
         final_size = OUTPUT_ZIP.stat().st_size / (1024 * 1024)
         logger.info(f"Done! {OUTPUT_ZIP} — {final_size:.1f} MB")
-        logger.info(f"  {len(all_metadata)} images total, {len(svg_data)} SVGs, {errors} errors")
+        logger.info(
+            f"  {len(all_metadata)} images total, {len(svg_data)} SVGs, {errors} errors"
+        )
 
     finally:
         client.close()

@@ -134,6 +134,7 @@ class SearchView(BaseView):
                 ),
                 padding=40,
                 expand=True,
+                alignment=ft.Alignment(0, 0),
             )
         ]
 
@@ -159,6 +160,7 @@ class SearchView(BaseView):
                 ),
                 padding=40,
                 expand=True,
+                alignment=ft.Alignment(0, 0),
             )
         ]
         self.page.update()
@@ -199,6 +201,7 @@ class SearchView(BaseView):
                         ),
                         padding=40,
                         expand=True,
+                        alignment=ft.Alignment(0, 0),
                     )
                 ]
             else:
@@ -236,6 +239,7 @@ class SearchView(BaseView):
                     ),
                     padding=40,
                     expand=True,
+                    alignment=ft.Alignment(0, 0),
                 )
             ]
 
