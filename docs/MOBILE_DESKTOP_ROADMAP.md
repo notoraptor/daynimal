@@ -198,27 +198,31 @@ Sur Windows/Git Bash, utiliser des chemins Unix : `"/c/Users/.../Android/sdk/pla
 - [x] Tester navigation complete apres installation DB — ecran principal avec 6 onglets OK
 - [x] UX onboarding premier lancement : accueil + "Commencer" → progression ("Preparation des donnees sur les animaux...") avec barre reelle (poids : download ~70%, build ~30%) → "Tout est pret !" (2s) → transition auto vers animal du jour
 - [x] Fix scroll : navbar fixe en bas, scroll deplace vers le content_container
-- [ ] Tests appareil reel
-- [ ] Ajustements UI/UX mobile (tailles, touch targets, navigation)
+- [ ] Ajustements UI/UX mobile (tailles, touch targets, navigation) — tests sur emulateur + desktop
 
 **Note** : BlueStacks est incompatible avec Flet (ecran blanc). Utiliser l'emulateur Android Studio (AVD `daynimal_test`). Voir CLAUDE.md pour les commandes ADB.
 
-### Etape 3 : Build iOS (si Mac disponible)
-
-- [ ] Configuration build iOS
-- [ ] Compilation IPA
-- [ ] Tests simulateur + appareil reel
-- [ ] Necessite compte developpeur Apple
-
-### Etape 4 : Adaptations mobile
+### Etape 3 : Adaptations mobile
 
 - [ ] Partage mobile (share sheet natif Android/iOS) — remplace les boutons desktop
 - [ ] Notifications mobiles (FCM Android, APNs iOS) — remplace plyer
+
+### Etape 4 : Build iOS (si Mac disponible)
+
+- [ ] Configuration build iOS
+- [ ] Compilation IPA
+- [ ] Tests simulateur
 
 ### Etape 5 : Documentation et stores
 
 - [x] Guide d'installation et de build (`docs/ANDROID_DEV_GUIDE.md`)
 - [ ] Screenshots pour stores
+
+### Etape 6 : Tests appareils reels
+
+- [ ] Tests appareil reel Android
+- [ ] Tests appareil reel iOS (si disponible)
+- [ ] Corrections finales avant publication
 
 ---
 
