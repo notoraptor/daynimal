@@ -51,6 +51,13 @@ class DaynimalApp:
         self.page.padding = 0
         self.page.scroll = None
 
+        # Portrait window on desktop (simulates mobile aspect ratio)
+        from daynimal.config import is_mobile
+
+        if not is_mobile():
+            self.page.window.width = 420
+            self.page.window.height = 820
+
         # Get debugger from page data if available
         self.debugger = None
         if hasattr(page, "data") and isinstance(page.data, dict):
