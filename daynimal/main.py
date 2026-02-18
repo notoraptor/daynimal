@@ -456,6 +456,27 @@ def cmd_history(page: int = 1, per_page: int = 10):
                 )
 
 
+def cmd_clear_cache():
+    """Clear the enrichment cache so animals are re-fetched from APIs."""
+    with AnimalRepository() as repo:
+        from daynimal.db.models import EnrichmentCacheModel, TaxonModel
+
+        cache_count = repo.session.query(EnrichmentCacheModel).count()
+
+        if cache_count == 0:
+            print("Cache is already empty.")
+            return
+
+        repo.session.query(EnrichmentCacheModel).delete()
+        repo.session.query(TaxonModel).filter(TaxonModel.is_enriched.is_(True)).update(
+            {"is_enriched": False, "enriched_at": None}
+        )
+        repo.session.commit()
+
+        print(f"Cleared {cache_count} cached entries.")
+        print("Animals will be re-enriched from APIs on next view.")
+
+
 def create_parser():
     """Create and configure the argument parser."""
     parser = argparse.ArgumentParser(
@@ -514,6 +535,11 @@ def create_parser():
         help="Skip TAXREF French names download (full mode only)",
     )
 
+    # clear-cache command
+    subparsers.add_parser(
+        "clear-cache", help="Clear enrichment cache (re-fetch from APIs)"
+    )
+
     # history command
     parser_history = subparsers.add_parser(
         "history", help="Show history of viewed animals"
@@ -569,6 +595,8 @@ def main():
             cmd_stats()
         elif command == "credits":
             cmd_credits()
+        elif command == "clear-cache":
+            cmd_clear_cache()
         elif command == "history":
             # Pass argparse values directly (no double parsing)
             cmd_history(page=args.page, per_page=args.per_page)

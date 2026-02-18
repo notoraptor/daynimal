@@ -665,6 +665,17 @@ class AnimalRepository:
         """Fetch images with cascade: Commons → GBIF Media → PhyloPic."""
         try:
             images = []
+            p18_filename = wikidata.image_filename if wikidata else None
+            p18_image = None
+
+            # Fetch P18 image details from Commons
+            if p18_filename:
+                try:
+                    p18_image = self.commons.get_by_source_id(p18_filename)
+                except Exception as e:
+                    logger.warning(
+                        f"Error fetching P18 image for {scientific_name}: {e}"
+                    )
 
             # 1. Try Wikidata-linked images first (Wikimedia Commons)
             if wikidata and wikidata.qid:
@@ -691,6 +702,18 @@ class AnimalRepository:
                     logger.warning(
                         f"Error fetching PhyloPic for {scientific_name}: {e}"
                     )
+
+            # Insert P18 if not already in the list
+            if p18_image:
+                existing_filenames = {img.filename for img in images}
+                if p18_image.filename not in existing_filenames:
+                    images.append(p18_image)
+
+            # Rank images
+            if images:
+                from daynimal.sources.commons import rank_images
+
+                images = rank_images(images, p18_filename=p18_filename)
 
             if images:
                 self._save_cache(taxon_id, "commons", images)

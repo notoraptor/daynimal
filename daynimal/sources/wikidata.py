@@ -225,6 +225,7 @@ class WikidataAPI(DataSource[WikidataEntity]):
             image_name = self._get_claim_value(claims["P18"])
             if image_name:
                 entity.image_url = self._get_commons_url(image_name)
+                entity.image_filename = image_name
 
         # GBIF ID (P846)
         if "P846" in claims:

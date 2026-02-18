@@ -6,6 +6,8 @@ Each image has its own license (CC-BY, CC-BY-SA, CC0, Public Domain).
 https://commons.wikimedia.org/wiki/Commons:Licensing
 """
 
+from __future__ import annotations
+
 from daynimal.schemas import CommonsImage, License
 from daynimal.sources.base import DataSource
 
@@ -63,7 +65,7 @@ class CommonsAPI(DataSource[CommonsImage]):
             "titles": filename,
             "format": "json",
             "prop": "imageinfo",
-            "iiprop": "url|size|mime|extmetadata|user",
+            "iiprop": "url|size|mime|mediatype|extmetadata|user",
             "iiurlwidth": 800,  # Get thumbnail
         }
 
@@ -116,7 +118,7 @@ class CommonsAPI(DataSource[CommonsImage]):
             "gsrlimit": limit,
             "format": "json",
             "prop": "imageinfo",
-            "iiprop": "url|size|mime|extmetadata|user",
+            "iiprop": "url|size|mime|mediatype|extmetadata|user",
             "iiurlwidth": 800,
         }
 
@@ -158,7 +160,7 @@ class CommonsAPI(DataSource[CommonsImage]):
             "gsrlimit": limit,
             "format": "json",
             "prop": "imageinfo",
-            "iiprop": "url|size|mime|extmetadata|user",
+            "iiprop": "url|size|mime|mediatype|extmetadata|user",
             "iiurlwidth": 800,
         }
 
@@ -198,7 +200,7 @@ class CommonsAPI(DataSource[CommonsImage]):
             "gcmlimit": limit,
             "format": "json",
             "prop": "imageinfo",
-            "iiprop": "url|size|mime|extmetadata|user",
+            "iiprop": "url|size|mime|mediatype|extmetadata|user",
             "iiurlwidth": 800,
         }
 
@@ -256,6 +258,10 @@ class CommonsAPI(DataSource[CommonsImage]):
 
             description = re.sub(r"<[^>]+>", "", description).strip()
 
+        # Parse quality metadata
+        assessment = extmetadata.get("Assessments", {}).get("value", "") or None
+        media_type = imageinfo.get("mediatype")
+
         return CommonsImage(
             filename=filename,
             url=url,
@@ -268,6 +274,8 @@ class CommonsAPI(DataSource[CommonsImage]):
             attribution_required=license_type
             not in (License.CC0, License.PUBLIC_DOMAIN),
             description=description or None,
+            assessment=assessment,
+            media_type=media_type,
         )
 
     def _is_valid_image_url(self, url: str) -> bool:
@@ -344,3 +352,35 @@ class CommonsAPI(DataSource[CommonsImage]):
             return License.CC_BY_SA
 
         return None
+
+
+def rank_images(
+    images: list[CommonsImage], p18_filename: str | None = None
+) -> list[CommonsImage]:
+    """Rank images: P18 first, then by assessment quality, photos before drawings."""
+
+    def score(img: CommonsImage) -> tuple:
+        is_p18 = 1 if (p18_filename and img.filename == p18_filename) else 0
+
+        assessment = img.assessment or ""
+        if "featured" in assessment:
+            assess_score = 3
+        elif "quality" in assessment:
+            assess_score = 2
+        elif "valued" in assessment:
+            assess_score = 1
+        else:
+            assess_score = 0
+
+        if img.media_type == "BITMAP":
+            type_score = 2
+        elif img.media_type == "DRAWING":
+            type_score = 0
+        else:
+            type_score = 1
+
+        resolution = (img.width or 0) * (img.height or 0)
+
+        return (is_p18, assess_score, type_score, resolution)
+
+    return sorted(images, key=score, reverse=True)

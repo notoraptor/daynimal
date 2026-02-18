@@ -67,6 +67,15 @@ class TestWikidataGetBySourceId:
         assert "Eurasian_wolf_2.jpg" in entity.image_url
         assert entity.image_url.startswith("https://commons.wikimedia.org")
 
+    def test_parses_image_filename(self, mock_wikidata_client):
+        """Test that raw P18 filename is stored in image_filename."""
+        api = WikidataAPI()
+        api._client = mock_wikidata_client
+
+        entity = api.get_by_source_id("Q18498")
+
+        assert entity.image_filename == "Eurasian_wolf_2.jpg"
+
     def test_parses_mass_with_unit(self, mock_wikidata_client):
         """Test that mass is parsed with unit."""
         api = WikidataAPI()
@@ -397,6 +406,20 @@ class TestWikidataParseEntity:
         assert entity.lifespan is not None
         assert "15" in entity.lifespan
         assert "year" in entity.lifespan
+
+    def test_image_filename_none_when_no_p18(self, mock_http_client):
+        """Test image_filename is None when P18 is absent."""
+        entity_data = {"labels": {}, "descriptions": {}, "claims": {}}
+        mock_http_client.add_response(
+            "wbgetentities", {"entities": {"Q100": entity_data}}
+        )
+
+        api = WikidataAPI()
+        api._client = mock_http_client
+
+        entity = api.get_by_source_id("Q100")
+        assert entity.image_filename is None
+        assert entity.image_url is None
 
     def test_gbif_id_invalid_value(self, mock_http_client):
         """Test that invalid GBIF ID (non-numeric) is handled."""

@@ -103,6 +103,7 @@ class WikidataEntity:
 
     # Image from Wikidata (P18)
     image_url: str | None = None
+    image_filename: str | None = None  # Raw P18 filename (e.g., "Lion_waiting.jpg")
 
 
 # --- Wikipedia schemas ---
@@ -182,6 +183,10 @@ class CommonsImage:
 
     # Description
     description: str | None = None
+
+    # Quality metadata (for image ranking)
+    assessment: str | None = None  # e.g., "featured|quality"
+    media_type: str | None = None  # e.g., "BITMAP", "DRAWING"
 
     # Image source (default COMMONS for cache retrocompatibility)
     image_source: ImageSource = ImageSource.COMMONS

@@ -100,5 +100,36 @@ COMMONS_SEARCH_WOLF = {
     }
 }
 
+# Response for a featured image with assessment and mediatype
+COMMONS_IMAGE_INFO_FEATURED = {
+    "query": {
+        "pages": {
+            "99999": {
+                "pageid": 99999,
+                "title": "File:Featured lion.jpg",
+                "imageinfo": [
+                    {
+                        "url": "https://upload.wikimedia.org/wikipedia/commons/a/a0/Featured_lion.jpg",
+                        "thumburl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Featured_lion.jpg/800px-Featured_lion.jpg",
+                        "width": 4000,
+                        "height": 3000,
+                        "mime": "image/jpeg",
+                        "mediatype": "BITMAP",
+                        "user": "WildlifePhotographer",
+                        "extmetadata": {
+                            "LicenseShortName": {"value": "CC BY-SA 4.0"},
+                            "Artist": {"value": "WildlifePhotographer"},
+                            "ImageDescription": {
+                                "value": "A featured photo of Panthera leo"
+                            },
+                            "Assessments": {"value": "featured"},
+                        },
+                    }
+                ],
+            }
+        }
+    }
+}
+
 # Response for image not found
 COMMONS_NOT_FOUND = {"query": {"pages": {"-1": {"missing": ""}}}}
