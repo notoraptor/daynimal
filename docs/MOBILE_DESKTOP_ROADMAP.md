@@ -1,12 +1,12 @@
 # Roadmap : Application Mobile/Desktop
 
-**Derniere mise a jour** : 2026-02-12
+**Derniere mise a jour** : 2026-02-17
 
 ---
 
 ## Etat actuel
 
-Application Flet desktop fonctionnelle avec 6 onglets (Aujourd'hui, Historique, Favoris, Recherche, Statistiques, Parametres). Architecture modulaire, 524 tests (55% couverture), infrastructure mobile prete (cache images, mode hors ligne, distribution TSV). Chemins mobile-aware (`get_app_data_dir()`, `get_app_temp_dir()`). Build mobile valide sur emulateur Android (premier lancement + telechargement DB OK).
+Application Flet desktop fonctionnelle avec 6 onglets (Aujourd'hui, Historique, Favoris, Recherche, Statistiques, Parametres). Architecture modulaire, 524 tests (55% couverture), infrastructure mobile prete (cache images, mode hors ligne, distribution TSV). Chemins mobile-aware (`get_app_data_dir()`, `get_app_temp_dir()`), detection mobile via `is_mobile()`. Build mobile valide sur emulateur Android (premier lancement + telechargement DB OK). Setup CLI etendu (`daynimal setup --mode full|minimal --no-taxref`). Desktop sans DB : ecran informatif avec commandes CLI (setup auto reserve au mobile). Navbar fixe en bas (scroll deplace vers le contenu).
 
 **Prochaine etape** : tests appareil reel et ajustements UI mobile (Phase 3).
 
@@ -60,6 +60,19 @@ Ensuite pour chaque mode :
 
 ### Distribution desktop
 
+**Methode rapide** (automatise tout) :
+```bash
+# Setup complet (telecharge GBIF + TAXREF, genere distribution, build DB + FTS5)
+uv run daynimal setup --mode full
+
+# Ou sans TAXREF (noms francais limites a GBIF)
+uv run daynimal setup --mode full --no-taxref
+
+# Ou DB minimale pre-construite (~13 MB download)
+uv run daynimal setup --mode minimal
+```
+
+**Methode manuelle** (etape par etape) :
 ```bash
 # 1. Generer les fichiers de distribution (auto-download de backbone.zip si absent)
 uv run generate-distribution --mode minimal --taxref data/TAXREFv18.txt
@@ -170,6 +183,9 @@ Sur Windows/Git Bash, utiliser des chemins Unix : `"/c/Users/.../Android/sdk/pla
 - [x] Creer `get_app_data_dir()` / `get_app_temp_dir()` mobile-aware dans config.py (utilise `FLET_APP_STORAGE_DATA` / `FLET_APP_STORAGE_TEMP`)
 - [x] Corriger chemins hardcodes dans first_launch.py (tmp/, db filename) et debug.py (logs/)
 - [x] Ajouter detection de plateforme pour features desktop-only (plyer notifications)
+- [x] Ajouter `is_mobile()` dans config.py (detection via `FLET_APP_STORAGE_DATA`)
+- [x] Desktop sans DB : ecran informatif avec commandes CLI au lieu du setup auto (reserve au mobile)
+- [x] Etendre `daynimal setup` avec `--mode full|minimal` et `--no-taxref` (telechargement TAXREF inclus)
 - [x] Configuration Android dans pyproject.toml (`[tool.flet]`, permissions, split_per_abi)
 - [x] Fix imports absolus pour Android (`sys.modules` hack dans app.py)
 - [x] Migrer widgets deprecated (`ElevatedButton`/`TextButton` → `Button`, `ft.alignment.center` → `ft.Alignment`)
@@ -181,6 +197,7 @@ Sur Windows/Git Bash, utiliser des chemins Unix : `"/c/Users/.../Android/sdk/pla
 - [x] Tester telechargement DB depuis ecran premier lancement — OK (fix parsing manifest dict)
 - [x] Tester navigation complete apres installation DB — ecran principal avec 6 onglets OK
 - [x] UX onboarding premier lancement : accueil + "Commencer" → progression ("Preparation des donnees sur les animaux...") avec barre reelle (poids : download ~70%, build ~30%) → "Tout est pret !" (2s) → transition auto vers animal du jour
+- [x] Fix scroll : navbar fixe en bas, scroll deplace vers le content_container
 - [ ] Tests appareil reel
 - [ ] Ajustements UI/UX mobile (tailles, touch targets, navigation)
 
@@ -200,7 +217,7 @@ Sur Windows/Git Bash, utiliser des chemins Unix : `"/c/Users/.../Android/sdk/pla
 
 ### Etape 5 : Documentation et stores
 
-- [ ] Guide d'installation et de build
+- [x] Guide d'installation et de build (`docs/ANDROID_DEV_GUIDE.md`)
 - [ ] Screenshots pour stores
 
 ---
