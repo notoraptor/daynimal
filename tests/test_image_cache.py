@@ -231,9 +231,7 @@ class TestCacheSingleImage:
     def test_caches_url_when_no_thumbnail(self, mock_retry, service, db_session):
         mock_retry.return_value = _mock_response()
         image = CommonsImage(
-            filename="Test.jpg",
-            url="https://example.com/test.jpg",
-            thumbnail_url=None,
+            filename="Test.jpg", url="https://example.com/test.jpg", thumbnail_url=None
         )
 
         service.cache_single_image(image)
@@ -260,9 +258,7 @@ class TestAreAllCached:
         assert service.are_all_cached([]) is True
 
     @patch("daynimal.image_cache.retry_with_backoff")
-    def test_returns_false_when_partially_cached(
-        self, mock_retry, service, db_session
-    ):
+    def test_returns_false_when_partially_cached(self, mock_retry, service, db_session):
         mock_retry.return_value = _mock_response()
         img1 = CommonsImage(
             filename="A.jpg",

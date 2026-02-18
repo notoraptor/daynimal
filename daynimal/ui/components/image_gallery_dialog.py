@@ -46,14 +46,10 @@ class ImageGalleryDialog:
         """Show dialog with progress bar, then switch to carousel when done."""
         self._progress_bar = ft.ProgressBar(value=0, width=300)
         self._progress_text = ft.Text(
-            "Téléchargement des images (0/{})...".format(len(self.images)),
-            size=14,
+            "Téléchargement des images (0/{})...".format(len(self.images)), size=14
         )
         self._dialog_content = ft.Column(
-            controls=[
-                self._progress_text,
-                self._progress_bar,
-            ],
+            controls=[self._progress_text, self._progress_bar],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=15,
             tight=True,
@@ -61,14 +57,8 @@ class ImageGalleryDialog:
 
         dialog = ft.AlertDialog(
             title=ft.Text("Galerie d'images"),
-            content=ft.Container(
-                content=self._dialog_content,
-                width=420,
-                height=400,
-            ),
-            actions=[
-                ft.Button("Fermer", on_click=lambda e: self.page.pop_dialog()),
-            ],
+            content=ft.Container(content=self._dialog_content, width=420, height=400),
+            actions=[ft.Button("Fermer", on_click=lambda e: self.page.pop_dialog())],
             modal=False,
         )
         self.page.show_dialog(dialog)
@@ -78,6 +68,7 @@ class ImageGalleryDialog:
 
     async def _download_all(self):
         """Download all images in a thread, updating progress bar."""
+
         def on_progress(current: int, total: int):
             self._progress_bar.value = current / total if total > 0 else 1
             self._progress_text.value = (
@@ -86,9 +77,7 @@ class ImageGalleryDialog:
             self.page.update()
 
         await asyncio.to_thread(
-            self.image_cache.cache_images_with_progress,
-            self.images,
-            on_progress,
+            self.image_cache.cache_images_with_progress, self.images, on_progress
         )
 
         # Switch to carousel view
@@ -105,14 +94,8 @@ class ImageGalleryDialog:
 
         dialog = ft.AlertDialog(
             title=ft.Text("Galerie d'images"),
-            content=ft.Container(
-                content=self._dialog_content,
-                width=420,
-                height=400,
-            ),
-            actions=[
-                ft.Button("Fermer", on_click=lambda e: self.page.pop_dialog()),
-            ],
+            content=ft.Container(content=self._dialog_content, width=420, height=400),
+            actions=[ft.Button("Fermer", on_click=lambda e: self.page.pop_dialog())],
             modal=False,
         )
         self.page.show_dialog(dialog)
@@ -145,11 +128,7 @@ class ImageGalleryDialog:
                 color=ft.Colors.BLUE,
             ),
             ft.Image(
-                src=image_src,
-                width=380,
-                height=280,
-                fit="contain",
-                border_radius=10,
+                src=image_src, width=380, height=280, fit="contain", border_radius=10
             ),
         ]
 
@@ -158,14 +137,10 @@ class ImageGalleryDialog:
             controls.append(
                 ft.Row(
                     controls=[
-                        ft.IconButton(
-                            icon=ft.Icons.ARROW_BACK,
-                            on_click=self._on_prev,
-                        ),
+                        ft.IconButton(icon=ft.Icons.ARROW_BACK, on_click=self._on_prev),
                         ft.Container(expand=True),
                         ft.IconButton(
-                            icon=ft.Icons.ARROW_FORWARD,
-                            on_click=self._on_next,
+                            icon=ft.Icons.ARROW_FORWARD, on_click=self._on_next
                         ),
                     ],
                     alignment=ft.MainAxisAlignment.CENTER,
@@ -180,7 +155,7 @@ class ImageGalleryDialog:
                     size=12,
                     color=ft.Colors.GREY_500,
                     italic=True,
-                ),
+                )
             )
 
         return controls

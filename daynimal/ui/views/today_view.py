@@ -302,7 +302,7 @@ class TodayView(BaseView):
                     height=300,
                     fit="contain",
                     border_radius=10,
-                ),
+                )
             ]
 
             # Silhouette badge (PhyloPic only)
@@ -353,9 +353,7 @@ class TodayView(BaseView):
                 ft.Container(
                     content=ft.Column(
                         controls=[
-                            ft.Icon(
-                                ft.Icons.IMAGE, size=60, color=ft.Colors.GREY_500
-                            ),
+                            ft.Icon(ft.Icons.IMAGE, size=60, color=ft.Colors.GREY_500),
                             ft.Text(
                                 "Aucune image disponible",
                                 size=16,
