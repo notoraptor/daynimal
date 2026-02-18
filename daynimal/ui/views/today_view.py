@@ -9,7 +9,7 @@ import flet as ft
 from daynimal.schemas import AnimalInfo
 from daynimal.ui.components.animal_display import AnimalDisplay
 from daynimal.ui.components.image_carousel import ImageCarousel
-from daynimal.ui.components.widgets import view_header
+from daynimal.ui.components.widgets import ErrorWidget, LoadingWidget, view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
@@ -136,28 +136,10 @@ class TodayView(BaseView):
             self.debugger.log_animal_load(mode)
 
         # Show loading message
-        self.today_animal_container.controls = [
-            ft.Container(
-                content=ft.Column(
-                    controls=[
-                        ft.ProgressRing(width=60, height=60),
-                        ft.Text(
-                            "Chargement en cours...", size=18, weight=ft.FontWeight.BOLD
-                        ),
-                        ft.Text(
-                            f"Récupération de l'animal {'du jour' if mode == 'today' else 'aléatoire'}",
-                            size=14,
-                        ),
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    spacing=20,
-                ),
-                padding=40,
-                expand=True,
-                alignment=ft.Alignment(0, 0),
-            )
-        ]
+        subtitle = (
+            f"Récupération de l'animal {'du jour' if mode == 'today' else 'aléatoire'}"
+        )
+        self.today_animal_container.controls = [LoadingWidget(subtitle=subtitle)]
         self.page.update()
 
         # Small delay to ensure UI updates
@@ -204,23 +186,7 @@ class TodayView(BaseView):
 
             # Show error
             self.today_animal_container.controls = [
-                ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
-                            ft.Text(
-                                "Erreur lors du chargement",
-                                size=20,
-                                weight=ft.FontWeight.BOLD,
-                                color=ft.Colors.ERROR,
-                            ),
-                            ft.Text(str(error), size=14),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=10,
-                    ),
-                    padding=40,
-                )
+                ErrorWidget(title="Erreur lors du chargement", details=str(error))
             ]
 
         finally:

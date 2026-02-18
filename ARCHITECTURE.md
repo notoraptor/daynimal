@@ -194,6 +194,7 @@
 ### daynimal.ui.app_controller
 - depends on `daynimal.debug`
 - depends on `daynimal.notifications`
+- depends on `daynimal.ui.components.widgets`
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.favorites_view`
 - depends on `daynimal.ui.views.history_view`
@@ -1216,7 +1217,7 @@ class AppController  # Main application controller.
     async def load_animal_from_search(self, taxon_id)  # Load an animal from search and display in Today view.
     # calls: self._load_and_display_animal
     async def _load_and_display_animal(self, taxon_id, source, enrich, add_to_history)  # Unified method to load and display an animal in Today view.
-    # calls: asyncio.sleep, asyncio.to_thread, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self._update_offline_banner, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.page.update, self.show_today_view, self.today_view._display_animal, str, traceback.format_exc
+    # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, print, self._update_offline_banner, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.page.update, self.show_today_view, self.today_view._display_animal, str, traceback.format_exc
     def on_favorite_toggle(self, taxon_id, is_favorite)  # Handle favorite toggle from any view.
     # calls: ft.SnackBar, ft.Text, print, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
     def _update_offline_banner(self)  # Update offline banner visibility based on connectivity state.
@@ -1306,13 +1307,13 @@ class PaginationBar  # Pagination bar: [< Précédent]  Page X / Y  [Suivant >]
 > used across multiple views.
 ```python
 class LoadingWidget(ft.Container)  # Loading indicator widget.
-    def __init__(self, message)  # Initialize loading widget.
-    # calls: ft.Column, ft.ProgressRing, ft.Text, super, super.__init__
+    def __init__(self, message, subtitle)  # Initialize loading widget.
+    # calls: ft.Alignment, ft.Column, ft.ProgressRing, ft.Text, super, super.__init__
 ```
 ```python
 class ErrorWidget(ft.Container)  # Error display widget.
     def __init__(self, title, details)  # Initialize error widget.
-    # calls: ft.Column, ft.Icon, ft.Text, super, super.__init__
+    # calls: ft.Alignment, ft.Column, ft.Icon, ft.Text, super, super.__init__
 ```
 ```python
 class EmptyStateWidget(ft.Container)  # Empty state widget.
@@ -1509,7 +1510,7 @@ class TodayView(BaseView)  # View for displaying the animal of the day or random
     async def _load_random_animal(self, e)  # Load a random animal.
     # calls: self._load_animal_for_today_view
     async def _load_animal_for_today_view(self, mode)  # Load and display an animal in the Today view.
-    # calls: asyncio.sleep, asyncio.to_thread, ft.Alignment, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self._display_animal, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.on_load_complete, self.page.update, str, traceback.format_exc
+    # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, print, self._display_animal, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.on_load_complete, self.page.update, str, traceback.format_exc
     def _display_animal(self, animal)  # Display animal information in the Today view.
     # calls: AnimalDisplay, ImageCarousel, ft.Container, ft.Divider, ft.IconButton, ft.Padding, ft.Row, ft.Text, len, self.app_state.image_cache.get_local_path, self.app_state.repository.is_favorite, self.page.update
     def _on_favorite_toggle(self, e)  # Handle favorite button toggle.

@@ -6,6 +6,7 @@ import traceback
 import flet as ft
 
 from daynimal.debug import get_debugger
+from daynimal.ui.components.widgets import ErrorWidget, LoadingWidget
 from daynimal.notifications import NotificationService
 from daynimal.ui.state import AppState
 from daynimal.ui.views.favorites_view import FavoritesView
@@ -247,17 +248,7 @@ class AppController:
 
         # Show loading in today view
         self.today_view.today_animal_container.controls = [
-            ft.Container(
-                content=ft.Column(
-                    controls=[
-                        ft.ProgressRing(width=60, height=60),
-                        ft.Text("Chargement de l'animal...", size=18),
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    spacing=20,
-                ),
-                padding=40,
-            )
+            LoadingWidget(subtitle="Chargement de l'animal...")
         ]
         self.page.update()
         await asyncio.sleep(0.1)
@@ -290,19 +281,7 @@ class AppController:
             else:
                 # Animal not found
                 self.today_view.today_animal_container.controls = [
-                    ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
-                                ft.Text(
-                                    "Animal introuvable", size=20, color=ft.Colors.ERROR
-                                ),
-                            ],
-                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            spacing=10,
-                        ),
-                        padding=40,
-                    )
+                    ErrorWidget(title="Animal introuvable")
                 ]
                 self.page.update()
 
@@ -319,22 +298,7 @@ class AppController:
 
             # Show error in UI
             self.today_view.today_animal_container.controls = [
-                ft.Container(
-                    content=ft.Column(
-                        controls=[
-                            ft.Icon(ft.Icons.ERROR, size=60, color=ft.Colors.ERROR),
-                            ft.Text(
-                                "Erreur lors du chargement",
-                                size=20,
-                                color=ft.Colors.ERROR,
-                            ),
-                            ft.Text(str(error), size=14),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=10,
-                    ),
-                    padding=40,
-                )
+                ErrorWidget(title="Erreur lors du chargement", details=str(error))
             ]
             self.page.update()
 

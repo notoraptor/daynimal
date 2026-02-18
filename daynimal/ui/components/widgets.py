@@ -14,25 +14,36 @@ class LoadingWidget(ft.Container):
     Replaces 6 duplicated implementations in the original app.py.
     """
 
-    def __init__(self, message: str = "Chargement...", **kwargs):
+    def __init__(
+        self,
+        message: str = "Chargement en cours...",
+        subtitle: str | None = None,
+        **kwargs,
+    ):
         """Initialize loading widget.
 
         Args:
             message: Loading message to display.
+            subtitle: Optional subtitle text below the message.
             **kwargs: Additional Container properties.
         """
+        controls = [
+            ft.ProgressRing(width=60, height=60),
+            ft.Text(message, size=18, weight=ft.FontWeight.BOLD),
+        ]
+        if subtitle:
+            controls.append(ft.Text(subtitle, size=14))
+
         super().__init__(
             content=ft.Column(
-                controls=[
-                    ft.ProgressRing(width=60, height=60),
-                    ft.Text(message, size=18),
-                ],
+                controls=controls,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 alignment=ft.MainAxisAlignment.CENTER,
                 spacing=20,
             ),
             padding=40,
             expand=True,
+            alignment=ft.Alignment(0, 0),
             **kwargs,
         )
 
@@ -75,6 +86,7 @@ class ErrorWidget(ft.Container):
             ),
             padding=40,
             expand=True,
+            alignment=ft.Alignment(0, 0),
             **kwargs,
         )
 

@@ -13,12 +13,16 @@ def test_loading_widget_creation():
     assert widget.content is not None
     assert isinstance(widget.content, ft.Column)
 
-    # Should contain ProgressRing and Text
+    # Should contain ProgressRing and Text (bold)
     controls = widget.content.controls
     assert len(controls) == 2
     assert isinstance(controls[0], ft.ProgressRing)
     assert isinstance(controls[1], ft.Text)
-    assert controls[1].value == "Chargement..."
+    assert controls[1].value == "Chargement en cours..."
+    assert controls[1].weight == ft.FontWeight.BOLD
+
+    # Should be vertically centered
+    assert widget.alignment == ft.Alignment(0, 0)
 
 
 def test_loading_widget_custom_message():
@@ -28,6 +32,17 @@ def test_loading_widget_custom_message():
 
     controls = widget.content.controls
     assert controls[1].value == custom_message
+
+
+def test_loading_widget_with_subtitle():
+    """Test LoadingWidget with subtitle."""
+    widget = LoadingWidget(subtitle="Récupération de l'animal du jour")
+
+    controls = widget.content.controls
+    assert len(controls) == 3
+    assert isinstance(controls[2], ft.Text)
+    assert controls[2].value == "Récupération de l'animal du jour"
+    assert controls[2].size == 14
 
 
 def test_error_widget_creation():
@@ -45,6 +60,9 @@ def test_error_widget_creation():
     # Icon created with ft.Icons.ERROR
     assert isinstance(controls[1], ft.Text)
     assert controls[1].value == "Erreur"
+
+    # Should be vertically centered
+    assert widget.alignment == ft.Alignment(0, 0)
 
 
 def test_error_widget_with_details():
