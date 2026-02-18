@@ -131,7 +131,7 @@ def test_animal_card_with_metadata():
 
 
 def test_create_search_card_with_vernacular():
-    """Test create_search_card shows vernacular names."""
+    """Test create_search_card shows vernacular name as primary and family as metadata."""
     animal = _make_animal(
         vernacular={"fr": ["Lion", "Lion d'Afrique", "Lion de l'Atlas"]}
     )
@@ -140,29 +140,33 @@ def test_create_search_card_with_vernacular():
     card = create_search_card(animal, on_click)
 
     assert isinstance(card, AnimalCard)
-    # Check metadata text contains vernacular names
     column = card.content.content
+    # Primary name should be the first vernacular name
+    primary_text = column.controls[0].controls[0]
+    assert primary_text.value == "Lion"
+    # Metadata should be the family name
     metadata_row = column.controls[2]
     texts = [c for c in metadata_row.controls if isinstance(c, ft.Text)]
     assert len(texts) == 1
-    assert "Lion" in texts[0].value
-    assert "Lion d'Afrique" in texts[0].value
-    # Should have "..." because there are more than 2 names
-    assert "..." in texts[0].value
+    assert texts[0].value == "Felidae"
 
 
 def test_create_search_card_without_vernacular():
-    """Test create_search_card shows fallback text when no vernacular names."""
+    """Test create_search_card falls back to canonical name and still shows family."""
     animal = _make_animal(vernacular={})
     on_click = MagicMock()
 
     card = create_search_card(animal, on_click)
 
     column = card.content.content
+    # Primary name falls back to canonical name
+    primary_text = column.controls[0].controls[0]
+    assert primary_text.value == "Panthera"
+    # Metadata is the family
     metadata_row = column.controls[2]
     texts = [c for c in metadata_row.controls if isinstance(c, ft.Text)]
     assert len(texts) == 1
-    assert texts[0].value == "Pas de nom vernaculaire"
+    assert texts[0].value == "Felidae"
 
 
 def test_create_history_card():

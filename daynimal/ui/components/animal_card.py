@@ -8,7 +8,27 @@ from typing import Callable
 
 import flet as ft
 
-from daynimal.schemas import AnimalInfo
+from daynimal.config import settings
+from daynimal.schemas import AnimalInfo, Taxon
+
+
+def _get_display_name(taxon: Taxon) -> str:
+    """Return the best display name for a taxon.
+
+    Priority: first vernacular name in preferred language > canonical name > scientific name.
+
+    Args:
+        taxon: The taxon to get a display name for.
+
+    Returns:
+        The best available display name string.
+    """
+    if taxon.vernacular_names:
+        for lang in settings.wikipedia_languages:
+            names = taxon.vernacular_names.get(lang, [])
+            if names:
+                return names[0]
+    return taxon.canonical_name or taxon.scientific_name
 
 
 class AnimalCard(ft.Card):
@@ -17,12 +37,12 @@ class AnimalCard(ft.Card):
     Used in:
     - History view (with timestamp)
     - Favorites view (with favorite icon)
-    - Search view (with vernacular names)
+    - Search view (with taxonomic family)
 
     The card displays:
-    - Canonical/scientific name (bold)
+    - Vernacular name if available, else canonical/scientific name (bold)
     - Scientific name in italics (blue)
-    - Context-specific metadata (timestamp, favorite, vernacular names)
+    - Context-specific metadata (timestamp, favorite, family, etc.)
     - Arrow icon on right for navigation hint
     """
 
@@ -41,10 +61,12 @@ class AnimalCard(ft.Card):
             animal: The animal to display.
             on_click: Callback when card is clicked. Receives taxon_id as parameter.
             metadata_icon: Optional icon for metadata row (e.g., HISTORY, FAVORITE).
-            metadata_text: Optional text for metadata row (e.g., timestamp, vernacular names).
+            metadata_text: Optional text for metadata row (e.g., timestamp, family name).
             metadata_icon_color: Optional color for metadata icon.
             **kwargs: Additional Card properties.
         """
+        display_name = _get_display_name(animal.taxon)
+
         # Build metadata controls (icon + text)
         metadata_controls = []
         if metadata_icon:
@@ -72,25 +94,20 @@ class AnimalCard(ft.Card):
         content = ft.Container(
             content=ft.Column(
                 controls=[
-                    # Name row (canonical or scientific)
+                    # Primary name (vernacular if available, else canonical/scientific)
                     ft.Row(
                         controls=[
-                            ft.Text(
-                                animal.taxon.canonical_name
-                                or animal.taxon.scientific_name,
-                                size=18,
-                                weight=ft.FontWeight.BOLD,
-                            )
+                            ft.Text(display_name, size=18, weight=ft.FontWeight.BOLD)
                         ]
                     ),
-                    # Scientific name (always shown)
+                    # Scientific name (always shown in italics)
                     ft.Text(
                         animal.taxon.scientific_name,
                         size=14,
                         italic=True,
                         color=ft.Colors.BLUE,
                     ),
-                    # Metadata row (timestamp, favorite, vernacular, etc.)
+                    # Metadata row (timestamp, favorite, family, etc.)
                     ft.Row(controls=metadata_controls, spacing=5),
                 ],
                 spacing=5,
@@ -111,7 +128,7 @@ def create_history_card(
 
     Args:
         animal: The animal to display.
-        on_click: Callback when card is clicked.
+        on_click: Callback when card is clicked. Receives taxon_id.
         viewed_at_str: Formatted timestamp string (e.g., "08/02/2026 14:30").
 
     Returns:
@@ -133,7 +150,7 @@ def create_favorite_card(
 
     Args:
         animal: The animal to display.
-        on_click: Callback when card is clicked.
+        on_click: Callback when card is clicked. Receives taxon_id.
 
     Returns:
         AnimalCard configured for Favorites view.
@@ -154,24 +171,16 @@ def create_search_card(
 
     Args:
         animal: The animal to display.
-        on_click: Callback when card is clicked.
+        on_click: Callback when card is clicked. Receives taxon_id.
 
     Returns:
-        AnimalCard configured for Search view (with vernacular names).
+        AnimalCard configured for Search view (with taxonomic family as metadata).
     """
-    # Get vernacular names (first 2 from first language)
-    vernacular = "Pas de nom vernaculaire"
-    if animal.taxon.vernacular_names:
-        first_lang = next(iter(animal.taxon.vernacular_names))
-        names = animal.taxon.vernacular_names[first_lang][:2]
-        if names:
-            vernacular = ", ".join(names)
-            if len(animal.taxon.vernacular_names[first_lang]) > 2:
-                vernacular += "..."
-
+    family = animal.taxon.family or animal.taxon.order or ""
     return AnimalCard(
         animal=animal,
         on_click=on_click,
-        metadata_icon=None,  # No icon for search
-        metadata_text=vernacular,
+        metadata_icon=ft.Icons.ACCOUNT_TREE,
+        metadata_text=family,
+        metadata_icon_color=ft.Colors.GREY_500,
     )

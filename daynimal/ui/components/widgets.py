@@ -79,6 +79,28 @@ class ErrorWidget(ft.Container):
         )
 
 
+def view_header(title: str) -> ft.Container:
+    """Standard page header used by all views.
+
+    Args:
+        title: Title string, typically starting with an emoji (e.g. "🦁 Animal du jour").
+
+    Returns:
+        A centered Container with bold primary-colored text.
+    """
+    return ft.Container(
+        content=ft.Row(
+            controls=[
+                ft.Text(
+                    title, size=28, weight=ft.FontWeight.BOLD, color=ft.Colors.PRIMARY
+                )
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        padding=20,
+    )
+
+
 class EmptyStateWidget(ft.Container):
     """Empty state widget.
 

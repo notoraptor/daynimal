@@ -6,8 +6,9 @@ from typing import Callable
 
 import flet as ft
 
-from daynimal.config import settings
+from daynimal.ui.components.animal_card import create_favorite_card
 from daynimal.ui.components.pagination import PaginationBar
+from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
@@ -43,20 +44,7 @@ class FavoritesView(BaseView):
     def build(self) -> ft.Control:
         """Build the favorites view UI."""
         # Header
-        header = ft.Container(
-            content=ft.Row(
-                controls=[
-                    ft.Text(
-                        "⭐ Favoris",
-                        size=28,
-                        weight=ft.FontWeight.BOLD,
-                        color=ft.Colors.PRIMARY,
-                    )
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-            ),
-            padding=20,
-        )
+        header = view_header("⭐ Favoris")
 
         # Content container
         content = ft.Column(
@@ -133,69 +121,7 @@ class FavoritesView(BaseView):
                 ]
 
                 for item in favorites_items:
-                    # Pick first vernacular name in preferred language
-                    display_name = None
-                    if item.taxon.vernacular_names:
-                        for lang in settings.wikipedia_languages:
-                            names = item.taxon.vernacular_names.get(lang, [])
-                            if names:
-                                display_name = names[0]
-                                break
-                    if not display_name:
-                        display_name = (
-                            item.taxon.canonical_name
-                            or item.taxon.scientific_name
-                        )
-
-                    card = ft.Card(
-                        content=ft.Container(
-                            content=ft.Column(
-                                controls=[
-                                    ft.Row(
-                                        controls=[
-                                            ft.Text(
-                                                display_name,
-                                                size=18,
-                                                weight=ft.FontWeight.BOLD,
-                                            )
-                                        ]
-                                    ),
-                                    ft.Text(
-                                        item.taxon.scientific_name,
-                                        size=14,
-                                        italic=True,
-                                        color=ft.Colors.BLUE,
-                                    ),
-                                    ft.Row(
-                                        controls=[
-                                            ft.Icon(
-                                                ft.Icons.FAVORITE,
-                                                size=16,
-                                                color=ft.Colors.RED,
-                                            ),
-                                            ft.Text(
-                                                "Favori",
-                                                size=12,
-                                                color=ft.Colors.GREY_500,
-                                            ),
-                                            ft.Container(expand=True),  # Spacer
-                                            ft.Icon(
-                                                ft.Icons.ARROW_FORWARD,
-                                                size=16,
-                                                color=ft.Colors.GREY_400,
-                                            ),
-                                        ],
-                                        spacing=5,
-                                    ),
-                                ],
-                                spacing=5,
-                            ),
-                            padding=15,
-                            data=item.taxon.taxon_id,  # Store taxon_id for click handler
-                            on_click=self._on_favorite_item_click,
-                            ink=True,  # Add ink ripple effect on click
-                        )
-                    )
+                    card = create_favorite_card(item, self._on_item_click)
                     controls.append(card)
 
                 self.favorites_list.controls = controls
@@ -253,25 +179,18 @@ class FavoritesView(BaseView):
         self.current_page = new_page
         asyncio.create_task(self.load_favorites())
 
-    def _on_favorite_item_click(self, e):
+    def _on_item_click(self, taxon_id: int):
         """Handle click on a favorite item."""
         try:
-            taxon_id = e.control.data
-
             if self.debugger:
                 self.debugger.logger.info(f"Favorite item clicked: taxon_id={taxon_id}")
-
-            # Call parent callback to load animal
             if self.on_animal_click:
                 self.on_animal_click(taxon_id)
-
         except Exception as error:
-            error_msg = f"Error clicking favorite item: {error}"
             error_traceback = traceback.format_exc()
-
             if self.debugger:
                 self.debugger.log_error("on_favorite_item_click", error)
                 self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
             else:
-                print(f"ERROR: {error_msg}")
+                print(f"ERROR: Error clicking favorite item: {error}")
                 print(f"Traceback:\n{error_traceback}")

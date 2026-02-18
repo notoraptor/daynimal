@@ -10,6 +10,7 @@ from typing import Callable
 import flet as ft
 
 from daynimal.ui.components.animal_card import create_search_card
+from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
@@ -66,16 +67,7 @@ class SearchView(BaseView):
             ft.Control: The root control for search view.
         """
         # Header
-        header = ft.Container(
-            content=ft.Row(
-                controls=[
-                    ft.Icon(ft.Icons.SEARCH, size=32),
-                    ft.Text("Recherche", size=24, weight=ft.FontWeight.BOLD),
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-            ),
-            padding=20,
-        )
+        header = view_header("🔍 Recherche")
 
         # Initial empty state
         self.show_empty_search_state()

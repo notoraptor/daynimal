@@ -5,6 +5,7 @@ import traceback
 
 import flet as ft
 
+from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
@@ -22,7 +23,7 @@ class SettingsView(BaseView):
             debugger: Optional debugger instance for logging
         """
         super().__init__(page, app_state, debugger)
-        self.settings_container = ft.Column(controls=[], spacing=0)
+        self.settings_container = ft.Column(controls=[])
 
     def build(self) -> ft.Control:
         """Build the settings view UI."""
@@ -59,21 +60,7 @@ class SettingsView(BaseView):
             is_dark = theme_mode == "dark"
 
             # Header
-            header = ft.Container(
-                content=ft.Row(
-                    controls=[
-                        ft.Icon(ft.Icons.SETTINGS, size=32, color=ft.Colors.PRIMARY),
-                        ft.Text(
-                            "Paramètres",
-                            size=28,
-                            weight=ft.FontWeight.BOLD,
-                            color=ft.Colors.PRIMARY,
-                        ),
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                ),
-                padding=20,
-            )
+            header = view_header("⚙️ Paramètres")
 
             # App info section
             app_info = ft.Container(

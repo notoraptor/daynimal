@@ -5,6 +5,7 @@ import traceback
 
 import flet as ft
 
+from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
@@ -35,20 +36,7 @@ class StatsView(BaseView):
     def build(self) -> ft.Control:
         """Build the statistics view UI."""
         # Header
-        header = ft.Container(
-            content=ft.Row(
-                controls=[
-                    ft.Text(
-                        "📊 Statistiques",
-                        size=28,
-                        weight=ft.FontWeight.BOLD,
-                        color=ft.Colors.PRIMARY,
-                    )
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-            ),
-            padding=20,
-        )
+        header = view_header("📊 Statistiques")
 
         # Content container
         content = ft.Column(

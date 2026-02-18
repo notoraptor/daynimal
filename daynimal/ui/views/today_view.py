@@ -9,6 +9,7 @@ import flet as ft
 from daynimal.schemas import AnimalInfo
 from daynimal.ui.components.animal_display import AnimalDisplay
 from daynimal.ui.components.image_carousel import ImageCarousel
+from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
@@ -43,20 +44,7 @@ class TodayView(BaseView):
     def build(self) -> ft.Control:
         """Build the today view UI."""
         # Header
-        header = ft.Container(
-            content=ft.Row(
-                controls=[
-                    ft.Text(
-                        "🦁 Animal du jour",
-                        size=28,
-                        weight=ft.FontWeight.BOLD,
-                        color=ft.Colors.PRIMARY,
-                    )
-                ],
-                alignment=ft.MainAxisAlignment.CENTER,
-            ),
-            padding=20,
-        )
+        header = view_header("🦁 Animal du jour")
 
         # Buttons
         today_button = ft.Button(
