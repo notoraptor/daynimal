@@ -6,9 +6,9 @@ from typing import Callable
 
 import flet as ft
 
-from daynimal.schemas import AnimalInfo
+from daynimal.schemas import AnimalInfo, ImageSource
 from daynimal.ui.components.animal_display import AnimalDisplay
-from daynimal.ui.components.image_carousel import ImageCarousel
+from daynimal.ui.components.image_gallery_dialog import ImageGalleryDialog
 from daynimal.ui.components.widgets import ErrorWidget, LoadingWidget, view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
@@ -39,7 +39,6 @@ class TodayView(BaseView):
         self.on_load_complete: Callable[[], None] | None = None
         self.today_animal_container = ft.Column(controls=[], spacing=10)
         self.current_animal: AnimalInfo | None = None
-        self.current_image_index = 0
 
     def build(self) -> ft.Control:
         """Build the today view UI."""
@@ -159,7 +158,6 @@ class TodayView(BaseView):
 
             animal = await asyncio.to_thread(fetch_animal)
             self.current_animal = animal
-            self.current_image_index = 0  # Reset carousel to first image
 
             if self.debugger:
                 self.debugger.log_animal_load(mode, animal.display_name)
@@ -279,20 +277,99 @@ class TodayView(BaseView):
             ),
         )
 
-        # Add images section with carousel
+        # Add images section — single image + "More images" button
         controls.append(ft.Divider())
         controls.append(ft.Text("Images", size=20, weight=ft.FontWeight.BOLD))
 
-        # Use ImageCarousel for image display
-        carousel = ImageCarousel(
-            images=animal.images or [],
-            current_index=self.current_image_index,
-            on_index_change=self._on_image_index_change,
-            animal_display_name=animal.display_name,
-            animal_taxon_id=animal.taxon.taxon_id,
-            image_cache=self.app_state.image_cache,
-        )
-        controls.append(carousel.build())
+        images = animal.images or []
+        if images:
+            first_image = images[0]
+
+            # Resolve image source: prefer local cache, fallback to URL
+            image_src = first_image.url
+            if self.app_state and self.app_state.image_cache:
+                for url in [first_image.thumbnail_url, first_image.url]:
+                    if url:
+                        local_path = self.app_state.image_cache.get_local_path(url)
+                        if local_path:
+                            image_src = str(local_path)
+                            break
+
+            image_controls: list[ft.Control] = [
+                ft.Image(
+                    src=image_src,
+                    width=400,
+                    height=300,
+                    fit="contain",
+                    border_radius=10,
+                ),
+            ]
+
+            # Silhouette badge (PhyloPic only)
+            if first_image.image_source == ImageSource.PHYLOPIC:
+                image_controls.append(
+                    ft.Container(
+                        content=ft.Text(
+                            "Silhouette", size=10, color=ft.Colors.GREY_700
+                        ),
+                        bgcolor=ft.Colors.GREY_300,
+                        border_radius=8,
+                        padding=ft.Padding(left=8, right=8, top=2, bottom=2),
+                    )
+                )
+
+            # Credit
+            if first_image.author:
+                image_controls.append(
+                    ft.Text(
+                        f"Crédit: {first_image.author} — {first_image.source_label}",
+                        size=12,
+                        color=ft.Colors.GREY_500,
+                        italic=True,
+                    )
+                )
+
+            # "More images" button
+            if len(images) > 1:
+                image_controls.append(
+                    ft.Button(
+                        f"Plus d'images ({len(images)} disponibles)...",
+                        icon=ft.Icons.IMAGE,
+                        on_click=lambda e, imgs=images, a=animal: self._open_gallery(
+                            imgs, a
+                        ),
+                    )
+                )
+
+            controls.append(
+                ft.Column(
+                    controls=image_controls,
+                    spacing=10,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                )
+            )
+        else:
+            controls.append(
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Icon(
+                                ft.Icons.IMAGE, size=60, color=ft.Colors.GREY_500
+                            ),
+                            ft.Text(
+                                "Aucune image disponible",
+                                size=16,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                        ],
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        spacing=10,
+                    ),
+                    padding=30,
+                    bgcolor=ft.Colors.GREY_200,
+                    border_radius=10,
+                )
+            )
 
         controls.append(ft.Divider())
 
@@ -317,12 +394,17 @@ class TodayView(BaseView):
             if self.current_animal:
                 self._display_animal(self.current_animal)
 
-    def _on_image_index_change(self, new_index: int):
-        """Handle image index change in carousel."""
-        self.current_image_index = new_index
-        # Redraw to update carousel
-        if self.current_animal:
-            self._display_animal(self.current_animal)
+    def _open_gallery(self, images: list, animal: AnimalInfo):
+        """Open the image gallery dialog."""
+        if self.app_state:
+            gallery = ImageGalleryDialog(
+                images=images,
+                image_cache=self.app_state.image_cache,
+                page=self.page,
+                animal_display_name=animal.display_name,
+                animal_taxon_id=animal.taxon.taxon_id,
+            )
+            gallery.open()
 
     @staticmethod
     def _build_share_text(animal: AnimalInfo) -> str:

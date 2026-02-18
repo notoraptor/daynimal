@@ -3,6 +3,7 @@
 import hashlib
 import logging
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -67,6 +68,68 @@ class ImageCacheService:
                 break
         subdir = cache_dir / url_hash[:2]
         return subdir / f"{url_hash}{ext}"
+
+    def cache_single_image(self, image: CommonsImage) -> None:
+        """Download and cache a single image (thumbnail preferred)."""
+        if image.thumbnail_url:
+            self._download_and_store(image.thumbnail_url, is_thumbnail=True)
+        else:
+            self._download_and_store(image.url, is_thumbnail=False)
+
+        # Purge if over limit
+        cache_size = self.get_cache_size()
+        if cache_size > self._max_size_bytes:
+            self.purge_lru(self._max_size_bytes)
+
+    def cache_images_with_progress(
+        self,
+        images: list[CommonsImage],
+        on_progress: Callable[[int, int], None] | None = None,
+    ) -> None:
+        """Download and cache images with progress callback.
+
+        Args:
+            images: List of images to cache.
+            on_progress: Callback called with (current, total) after each image.
+        """
+        all_downloads: list[tuple[str, bool]] = []
+        for image in images:
+            if image.thumbnail_url:
+                all_downloads.append((image.thumbnail_url, True))
+            if self._cache_hd:
+                all_downloads.append((image.url, False))
+            elif not image.thumbnail_url:
+                all_downloads.append((image.url, False))
+
+        total = len(all_downloads)
+        for i, (url, is_thumb) in enumerate(all_downloads):
+            if i > 0:
+                time.sleep(0.5)
+            self._download_and_store(url, is_thumb)
+            if on_progress:
+                on_progress(i + 1, total)
+
+        # Purge if over limit
+        cache_size = self.get_cache_size()
+        if cache_size > self._max_size_bytes:
+            self.purge_lru(self._max_size_bytes)
+
+    def are_all_cached(self, images: list[CommonsImage]) -> bool:
+        """Check if all images are already cached in DB."""
+        urls = []
+        for image in images:
+            if image.thumbnail_url:
+                urls.append(image.thumbnail_url)
+            else:
+                urls.append(image.url)
+        if not urls:
+            return True
+        cached_count = (
+            self._session.query(ImageCacheModel)
+            .filter(ImageCacheModel.url.in_(urls))
+            .count()
+        )
+        return cached_count >= len(urls)
 
     def cache_images(self, images: list[CommonsImage]) -> None:
         """Download and cache images locally."""

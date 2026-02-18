@@ -773,7 +773,7 @@ class AnimalRepository:
             if images:
                 self._save_cache(taxon_id, "commons", images)
                 try:
-                    self.image_cache.cache_images(images)
+                    self.image_cache.cache_single_image(images[0])
                 except Exception as e:
                     logger.warning(f"Error caching images locally: {e}")
 

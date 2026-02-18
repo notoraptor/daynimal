@@ -2,6 +2,9 @@
 
 ## 1. Project Structure
 
+### benchmarks
+- `benchmarks.search_relevance` — Benchmark search relevance for well-known animal names.
+
 ### daynimal
 - `daynimal.__init__` — Daynimal - Daily Animal Discovery App
 - `daynimal.app` — Daynimal Flet App - Desktop/Mobile Application
@@ -82,6 +85,7 @@
 - `scripts.prepare_release` — Prepare distribution files for GitHub Release.
 
 ## 2. Entry Points
+- benchmarks.search_relevance
 - daynimal.app
 - daynimal.main
 - daynimal.db.build_db
@@ -94,6 +98,10 @@
 - scripts.prepare_release
 
 ## 3. Internal Dependencies
+
+### benchmarks.search_relevance
+- depends on `daynimal.db.models`
+- depends on `daynimal.repository`
 
 ### daynimal.__init__
 - depends on `daynimal.attribution`
@@ -299,25 +307,25 @@
 - asyncio (used 11 times)
 - typing (used 11 times)
 - logging (used 10 times)
+- argparse (used 9 times)
 - datetime (used 9 times)
 - sqlalchemy (used 9 times)
-- argparse (used 8 times)
 - httpx (used 8 times)
 - traceback (used 7 times)
 - sys (used 6 times)
+- time (used 5 times)
 - csv (used 4 times)
 - dataclasses (used 4 times)
 - os (used 4 times)
 - re (used 4 times)
-- time (used 4 times)
 - hashlib (used 3 times)
+- io (used 3 times)
 - json (used 3 times)
 - subprocess (used 3 times)
 - threading (used 3 times)
 - zipfile (used 3 times)
 - abc (used 2 times)
 - gzip (used 2 times)
-- io (used 2 times)
 - shutil (used 2 times)
 - __future__ (used 1 times)
 - ast (used 1 times)
@@ -335,6 +343,23 @@
 - unicodedata (used 1 times)
 
 ## 5. Signatures and Calls
+
+### Module: benchmarks.search_relevance
+> Benchmark search relevance for well-known animal names.
+> 
+> Usage:
+>     uv run python benchmarks/search_relevance.py
+>     uv run python benchmarks/search_relevance.py --limit 10
+>     uv run python benchmarks/search_relevance.py --queries lion tiger
+>     uv run python benchmarks/search_relevance.py --verbose
+```python
+def run(queries, limit, verbose)
+```
+- calls: `AnimalRepository`, `enumerate`, `io.TextIOWrapper`, `len`, `print`, `sum`
+```python
+def main()
+```
+- calls: `argparse.ArgumentParser`, `run`
 
 ### Module: daynimal.app
 > Daynimal Flet App - Desktop/Mobile Application
@@ -360,7 +385,7 @@ class DaynimalApp  # Main application class for Daynimal Flet app.
     def cleanup(self)  # Clean up resources (close connections, database, etc.).
     # calls: hasattr, self.app_controller.cleanup, self.debugger.logger.error, self.debugger.logger.info
     def on_disconnect(self, e)  # Handle page disconnect event (when user closes the window).
-    # calls: self.cleanup, self.debugger.logger.error, self.debugger.logger.info
+    # calls: os._exit, self.cleanup, self.debugger.logger.error, self.debugger.logger.info
     def on_close(self, e)  # Handle page close event.
     # calls: self.cleanup, self.debugger.logger.error, self.debugger.logger.info
 ```
@@ -371,7 +396,7 @@ def _show_error(page, error)  # Show error visually on the page (critical for mo
 ```python
 def _install_asyncio_exception_handler()  # Print all unhandled async exceptions to the terminal.
 ```
-- calls: `asyncio.get_running_loop`, `print`, `traceback.print_exception`, `type`
+- calls: `asyncio.get_running_loop`, `isinstance`, `print`, `traceback.print_exception`, `type`
 ```python
 def main()  # Main entry point for the Flet app.
 ```
@@ -759,7 +784,7 @@ class ImageCacheService  # Downloads and caches images locally for offline use.
     def _url_to_path(url, cache_dir)  # Convert URL to local file path using SHA256 hash.
     # calls: hashlib.sha256, hashlib.sha256.hexdigest
     def cache_images(self, images)  # Download and cache images locally.
-    # calls: self._download_and_store, self.get_cache_size, self.purge_lru
+    # calls: enumerate, self._download_and_store, self.get_cache_size, self.purge_lru, time.sleep
     def _download_and_store(self, url, is_thumbnail)  # Download a single image and store it in cache.
     # calls: ImageCacheModel, Path, datetime.now, len, retry_with_backoff, self._session.add, self._session.commit, self._session.query, self._session.query.filter, self._session.rollback, self._url_to_path, self.client.get, str
     def get_local_path(self, url)  # Get local path for a cached image, updating last_accessed_at.
@@ -1054,7 +1079,7 @@ class DataSource(ABC, Generic)  # Abstract base class for external data sources.
 ```python
 def retry_with_backoff(func, max_retries, backoff_base)  # Execute HTTP request with exponential backoff retry.
 ```
-- calls: `func`, `range`, `time.sleep`
+- calls: `float`, `func`, `range`, `time.sleep`
 
 ### Module: daynimal.sources.commons
 > Wikimedia Commons API client.
@@ -1488,9 +1513,9 @@ class SearchView(BaseView)  # Search view with search field and results list.
     def _on_search_click(self, e)  # Handle search button click.
     # calls: asyncio.create_task, self.perform_search, self.search_field.value.strip
     def show_empty_search_state(self)  # Show empty state (before any search).
-    # calls: ft.Column, ft.Container, ft.Icon, ft.Text
+    # calls: ft.Alignment, ft.Column, ft.Container, ft.Icon, ft.Text
     async def perform_search(self, query)  # Perform search in repository.
-    # calls: asyncio.sleep, asyncio.to_thread, create_search_card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, len, self.app_state.repository.search, self.log_error, self.log_info, self.page.update, str
+    # calls: asyncio.sleep, asyncio.to_thread, create_search_card, ft.Alignment, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, len, self.app_state.repository.search, self.log_error, self.log_info, self.page.update, str
 ```
 
 ### Module: daynimal.ui.views.settings_view

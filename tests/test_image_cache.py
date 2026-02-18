@@ -214,3 +214,105 @@ class TestClear:
         assert count == 3
         assert service.get_cache_size() == 0
         assert db_session.query(ImageCacheModel).count() == 0
+
+
+class TestCacheSingleImage:
+    @patch("daynimal.image_cache.retry_with_backoff")
+    def test_caches_thumbnail(self, mock_retry, service, sample_image, db_session):
+        mock_retry.return_value = _mock_response()
+
+        service.cache_single_image(sample_image)
+
+        entries = db_session.query(ImageCacheModel).all()
+        assert len(entries) == 1
+        assert entries[0].is_thumbnail is True
+
+    @patch("daynimal.image_cache.retry_with_backoff")
+    def test_caches_url_when_no_thumbnail(self, mock_retry, service, db_session):
+        mock_retry.return_value = _mock_response()
+        image = CommonsImage(
+            filename="Test.jpg",
+            url="https://example.com/test.jpg",
+            thumbnail_url=None,
+        )
+
+        service.cache_single_image(image)
+
+        entries = db_session.query(ImageCacheModel).all()
+        assert len(entries) == 1
+        assert entries[0].is_thumbnail is False
+
+
+class TestAreAllCached:
+    @patch("daynimal.image_cache.retry_with_backoff")
+    def test_returns_true_when_all_cached(
+        self, mock_retry, service, sample_image, db_session
+    ):
+        mock_retry.return_value = _mock_response()
+        service.cache_images([sample_image])
+
+        assert service.are_all_cached([sample_image]) is True
+
+    def test_returns_false_when_not_cached(self, service, sample_image):
+        assert service.are_all_cached([sample_image]) is False
+
+    def test_returns_true_for_empty_list(self, service):
+        assert service.are_all_cached([]) is True
+
+    @patch("daynimal.image_cache.retry_with_backoff")
+    def test_returns_false_when_partially_cached(
+        self, mock_retry, service, db_session
+    ):
+        mock_retry.return_value = _mock_response()
+        img1 = CommonsImage(
+            filename="A.jpg",
+            url="https://example.com/a.jpg",
+            thumbnail_url="https://example.com/a_thumb.jpg",
+        )
+        img2 = CommonsImage(
+            filename="B.jpg",
+            url="https://example.com/b.jpg",
+            thumbnail_url="https://example.com/b_thumb.jpg",
+        )
+        service.cache_images([img1])
+
+        assert service.are_all_cached([img1, img2]) is False
+
+
+class TestCacheImagesWithProgress:
+    @patch("daynimal.image_cache.retry_with_backoff")
+    def test_calls_on_progress(self, mock_retry, service, db_session):
+        mock_retry.return_value = _mock_response()
+        images = [
+            CommonsImage(
+                filename=f"Test{i}.jpg",
+                url=f"https://example.com/img{i}.jpg",
+                thumbnail_url=f"https://example.com/thumb{i}.jpg",
+            )
+            for i in range(3)
+        ]
+
+        progress_calls = []
+        service.cache_images_with_progress(
+            images, on_progress=lambda c, t: progress_calls.append((c, t))
+        )
+
+        assert len(progress_calls) == 3
+        assert progress_calls[-1] == (3, 3)
+
+    @patch("daynimal.image_cache.retry_with_backoff")
+    def test_caches_all_images(self, mock_retry, service, db_session):
+        mock_retry.return_value = _mock_response()
+        images = [
+            CommonsImage(
+                filename=f"Test{i}.jpg",
+                url=f"https://example.com/img{i}.jpg",
+                thumbnail_url=f"https://example.com/thumb{i}.jpg",
+            )
+            for i in range(3)
+        ]
+
+        service.cache_images_with_progress(images)
+
+        entries = db_session.query(ImageCacheModel).all()
+        assert len(entries) == 3
