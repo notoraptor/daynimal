@@ -49,7 +49,7 @@ class DaynimalApp:
         self.page = page
         self.page.title = "Daynimal"
         self.page.padding = 0
-        self.page.scroll = ft.ScrollMode.AUTO
+        self.page.scroll = None
 
         # Get debugger from page data if available
         self.debugger = None
@@ -78,21 +78,97 @@ class DaynimalApp:
         # Check if database exists
         db_path = resolve_database()
         if db_path is None:
-            # Show first-launch setup screen
-            from daynimal.ui.state import AppState
-            from daynimal.ui.views.setup_view import SetupView
+            from daynimal.config import is_mobile
 
-            self.setup_view = SetupView(
-                page=self.page,
-                app_state=AppState(),
-                on_setup_complete=self._on_setup_complete,
-                debugger=self.debugger,
-            )
-            self.page.add(self.setup_view.build())
+            if is_mobile():
+                # Mobile: show first-launch setup screen
+                from daynimal.ui.state import AppState
+                from daynimal.ui.views.setup_view import SetupView
+
+                self.setup_view = SetupView(
+                    page=self.page,
+                    app_state=AppState(),
+                    on_setup_complete=self._on_setup_complete,
+                    debugger=self.debugger,
+                )
+                self.page.add(self.setup_view.build())
+            else:
+                # Desktop: show instructions to run CLI setup
+                self._build_desktop_no_db_screen()
         else:
             self._build_main_app()
 
         self.page.update()
+
+    def _build_desktop_no_db_screen(self):
+        """Show an informational screen when DB is missing on desktop."""
+        self.page.add(
+            ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Icon(ft.Icons.INFO, size=64, color=ft.Colors.BLUE_400),
+                        ft.Text(
+                            "Base de données introuvable",
+                            size=24,
+                            weight=ft.FontWeight.BOLD,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        ft.Text(
+                            "L'application a besoin d'une base de données pour fonctionner.\n"
+                            "Veuillez lancer le setup depuis le terminal :",
+                            size=14,
+                            text_align=ft.TextAlign.CENTER,
+                            color=ft.Colors.GREY_500,
+                        ),
+                        ft.Container(
+                            content=ft.Text(
+                                "uv run daynimal setup",
+                                size=16,
+                                weight=ft.FontWeight.W_500,
+                                font_family="Courier New",
+                                text_align=ft.TextAlign.CENTER,
+                            ),
+                            bgcolor=ft.Colors.GREY_200,
+                            border_radius=8,
+                            padding=ft.Padding.symmetric(horizontal=20, vertical=12),
+                            margin=ft.Margin.symmetric(vertical=10),
+                        ),
+                        ft.Text(
+                            "Cette commande construit la base complète (~1 GB) depuis GBIF + TAXREF.\n"
+                            "Pour une installation rapide (~117 MB) :",
+                            size=12,
+                            text_align=ft.TextAlign.CENTER,
+                            color=ft.Colors.GREY_500,
+                        ),
+                        ft.Container(
+                            content=ft.Text(
+                                "uv run daynimal setup --mode minimal",
+                                size=14,
+                                font_family="Courier New",
+                                text_align=ft.TextAlign.CENTER,
+                            ),
+                            bgcolor=ft.Colors.GREY_200,
+                            border_radius=8,
+                            padding=ft.Padding.symmetric(horizontal=16, vertical=8),
+                        ),
+                        ft.Container(height=20),
+                        ft.FilledButton(
+                            "Quitter", icon=ft.Icons.CLOSE, on_click=self._on_quit_click
+                        ),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=10,
+                ),
+                expand=True,
+                alignment=ft.Alignment.CENTER,
+                padding=40,
+            )
+        )
+
+    async def _on_quit_click(self, _):
+        """Handle quit button click."""
+        await self.page.window.close()
 
     def _build_main_app(self):
         """Build the main application UI (after DB is available)."""

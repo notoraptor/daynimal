@@ -119,11 +119,8 @@ class TodayView(BaseView):
                     content=button_row,
                     padding=ft.Padding(left=20, right=20, bottom=10, top=0),
                 ),
-                ft.Container(
-                    content=self.today_animal_container, padding=20, expand=True
-                ),
-            ],
-            expand=True,
+                ft.Container(content=self.today_animal_container, padding=20),
+            ]
         )
 
         return content

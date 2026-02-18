@@ -35,7 +35,7 @@ class BaseView(ABC):
         self.page = page
         self.app_state = app_state
         self.debugger = debugger
-        self.container = ft.Column(controls=[], spacing=10, expand=True)
+        self.container = ft.Column(controls=[], spacing=10)
 
     @abstractmethod
     def build(self) -> ft.Control:

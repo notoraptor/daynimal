@@ -42,8 +42,10 @@ class AppController:
         self.notification_service = NotificationService(self.state.repository)
         self.state.notification_service = self.notification_service
 
-        # Content container
-        self.content_container = ft.Column(controls=[], expand=True, spacing=0)
+        # Content container (scrollable so navbar stays fixed at bottom)
+        self.content_container = ft.Column(
+            controls=[], expand=True, spacing=0, scroll=ft.ScrollMode.AUTO
+        )
 
         # Initialize views (repository shared via AppState)
         self.today_view = TodayView(

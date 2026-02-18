@@ -138,7 +138,9 @@ class FletDebugger:
 _debugger = None
 
 
-def get_debugger(log_dir: str | None = None, log_to_console: bool = True) -> FletDebugger:
+def get_debugger(
+    log_dir: str | None = None, log_to_console: bool = True
+) -> FletDebugger:
     """
     Get or create the global debugger instance.
 

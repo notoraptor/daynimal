@@ -19,6 +19,7 @@ data/
 tmp/
 
 daynimal*.db
+.daynimal_config
 .claude
 /logs
 .coverage

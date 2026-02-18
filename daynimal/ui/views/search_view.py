@@ -95,7 +95,7 @@ class SearchView(BaseView):
             header,
             ft.Divider(),
             search_bar,
-            ft.Container(content=self.results_container, padding=20, expand=True),
+            ft.Container(content=self.results_container, padding=20),
         ]
 
         return self.container

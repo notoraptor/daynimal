@@ -55,9 +55,8 @@ class StatsView(BaseView):
             controls=[
                 header,
                 ft.Divider(),
-                ft.Container(content=self.stats_container, padding=20, expand=True),
-            ],
-            expand=True,
+                ft.Container(content=self.stats_container, padding=20),
+            ]
         )
 
         # If stats already cached, display them immediately

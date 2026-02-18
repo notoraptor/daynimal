@@ -62,10 +62,9 @@ class HistoryView(BaseView):
             controls=[
                 header,
                 ft.Divider(),
-                ft.Container(content=self.history_list, padding=20, expand=True),
+                ft.Container(content=self.history_list, padding=20),
                 self.pagination_container,
-            ],
-            expand=True,
+            ]
         )
 
         # Load history asynchronously

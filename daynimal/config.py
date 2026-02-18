@@ -28,6 +28,11 @@ def get_app_temp_dir() -> Path:
     return Path("tmp")
 
 
+def is_mobile() -> bool:
+    """True si l'app tourne dans un environnement mobile Flet."""
+    return os.getenv("FLET_APP_STORAGE_DATA") is not None
+
+
 class Settings(BaseSettings):
     # Database
     database_url: str = f"sqlite:///{get_app_data_dir() / 'daynimal.db'}"

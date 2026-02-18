@@ -51,12 +51,16 @@ class AppState:
                 if self._repository is None:
                     self._repository = AnimalRepository()
                     # Restore forced offline setting
-                    force_offline = self._repository.get_setting(
-                        "force_offline", "false"
-                    )
-                    self._repository.connectivity.force_offline = (
-                        force_offline == "true"
-                    )
+                    try:
+                        force_offline = self._repository.get_setting(
+                            "force_offline", "false"
+                        )
+                        self._repository.connectivity.force_offline = (
+                            force_offline == "true"
+                        )
+                    except Exception:
+                        # Table may not exist yet (first launch before setup)
+                        pass
         return self._repository
 
     def close_repository(self):

@@ -90,6 +90,7 @@
 - depends on `daynimal.schemas`
 
 ### daynimal.app
+- depends on `daynimal.config`
 - depends on `daynimal.db.first_launch`
 - depends on `daynimal.repository`
 - depends on `daynimal.ui.app_controller`
@@ -304,7 +305,11 @@ class DaynimalApp  # Main application class for Daynimal Flet app.
     def __init__(self, page)
     # calls: hasattr, isinstance, self.build, self.debugger.logger.info
     def build(self)  # Build the user interface.
-    # calls: AppState, SetupView, resolve_database, self._build_main_app, self._load_theme, self.page.add, self.page.update, self.setup_view.build
+    # calls: AppState, SetupView, is_mobile, resolve_database, self._build_desktop_no_db_screen, self._build_main_app, self._load_theme, self.page.add, self.page.update, self.setup_view.build
+    def _build_desktop_no_db_screen(self)  # Show an informational screen when DB is missing on desktop.
+    # calls: ft.Column, ft.Container, ft.FilledButton, ft.Icon, ft.Margin.symmetric, ft.Padding.symmetric, ft.Text, self.page.add
+    async def _on_quit_click(self, _)  # Handle quit button click.
+    # calls: self.page.window.close
     def _build_main_app(self)  # Build the main application UI (after DB is available).
     # calls: AppController, self.app_controller.build, self.page.add, self.page.controls.clear
     def _on_setup_complete(self)  # Called when first-launch setup finishes successfully.
@@ -389,6 +394,10 @@ def get_app_data_dir()  # Répertoire de données persistantes (DB, config, cach
 def get_app_temp_dir()  # Répertoire temporaire (téléchargements, décompression).
 ```
 - calls: `Path`, `os.getenv`
+```python
+def is_mobile()  # True si l'app tourne dans un environnement mobile Flet.
+```
+- calls: `os.getenv`
 
 ### Module: daynimal.connectivity
 > Network connectivity detection for offline mode.

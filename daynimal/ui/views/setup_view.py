@@ -26,9 +26,7 @@ def _global_progress(stage: str, local_progress: float | None) -> float | None:
     if stage not in _STAGE_WEIGHTS:
         return None
     # Sum weights of all completed stages before current one
-    base = sum(
-        _STAGE_WEIGHTS[s] for s in _STAGE_ORDER[: _STAGE_ORDER.index(stage)]
-    )
+    base = sum(_STAGE_WEIGHTS[s] for s in _STAGE_ORDER[: _STAGE_ORDER.index(stage)])
     weight = _STAGE_WEIGHTS[stage]
     if local_progress is None:
         # Indeterminate within this stage — return base (start of stage)
@@ -145,9 +143,7 @@ class SetupView(BaseView):
             # Show success screen with animation
             icon_container = ft.Container(
                 content=ft.Icon(
-                    ft.Icons.CHECK_CIRCLE,
-                    size=80,
-                    color=ft.Colors.PRIMARY,
+                    ft.Icons.CHECK_CIRCLE, size=80, color=ft.Colors.PRIMARY
                 ),
                 scale=0,
                 animate_scale=ft.Animation(800, ft.AnimationCurve.ELASTIC_OUT),
@@ -184,9 +180,7 @@ class SetupView(BaseView):
             await asyncio.sleep(1.5)
 
             # Subtle shrink before transition
-            icon_container.animate_scale = ft.Animation(
-                400, ft.AnimationCurve.EASE_IN
-            )
+            icon_container.animate_scale = ft.Animation(400, ft.AnimationCurve.EASE_IN)
             icon_container.scale = 0.8
             text_container.animate_opacity = ft.Animation(
                 400, ft.AnimationCurve.EASE_IN
@@ -203,17 +197,13 @@ class SetupView(BaseView):
                 ft.Container(
                     content=ft.Column(
                         controls=[
-                            ft.Icon(
-                                ft.Icons.ERROR, size=40, color=ft.Colors.ERROR
-                            ),
+                            ft.Icon(ft.Icons.ERROR, size=40, color=ft.Colors.ERROR),
                             ft.Text(
                                 "Erreur lors de l'installation",
                                 size=18,
                                 color=ft.Colors.ERROR,
                             ),
-                            ft.Text(
-                                str(error), size=12, color=ft.Colors.GREY_600
-                            ),
+                            ft.Text(str(error), size=12, color=ft.Colors.GREY_600),
                             ft.Button(
                                 "Réessayer",
                                 icon=ft.Icons.REFRESH,

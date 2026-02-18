@@ -230,13 +230,26 @@ def cmd_credits():
     print(get_app_legal_notice("full"))
 
 
-def cmd_setup():
-    """Download and set up the minimal database."""
+def cmd_setup(mode: str = "full", no_taxref: bool = False):
+    """Download and set up the database.
+
+    Args:
+        mode: 'full' (build from GBIF backbone) or 'minimal' (download pre-built).
+        no_taxref: Skip TAXREF French names download (full mode only).
+    """
     if resolve_database() is not None:
         print("Database already exists. Nothing to do.")
         return
 
-    print("Setting up Daynimal database (downloading ~13 MB)...\n")
+    if mode == "minimal":
+        _setup_minimal()
+    else:
+        _setup_full(no_taxref=no_taxref)
+
+
+def _setup_minimal():
+    """Download pre-built minimal database from GitHub Releases."""
+    print("Setting up Daynimal database (minimal, downloading ~13 MB)...\n")
 
     def progress(stage: str, progress: float | None):
         labels = {
@@ -258,6 +271,113 @@ def cmd_setup():
         download_and_setup_db(progress_callback=progress)
         print("\n\nSetup complete! You can now use 'daynimal' commands.")
     except Exception as e:
+        print(f"\n\nSetup failed: {e}")
+        raise SystemExit(1)
+
+
+def _setup_full(no_taxref: bool = False):
+    """Build full database from GBIF backbone + optional TAXREF."""
+    import zipfile
+    from pathlib import Path
+
+    from daynimal.db.build_db import build_database
+    from daynimal.db.first_launch import download_file, save_db_config
+    from daynimal.db.generate_distribution import generate_distribution
+    from daynimal.db.init_fts import init_fts
+
+    print("Setting up Daynimal database (full, ~1 GB)...\n")
+
+    data_dir = Path("data")
+    data_dir.mkdir(exist_ok=True)
+
+    db_filename = "daynimal.db"
+    db_path = Path(db_filename)
+
+    try:
+        # Step 1: Download and extract TAXREF (unless --no-taxref)
+        taxref_path = None
+        taxref_file = data_dir / "TAXREFv18.txt"
+
+        if not no_taxref:
+            if taxref_file.exists():
+                print(f"TAXREF already present: {taxref_file}")
+                taxref_path = taxref_file
+            else:
+                taxref_url = (
+                    "https://assets.patrinat.fr/files/referentiel/TAXREF_v18_2025.zip"
+                )
+                taxref_zip = data_dir / "TAXREF_v18_2025.zip"
+
+                print("Downloading TAXREF (~100 MB)...")
+
+                def _taxref_progress(downloaded: int, total: int | None):
+                    if total:
+                        pct = downloaded / total
+                        print(
+                            f"\r  Downloading TAXREF... {pct:.0%}", end="", flush=True
+                        )
+
+                download_file(
+                    taxref_url, taxref_zip, progress_callback=_taxref_progress
+                )
+                print()
+
+                # Extract TAXREFv18.txt from ZIP
+                print("  Extracting TAXREFv18.txt...")
+                with zipfile.ZipFile(taxref_zip, "r") as zf:
+                    # Find the file in the archive
+                    taxref_member = None
+                    for name in zf.namelist():
+                        if name.endswith("TAXREFv18.txt"):
+                            taxref_member = name
+                            break
+
+                    if taxref_member is None:
+                        print(
+                            "  WARNING: TAXREFv18.txt not found in archive, skipping TAXREF."
+                        )
+                    else:
+                        # Extract to data/ directory with flat name
+                        with (
+                            zf.open(taxref_member) as src,
+                            open(taxref_file, "wb") as dst,
+                        ):
+                            import shutil
+
+                            shutil.copyfileobj(src, dst)
+                        print(f"  Extracted: {taxref_file}")
+                        taxref_path = taxref_file
+        else:
+            print("TAXREF: skipped (--no-taxref)")
+
+        # Step 2: Generate distribution TSV files (downloads backbone.zip if needed)
+        print("\nGenerating distribution files (this may take a while)...\n")
+        generate_distribution(
+            mode="full",
+            backbone_path=None,
+            taxref_path=taxref_path,
+            output_dir=data_dir,
+        )
+
+        # Step 3: Build database from TSV files
+        taxa_tsv = data_dir / "animalia_taxa.tsv"
+        vernacular_tsv = data_dir / "animalia_vernacular.tsv"
+        print("\nBuilding database...\n")
+        build_database(taxa_tsv, vernacular_tsv, db_filename)
+
+        # Step 4: Initialize FTS5
+        print("\nInitializing search index...\n")
+        init_fts(db_path=db_filename)
+
+        # Step 5: Save config
+        save_db_config(db_path)
+
+        print("\n\nSetup complete! You can now use 'daynimal' commands.")
+
+    except Exception as e:
+        # Cleanup partial DB on failure
+        if db_path.exists():
+            db_path.unlink(missing_ok=True)
         print(f"\n\nSetup failed: {e}")
         raise SystemExit(1)
 
@@ -379,7 +499,20 @@ def create_parser():
     subparsers.add_parser("credits", help="Show full legal credits and licenses")
 
     # setup command
-    subparsers.add_parser("setup", help="Download and set up the minimal database")
+    parser_setup = subparsers.add_parser(
+        "setup", help="Download and set up the database"
+    )
+    parser_setup.add_argument(
+        "--mode",
+        choices=["full", "minimal"],
+        default="full",
+        help="'full' (default): build from GBIF backbone (~1 GB). 'minimal': download pre-built (~117 MB)",
+    )
+    parser_setup.add_argument(
+        "--no-taxref",
+        action="store_true",
+        help="Skip TAXREF French names download (full mode only)",
+    )
 
     # history command
     parser_history = subparsers.add_parser(
@@ -414,7 +547,7 @@ def main():
 
         # Setup command doesn't need an existing DB
         if command == "setup":
-            cmd_setup()
+            cmd_setup(mode=args.mode, no_taxref=args.no_taxref)
             return
 
         # All other commands require a database
