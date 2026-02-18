@@ -6,6 +6,7 @@ from typing import Callable
 
 import flet as ft
 
+from daynimal.config import settings
 from daynimal.ui.components.pagination import PaginationBar
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
@@ -132,6 +133,20 @@ class FavoritesView(BaseView):
                 ]
 
                 for item in favorites_items:
+                    # Pick first vernacular name in preferred language
+                    display_name = None
+                    if item.taxon.vernacular_names:
+                        for lang in settings.wikipedia_languages:
+                            names = item.taxon.vernacular_names.get(lang, [])
+                            if names:
+                                display_name = names[0]
+                                break
+                    if not display_name:
+                        display_name = (
+                            item.taxon.canonical_name
+                            or item.taxon.scientific_name
+                        )
+
                     card = ft.Card(
                         content=ft.Container(
                             content=ft.Column(
@@ -139,8 +154,7 @@ class FavoritesView(BaseView):
                                     ft.Row(
                                         controls=[
                                             ft.Text(
-                                                item.taxon.canonical_name
-                                                or item.taxon.scientific_name,
+                                                display_name,
                                                 size=18,
                                                 weight=ft.FontWeight.BOLD,
                                             )
