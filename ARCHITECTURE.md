@@ -54,6 +54,7 @@
 - `daynimal.ui.components.animal_card` — Reusable animal card component for list views.
 - `daynimal.ui.components.animal_display` — Animal display component for showing detailed animal information.
 - `daynimal.ui.components.image_carousel` — Image carousel component for displaying animal images with navigation.
+- `daynimal.ui.components.image_gallery_dialog` — Image gallery dialog for lazy-loading and browsing all animal images.
 - `daynimal.ui.components.pagination` — Reusable pagination bar component.
 - `daynimal.ui.components.widgets` — Reusable UI widgets for Daynimal app.
 
@@ -239,6 +240,10 @@
 - depends on `daynimal.image_cache`
 - depends on `daynimal.schemas`
 
+### daynimal.ui.components.image_gallery_dialog
+- depends on `daynimal.image_cache`
+- depends on `daynimal.schemas`
+
 ### daynimal.ui.state
 - depends on `daynimal.image_cache`
 - depends on `daynimal.repository`
@@ -292,7 +297,7 @@
 ### daynimal.ui.views.today_view
 - depends on `daynimal.schemas`
 - depends on `daynimal.ui.components.animal_display`
-- depends on `daynimal.ui.components.image_carousel`
+- depends on `daynimal.ui.components.image_gallery_dialog`
 - depends on `daynimal.ui.components.widgets`
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.base`
@@ -302,10 +307,10 @@
 - depends on `daynimal.debug`
 
 ## 4. External Dependencies
-- flet (used 16 times)
+- flet (used 17 times)
 - pathlib (used 15 times)
-- asyncio (used 11 times)
-- typing (used 11 times)
+- asyncio (used 12 times)
+- typing (used 12 times)
 - logging (used 10 times)
 - argparse (used 9 times)
 - datetime (used 9 times)
@@ -325,11 +330,11 @@
 - threading (used 3 times)
 - zipfile (used 3 times)
 - abc (used 2 times)
+- collections (used 2 times)
 - gzip (used 2 times)
 - shutil (used 2 times)
 - __future__ (used 1 times)
 - ast (used 1 times)
-- collections (used 1 times)
 - concurrent (used 1 times)
 - contextlib (used 1 times)
 - enum (used 1 times)
@@ -783,6 +788,12 @@ class ImageCacheService  # Downloads and caches images locally for offline use.
     @staticmethod
     def _url_to_path(url, cache_dir)  # Convert URL to local file path using SHA256 hash.
     # calls: hashlib.sha256, hashlib.sha256.hexdigest
+    def cache_single_image(self, image)  # Download and cache a single image (thumbnail preferred).
+    # calls: self._download_and_store, self.get_cache_size, self.purge_lru
+    def cache_images_with_progress(self, images, on_progress)  # Download and cache images with progress callback.
+    # calls: enumerate, len, on_progress, self._download_and_store, self.get_cache_size, self.purge_lru, time.sleep
+    def are_all_cached(self, images)  # Check if all images are already cached in DB.
+    # calls: ImageCacheModel.url.in_, len, self._session.query, self._session.query.filter
     def cache_images(self, images)  # Download and cache images locally.
     # calls: enumerate, self._download_and_store, self.get_cache_size, self.purge_lru, time.sleep
     def _download_and_store(self, url, is_thumbnail)  # Download a single image and store it in cache.
@@ -946,7 +957,7 @@ class AnimalRepository  # Repository for accessing animal information.
     def _fetch_and_cache_wikipedia(self, taxon_id, scientific_name)  # Fetch Wikipedia and cache it.
     # calls: self._save_cache, self.connectivity.set_offline, self.wikipedia.get_by_taxonomy
     def _fetch_and_cache_images(self, taxon_id, scientific_name, wikidata, taxon)  # Fetch images with cascade: Commons → GBIF Media → PhyloPic (local).
-    # calls: get_phylopic_silhouette, rank_images, self._save_cache, self.commons.get_by_source_id, self.commons.get_by_taxonomy, self.commons.get_images_for_wikidata, self.connectivity.set_offline, self.gbif_media.get_media_for_taxon, self.image_cache.cache_images
+    # calls: get_phylopic_silhouette, rank_images, self._save_cache, self.commons.get_by_source_id, self.commons.get_by_taxonomy, self.commons.get_images_for_wikidata, self.connectivity.set_offline, self.gbif_media.get_media_for_taxon, self.image_cache.cache_single_image
     def _save_cache(self, taxon_id, source, data)  # Save data to enrichment cache.
     # calls: EnrichmentCacheModel, datetime.now, isinstance, json.dumps, self._to_dict, self.session.add, self.session.commit, self.session.query, self.session.query.filter, self.session.rollback
     def _to_dict(self, obj)  # Convert dataclass to dict, handling enums.
@@ -1370,6 +1381,29 @@ class ImageCarousel  # Image carousel with navigation controls.
     # calls: len, self.on_index_change
 ```
 
+### Module: daynimal.ui.components.image_gallery_dialog
+> Image gallery dialog for lazy-loading and browsing all animal images.
+```python
+class ImageGalleryDialog  # Dialog that downloads remaining images with progress, then shows a carousel.
+    def __init__(self, images, image_cache, page, animal_display_name, animal_taxon_id)
+    def open(self)  # Open the gallery dialog.
+    # calls: self._show_carousel_dialog, self._show_download_dialog, self.image_cache.are_all_cached
+    def _show_download_dialog(self)  # Show dialog with progress bar, then switch to carousel when done.
+    # calls: ft.AlertDialog, ft.Button, ft.Column, ft.Container, ft.ProgressBar, ft.Text, len, self.page.pop_dialog, self.page.run_task, self.page.show_dialog
+    async def _download_all(self)  # Download all images in a thread, updating progress bar.
+    # calls: asyncio.to_thread, self._build_carousel_controls, self.page.update
+    def _show_carousel_dialog(self)  # Show dialog directly with carousel (images already cached).
+    # calls: ft.AlertDialog, ft.Button, ft.Column, ft.Container, ft.Text, self._build_carousel_controls, self.page.pop_dialog, self.page.show_dialog
+    def _build_carousel_controls(self)  # Build carousel controls for the current image.
+    # calls: ft.Container, ft.IconButton, ft.Image, ft.Row, ft.Text, len, self.image_cache.get_local_path, str
+    def _on_prev(self, e)  # Navigate to previous image.
+    # calls: len, self._refresh_carousel
+    def _on_next(self, e)  # Navigate to next image.
+    # calls: len, self._refresh_carousel
+    def _refresh_carousel(self)  # Refresh the carousel content in the dialog.
+    # calls: self._build_carousel_controls, self.page.update
+```
+
 ### Module: daynimal.ui.components.pagination
 > Reusable pagination bar component.
 ```python
@@ -1594,11 +1628,11 @@ class TodayView(BaseView)  # View for displaying the animal of the day or random
     async def _load_animal_for_today_view(self, mode)  # Load and display an animal in the Today view.
     # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, print, self._display_animal, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.on_load_complete, self.page.update, str, traceback.format_exc
     def _display_animal(self, animal)  # Display animal information in the Today view.
-    # calls: AnimalDisplay, ImageCarousel, ft.Container, ft.Divider, ft.IconButton, ft.Padding, ft.Row, ft.Text, len, self.app_state.repository.is_favorite, self.page.update
+    # calls: AnimalDisplay, ft.Button, ft.Column, ft.Container, ft.Divider, ft.Icon, ft.IconButton, ft.Image, ft.Padding, ft.Row, ft.Text, len, self._open_gallery, self.app_state.image_cache.get_local_path, self.app_state.repository.is_favorite, self.page.update, str
     def _on_favorite_toggle(self, e)  # Handle favorite button toggle.
     # calls: self._display_animal, self.app_state.repository.is_favorite, self.on_favorite_toggle_callback
-    def _on_image_index_change(self, new_index)  # Handle image index change in carousel.
-    # calls: self._display_animal
+    def _open_gallery(self, images, animal)  # Open the image gallery dialog.
+    # calls: ImageGalleryDialog
     @staticmethod
     def _build_share_text(animal)  # Build formatted share text for an animal.
     # calls: len

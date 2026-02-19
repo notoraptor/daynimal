@@ -4,6 +4,10 @@ Tests for DataSource base class.
 Tests context manager, client lifecycle, and abstract methods.
 """
 
+from unittest.mock import MagicMock
+
+import pytest
+
 from daynimal.sources.wikipedia import WikipediaAPI
 
 
@@ -75,21 +79,45 @@ class TestRequestWithRetry:
 
     def test_post_request(self):
         """Vérifie que _request_with_retry('POST', url, data=...) appelle
-        self.client.post(url, data=...) au lieu de self.client.get.
-        On crée une WikidataAPI avec un mock client et on vérifie
-        que client.post est appelé."""
-        # todo
-        pass
+        self.client.post(url, data=...) au lieu de self.client.get."""
+        from daynimal.sources.wikidata import WikidataAPI
+        api = WikidataAPI()
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_client.post.return_value = mock_response
+        api._client = mock_client
+
+        result = api._request_with_retry("POST", "http://example.com", data={"q": "test"})
+
+        mock_client.post.assert_called_once_with("http://example.com", data={"q": "test"})
+        assert result is mock_response
 
     def test_unsupported_method_raises_value_error(self):
-        """Vérifie que _request_with_retry('DELETE', url) lève
-        ValueError('Unsupported method: DELETE').
+        """Vérifie que _request_with_retry('DELETE', url) lève ValueError.
         Seuls GET et POST sont supportés."""
-        # todo
-        pass
+        from daynimal.sources.wikipedia import WikipediaAPI
+        api = WikipediaAPI()
+        mock_client = MagicMock()
+        api._client = mock_client
+
+        with pytest.raises(ValueError, match="Unsupported HTTP method"):
+            api._request_with_retry("DELETE", "http://example.com")
 
     def test_get_request_passes_kwargs(self):
-        """Vérifie que _request_with_retry('GET', url, params={'q': 'test'})
-        passe les kwargs à self.client.get."""
-        # todo
-        pass
+        """Vérifie que _request_with_retry('GET', url, params=...) passe
+        les kwargs à self.client.get."""
+        from daynimal.sources.wikipedia import WikipediaAPI
+        api = WikipediaAPI()
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_client.get.return_value = mock_response
+        api._client = mock_client
+
+        result = api._request_with_retry("GET", "http://example.com", params={"q": "test"})
+
+        mock_client.get.assert_called_once_with("http://example.com", params={"q": "test"})
+        assert result is mock_response

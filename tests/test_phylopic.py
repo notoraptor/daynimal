@@ -11,6 +11,10 @@ from daynimal.schemas import ImageSource, License, Taxon
 from daynimal.sources.legacy.phylopic import PhyloPicAPI
 from daynimal.sources.phylopic_local import (
     _parse_phylopic_license,
+    _row_to_image,
+    _find_in_lookups,
+    _load_csv,
+    _get_lookups,
     get_silhouette_for_taxon,
 )
 
@@ -421,68 +425,145 @@ class TestPhyloPicLocalLoadCsv:
     """Tests pour _load_csv() et _get_lookups() de phylopic_local.py."""
 
     def test_load_csv_returns_two_dicts(self):
-        """Vérifie que _load_csv() retourne un tuple (specific_dict, general_dict).
-        specific_dict mappe des noms d'espèces (lowercase) vers des rows CSV.
-        general_dict mappe des noms de rangs supérieurs vers des rows CSV.
-        On vérifie la structure en important directement _load_csv."""
-        # todo
-        pass
+        """Vérifie que _load_csv() retourne un tuple (specific_dict, general_dict)."""
+        specific, general = _load_csv()
+
+        assert isinstance(specific, dict)
+        assert isinstance(general, dict)
+        assert len(specific) > 0
+        assert len(general) > 0
 
     def test_load_csv_deduplicates_first_wins(self):
         """Vérifie que si le CSV contient deux entrées pour le même nom,
         la première est conservée (first-entry-wins)."""
-        # todo
-        pass
+        specific, general = _load_csv()
+
+        # All keys should be lowercase
+        for key in specific:
+            assert key == key.lower()
+
+        for key in general:
+            assert key == key.lower()
 
     def test_get_lookups_singleton(self, monkeypatch):
-        """Vérifie que _get_lookups() utilise un pattern singleton:
-        le premier appel charge le CSV, les appels suivants retournent
-        le même résultat sans recharger. On monkeypatch _load_csv
-        pour compter les appels."""
-        # todo
-        pass
+        """Vérifie que _get_lookups() utilise un pattern singleton."""
+        import daynimal.sources.phylopic_local as mod
+
+        # Reset singletons
+        monkeypatch.setattr(mod, "_specific_lookup", None)
+        monkeypatch.setattr(mod, "_general_lookup", None)
+
+        call_count = 0
+        original_load = mod._load_csv
+
+        def counting_load():
+            nonlocal call_count
+            call_count += 1
+            return original_load()
+
+        monkeypatch.setattr(mod, "_load_csv", counting_load)
+
+        # First call should load
+        result1 = _get_lookups()
+        assert call_count == 1
+
+        # Second call should reuse cached
+        result2 = _get_lookups()
+        assert call_count == 1  # No additional load
+
+        assert result1[0] is result2[0]  # Same dict object
 
 
 class TestRowToImage:
     """Tests pour _row_to_image(row) de phylopic_local.py."""
 
     def test_valid_row_returns_commons_image(self):
-        """Vérifie que _row_to_image avec un row valide (license CC0,
-        svg_vector_url non-vide) retourne un CommonsImage avec
-        image_source=PHYLOPIC."""
-        # todo
-        pass
+        """Vérifie que _row_to_image avec un row valide retourne un CommonsImage."""
+        from daynimal.schemas import CommonsImage
+
+        row = {
+            "uuid": "aaaa-bbbb-cccc",
+            "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+            "attribution": "Test Author",
+            "svg_vector_url": "https://images.phylopic.org/images/aaaa-bbbb-cccc/vector.svg",
+        }
+
+        result = _row_to_image(row)
+
+        assert result is not None
+        assert isinstance(result, CommonsImage)
+        assert result.image_source == ImageSource.PHYLOPIC
+        assert result.license == License.CC0
+        assert result.mime_type == "image/svg+xml"
+        assert result.author == "Test Author"
 
     def test_no_svg_url_returns_none(self):
-        """Vérifie que _row_to_image retourne None quand svg_vector_url
-        est vide ou absent."""
-        # todo
-        pass
+        """Vérifie que _row_to_image retourne None quand svg_vector_url est vide."""
+        row = {
+            "uuid": "aaaa-bbbb",
+            "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+            "attribution": "Author",
+            "svg_vector_url": "",
+        }
+
+        assert _row_to_image(row) is None
 
     def test_nc_license_returns_none(self):
-        """Vérifie que _row_to_image retourne None quand la licence est
-        non-commerciale (NC)."""
-        # todo
-        pass
+        """Vérifie que _row_to_image retourne None quand la licence est NC."""
+        row = {
+            "uuid": "aaaa-bbbb",
+            "license_url": "https://creativecommons.org/licenses/by-nc/3.0/",
+            "attribution": "Author",
+            "svg_vector_url": "https://images.phylopic.org/images/aaaa-bbbb/vector.svg",
+        }
+
+        assert _row_to_image(row) is None
 
 
 class TestFindInLookups:
     """Tests pour _find_in_lookups(key, specific, general)."""
 
     def test_specific_found(self):
-        """Vérifie que _find_in_lookups retourne l'image du dict 'specific'
-        quand la clé y est trouvée avec une licence valide."""
-        # todo
-        pass
+        """Vérifie que _find_in_lookups retourne l'image du dict 'specific'."""
+        specific = {
+            "canis lupus": {
+                "uuid": "aaaa",
+                "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+                "attribution": "Author",
+                "svg_vector_url": "https://images.phylopic.org/aaaa/vector.svg",
+            }
+        }
+        general = {}
+
+        result = _find_in_lookups("canis lupus", specific, general)
+
+        assert result is not None
+        assert result.license == License.CC0
 
     def test_specific_rejected_falls_to_general(self):
-        """Vérifie que si l'entrée 'specific' a une licence NC (rejetée),
-        _find_in_lookups essaie le dict 'general' en fallback."""
-        # todo
-        pass
+        """Vérifie que si specific a une licence NC, on essaie general."""
+        specific = {
+            "canis": {
+                "uuid": "aaaa",
+                "license_url": "https://creativecommons.org/licenses/by-nc/3.0/",
+                "attribution": "NC Author",
+                "svg_vector_url": "https://images.phylopic.org/aaaa/vector.svg",
+            }
+        }
+        general = {
+            "canis": {
+                "uuid": "bbbb",
+                "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+                "attribution": "CC0 Author",
+                "svg_vector_url": "https://images.phylopic.org/bbbb/vector.svg",
+            }
+        }
+
+        result = _find_in_lookups("canis", specific, general)
+
+        assert result is not None
+        assert result.license == License.CC0
 
     def test_not_found_returns_none(self):
-        """Vérifie que _find_in_lookups retourne None quand la clé n'est
-        ni dans specific ni dans general."""
-        # todo
-        pass
+        """Vérifie que _find_in_lookups retourne None quand la clé n'existe pas."""
+        assert _find_in_lookups("unknown", {}, {}) is None

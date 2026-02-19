@@ -1067,47 +1067,72 @@ class TestCreateGbifMediaAttribution:
     """Tests pour create_gbif_media_attribution(author, license, url)."""
 
     def test_defaults(self):
-        """Vérifie que create_gbif_media_attribution() sans arguments crée
+        """Vérifie que create_gbif_media_attribution(None, None) crée
         une AttributionInfo avec author='Unknown author', license=CC_BY,
-        source_name='GBIF Media', et une URL par défaut pointant vers gbif.org."""
-        # todo
-        pass
+        source_name='GBIF', et une URL par défaut pointant vers gbif.org."""
+        from daynimal.attribution import create_gbif_media_attribution
+        from daynimal.schemas import License
+        attr = create_gbif_media_attribution(None, None)
+        assert attr.source_name == "GBIF"
+        assert attr.author == "Unknown author"
+        assert attr.license == License.CC_BY
+        assert "gbif.org" in attr.source_url
 
     def test_custom_author_and_license(self):
         """Vérifie que create_gbif_media_attribution(author='John Doe',
-        license='CC BY-SA 4.0', url='https://example.com/img.jpg') crée
+        license=CC_BY_SA, url='https://example.com/img.jpg') crée
         l'attribution avec les valeurs personnalisées."""
-        # todo
-        pass
+        from daynimal.attribution import create_gbif_media_attribution
+        from daynimal.schemas import License
+        attr = create_gbif_media_attribution(
+            "John Doe", License.CC_BY_SA, "https://example.com/img.jpg"
+        )
+        assert attr.author == "John Doe"
+        assert attr.license == License.CC_BY_SA
+        assert attr.source_url == "https://example.com/img.jpg"
 
     def test_access_date_set(self):
         """Vérifie que l'access_date est défini à la date du jour."""
-        # todo
-        pass
+        from daynimal.attribution import create_gbif_media_attribution
+        attr = create_gbif_media_attribution(None, None)
+        assert attr.access_date is not None
 
     def test_source_url_set(self):
         """Vérifie que source_url pointe vers l'URL de l'image fournie."""
-        # todo
-        pass
+        from daynimal.attribution import create_gbif_media_attribution
+        attr = create_gbif_media_attribution(None, None, "https://example.com/img.jpg")
+        assert attr.source_url == "https://example.com/img.jpg"
 
 
 class TestCreatePhyloPicAttribution:
     """Tests pour create_phylopic_attribution(author, license, url)."""
 
     def test_defaults(self):
-        """Vérifie que create_phylopic_attribution() sans arguments crée
+        """Vérifie que create_phylopic_attribution(None, None) crée
         une AttributionInfo avec license=CC0, source_name='PhyloPic',
         et une URL par défaut pointant vers phylopic.org."""
-        # todo
-        pass
+        from daynimal.attribution import create_phylopic_attribution
+        from daynimal.schemas import License
+        attr = create_phylopic_attribution(None, None)
+        assert attr.source_name == "PhyloPic"
+        assert attr.author == "Unknown author"
+        assert attr.license == License.CC0
+        assert "phylopic" in attr.source_url
 
     def test_custom_values(self):
-        """Vérifie que create_phylopic_attribution(author='Jane', license='CC BY',
+        """Vérifie que create_phylopic_attribution(author='Jane', license=CC_BY,
         url='https://phylopic.org/images/abc') utilise les valeurs fournies."""
-        # todo
-        pass
+        from daynimal.attribution import create_phylopic_attribution
+        from daynimal.schemas import License
+        attr = create_phylopic_attribution(
+            "Jane", License.CC_BY, "https://phylopic.org/images/abc"
+        )
+        assert attr.author == "Jane"
+        assert attr.license == License.CC_BY
+        assert attr.source_url == "https://phylopic.org/images/abc"
 
     def test_access_date_set(self):
         """Vérifie que l'access_date est défini à la date du jour."""
-        # todo
-        pass
+        from daynimal.attribution import create_phylopic_attribution
+        attr = create_phylopic_attribution(None, None)
+        assert attr.access_date is not None

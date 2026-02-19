@@ -905,60 +905,167 @@ def test_get_stats_no_species(populated_session):
 class TestFetchAndCacheImagesExtended:
     """Tests supplémentaires pour _fetch_and_cache_images."""
 
-    def test_commons_category_fallback(self, populated_session, sync_executor, mock_phylopic_local):
-        """Vérifie que si commons.get_images_for_wikidata retourne une liste vide
-        ET commons.get_by_taxonomy retourne des images, ces images sont utilisées.
-        C'est le fallback category search quand la recherche par QID échoue.
-        Mock: get_images_for_wikidata retourne [], get_by_taxonomy retourne [image]."""
-        # todo
-        pass
+    def _make_image(self, filename="Test.jpg"):
+        """Helper to create a CommonsImage."""
+        return CommonsImage(
+            filename=filename,
+            url=f"https://example.com/{filename}",
+            thumbnail_url=f"https://example.com/thumb/{filename}",
+            author="Test Author",
+            license=License.CC_BY,
+        )
 
-    def test_gbif_media_fallback(self, populated_session, sync_executor, mock_phylopic_local):
-        """Vérifie que si Commons ne retourne aucune image (les deux méthodes),
-        _fetch_and_cache_images essaie gbif_media.get_media_for_taxon comme fallback.
-        Mock: commons retourne [], gbif_media retourne [image]."""
-        # todo
-        pass
+    def _make_wikidata(self, qid="Q144", image_filename=None):
+        """Helper to create a WikidataEntity."""
+        return WikidataEntity(
+            qid=qid,
+            labels={"en": "Test"},
+            descriptions={},
+            image_filename=image_filename,
+        )
 
-    def test_phylopic_fallback(self, populated_session, sync_executor, mock_phylopic_local):
-        """Vérifie que si ni Commons ni GBIF Media ne retournent d'images,
-        get_phylopic_silhouette est appelé comme dernier recours.
-        Mock: commons retourne [], gbif_media retourne [], phylopic retourne image."""
-        # todo
-        pass
+    @patch("daynimal.sources.commons.rank_images", side_effect=lambda imgs, **kw: imgs)
+    def test_commons_category_fallback(self, mock_rank, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie le fallback: QID → vide, category search → images."""
+        repo = AnimalRepository(session=populated_session)
+        wikidata = self._make_wikidata()
+        image = self._make_image()
 
-    def test_p18_image_inserted_first(self, populated_session, sync_executor, mock_phylopic_local):
-        """Vérifie que quand wikidata a un p18_image (image principale),
-        cette image est récupérée via commons.get_by_source_id et insérée
-        en première position de la liste d'images. Les images de la catégorie
-        sont ajoutées après."""
-        # todo
-        pass
+        repo.commons.get_images_for_wikidata = MagicMock(return_value=[])
+        repo.commons.get_by_taxonomy = MagicMock(return_value=[image])
+        repo.image_cache = MagicMock()
 
-    def test_images_ranked_after_fetch(self, populated_session, sync_executor, mock_phylopic_local):
-        """Vérifie que rank_images() est appelé sur les images récupérées
-        pour les trier par qualité (featured > quality > valued > none,
-        BITMAP > DRAWING)."""
-        # todo
-        pass
+        result = repo._fetch_and_cache_images(1, "Test species", wikidata)
 
-    def test_first_image_cached_locally(self, populated_session, sync_executor, mock_phylopic_local):
-        """Vérifie que image_cache.cache_single_image est appelé avec
-        la première image de la liste pour la mettre en cache local
-        (chargement paresseux — seule la première image est téléchargée)."""
-        # todo
-        pass
+        assert len(result) == 1
+        assert result[0].filename == "Test.jpg"
+        repo.commons.get_by_taxonomy.assert_called_once()
+
+    @patch("daynimal.sources.commons.rank_images", side_effect=lambda imgs, **kw: imgs)
+    def test_gbif_media_fallback(self, mock_rank, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie le fallback: Commons vide → GBIF Media."""
+        repo = AnimalRepository(session=populated_session)
+        wikidata = self._make_wikidata()
+        image = self._make_image("gbif.jpg")
+
+        repo.commons.get_images_for_wikidata = MagicMock(return_value=[])
+        repo.commons.get_by_taxonomy = MagicMock(return_value=[])
+        repo.commons.get_by_source_id = MagicMock(return_value=None)
+        repo.gbif_media.get_media_for_taxon = MagicMock(return_value=[image])
+        repo.image_cache = MagicMock()
+
+        result = repo._fetch_and_cache_images(1, "Test species", wikidata)
+
+        assert len(result) == 1
+        assert result[0].filename == "gbif.jpg"
+        repo.gbif_media.get_media_for_taxon.assert_called_once()
+
+    @patch("daynimal.repository.get_phylopic_silhouette")
+    def test_phylopic_fallback(self, mock_phylopic, populated_session, sync_executor):
+        """Vérifie le fallback: Commons + GBIF vides → PhyloPic local."""
+        from daynimal.schemas import Taxon, ImageSource
+
+        repo = AnimalRepository(session=populated_session)
+        wikidata = self._make_wikidata()
+        taxon = Taxon(taxon_id=1, scientific_name="Test", canonical_name="Test", rank="species")
+
+        silhouette = CommonsImage(
+            filename="phylopic.svg", url="https://phylopic.org/test.svg",
+            license=License.CC0, image_source=ImageSource.PHYLOPIC,
+            mime_type="image/svg+xml",
+        )
+        mock_phylopic.return_value = silhouette
+
+        repo.commons.get_images_for_wikidata = MagicMock(return_value=[])
+        repo.commons.get_by_taxonomy = MagicMock(return_value=[])
+        repo.commons.get_by_source_id = MagicMock(return_value=None)
+        repo.gbif_media.get_media_for_taxon = MagicMock(return_value=[])
+        repo.image_cache = MagicMock()
+
+        result = repo._fetch_and_cache_images(1, "Test species", wikidata, taxon=taxon)
+
+        assert len(result) == 1
+        assert result[0].image_source == ImageSource.PHYLOPIC
+
+    @patch("daynimal.sources.commons.rank_images", side_effect=lambda imgs, **kw: imgs)
+    def test_p18_image_inserted_first(self, mock_rank, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie que quand wikidata a un p18_image, elle est ajoutée."""
+        repo = AnimalRepository(session=populated_session)
+        p18_img = self._make_image("P18_main.jpg")
+        cat_img = self._make_image("Category.jpg")
+        wikidata = self._make_wikidata(image_filename="P18_main.jpg")
+
+        repo.commons.get_by_source_id = MagicMock(return_value=p18_img)
+        repo.commons.get_images_for_wikidata = MagicMock(return_value=[cat_img])
+        repo.image_cache = MagicMock()
+
+        result = repo._fetch_and_cache_images(1, "Test species", wikidata)
+
+        # P18 image should be in the list (rank_images handles ordering)
+        filenames = [img.filename for img in result]
+        assert "P18_main.jpg" in filenames
+        assert "Category.jpg" in filenames
+
+    @patch("daynimal.sources.commons.rank_images")
+    def test_images_ranked_after_fetch(self, mock_rank, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie que rank_images() est appelé sur les images récupérées."""
+        repo = AnimalRepository(session=populated_session)
+        image = self._make_image()
+        wikidata = self._make_wikidata()
+
+        mock_rank.return_value = [image]
+        repo.commons.get_images_for_wikidata = MagicMock(return_value=[image])
+        repo.commons.get_by_source_id = MagicMock(return_value=None)
+        repo.image_cache = MagicMock()
+
+        repo._fetch_and_cache_images(1, "Test species", wikidata)
+
+        mock_rank.assert_called_once()
+
+    @patch("daynimal.sources.commons.rank_images", side_effect=lambda imgs, **kw: imgs)
+    def test_first_image_cached_locally(self, mock_rank, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie que image_cache.cache_single_image est appelé avec la première image."""
+        repo = AnimalRepository(session=populated_session)
+        image = self._make_image()
+        wikidata = self._make_wikidata()
+
+        repo.commons.get_images_for_wikidata = MagicMock(return_value=[image])
+        repo.commons.get_by_source_id = MagicMock(return_value=None)
+        repo.image_cache = MagicMock()
+
+        repo._fetch_and_cache_images(1, "Test species", wikidata)
+
+        repo.image_cache.cache_single_image.assert_called_once_with(image)
 
     def test_httpx_request_error_sets_offline(self, populated_session, sync_executor, mock_phylopic_local):
-        """Vérifie que si une httpx.RequestError est levée pendant la
-        récupération des images, connectivity.set_offline() est appelé
-        et la méthode retourne gracieusement sans images."""
-        # todo
-        pass
+        """Vérifie que httpx.RequestError appelle connectivity.set_offline()."""
+        import httpx
 
-    def test_no_wikidata_skips_qid_search(self, populated_session, sync_executor, mock_phylopic_local):
-        """Vérifie que quand wikidata est None, get_images_for_wikidata
-        n'est PAS appelé (pas de QID disponible). La recherche passe
-        directement à get_by_taxonomy."""
-        # todo
-        pass
+        repo = AnimalRepository(session=populated_session)
+        wikidata = self._make_wikidata()
+
+        repo.commons.get_images_for_wikidata = MagicMock(
+            side_effect=httpx.RequestError("connection failed")
+        )
+        repo.commons.get_by_source_id = MagicMock(return_value=None)
+        repo.connectivity = MagicMock()
+
+        result = repo._fetch_and_cache_images(1, "Test species", wikidata)
+
+        assert result == []
+        repo.connectivity.set_offline.assert_called_once()
+
+    @patch("daynimal.sources.commons.rank_images", side_effect=lambda imgs, **kw: imgs)
+    def test_no_wikidata_skips_qid_search(self, mock_rank, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie que quand wikidata est None, get_images_for_wikidata n'est PAS appelé."""
+        repo = AnimalRepository(session=populated_session)
+        image = self._make_image()
+
+        repo.commons.get_images_for_wikidata = MagicMock()
+        repo.commons.get_by_taxonomy = MagicMock(return_value=[image])
+        repo.image_cache = MagicMock()
+
+        result = repo._fetch_and_cache_images(1, "Test species", None)
+
+        repo.commons.get_images_for_wikidata.assert_not_called()
+        repo.commons.get_by_taxonomy.assert_called_once()

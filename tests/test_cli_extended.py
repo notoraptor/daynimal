@@ -18,7 +18,16 @@ from daynimal.schemas import (
     ConservationStatus,
     License,
 )
-from daynimal.main import cmd_today, cmd_random, cmd_history, print_animal
+from daynimal.main import (
+    cmd_today,
+    cmd_random,
+    cmd_history,
+    cmd_setup,
+    cmd_clear_cache,
+    temporary_database,
+    main,
+    print_animal,
+)
 
 
 def capture_stdout(func, *args, **kwargs):
@@ -279,51 +288,61 @@ class TestCmdSetup:
 
     @patch("daynimal.main.resolve_database", return_value="/some/path.db")
     def test_setup_db_already_exists(self, mock_resolve, capsys):
-        """Vérifie que cmd_setup ne fait rien quand la DB existe déjà.
-        resolve_database retourne un chemin → affiche 'Base de données déjà
-        installée' et retourne sans télécharger."""
-        # todo
-        pass
+        """Vérifie que cmd_setup ne fait rien quand la DB existe déjà."""
+        cmd_setup()
+
+        captured = capsys.readouterr()
+        assert "already exists" in captured.out
 
     @patch("daynimal.main.resolve_database", return_value=None)
     @patch("daynimal.main.download_and_setup_db")
     def test_setup_minimal_mode(self, mock_download, mock_resolve, capsys):
-        """Vérifie que cmd_setup(mode='minimal', no_taxref=False) appelle
-        _setup_minimal() qui appelle download_and_setup_db().
-        Vérifie le message de succès affiché."""
-        # todo
-        pass
+        """Vérifie que cmd_setup(mode='minimal') appelle download_and_setup_db."""
+        cmd_setup(mode="minimal")
+
+        mock_download.assert_called_once()
+        captured = capsys.readouterr()
+        assert "complete" in captured.out.lower() or "Setup" in captured.out
 
     @patch("daynimal.main.resolve_database", return_value=None)
     @patch("daynimal.main.download_and_setup_db", side_effect=Exception("Network error"))
-    def test_setup_minimal_failure(self, mock_download, mock_resolve, capsys):
-        """Vérifie que si download_and_setup_db échoue, _setup_minimal
-        affiche l'erreur et lève SystemExit(1)."""
-        # todo
-        pass
+    def test_setup_minimal_failure(self, mock_download, mock_resolve):
+        """Vérifie que si download_and_setup_db échoue, SystemExit(1) est levé."""
+        import pytest
+
+        with pytest.raises(SystemExit) as exc_info:
+            cmd_setup(mode="minimal")
+
+        assert exc_info.value.code == 1
 
     @patch("daynimal.main.resolve_database", return_value=None)
-    @patch("daynimal.main.generate_distribution")
-    @patch("daynimal.main.build_database")
-    @patch("daynimal.main.init_fts")
-    @patch("daynimal.main.save_db_config")
-    def test_setup_full_mode(self, mock_save, mock_fts, mock_build, mock_gen, mock_resolve, capsys):
-        """Vérifie que cmd_setup(mode='full', no_taxref=False) appelle
-        generate_distribution puis build_database puis init_fts.
-        Vérifie que --taxref est passé à generate_distribution."""
-        # todo
-        pass
+    @patch("daynimal.db.init_fts.init_fts")
+    @patch("daynimal.db.build_db.build_database")
+    @patch("daynimal.db.generate_distribution.generate_distribution")
+    @patch("daynimal.db.first_launch.save_db_config")
+    @patch("daynimal.db.first_launch.download_file")
+    def test_setup_full_mode(self, mock_dl, mock_save, mock_gen, mock_build, mock_fts, mock_resolve, capsys):
+        """Vérifie que cmd_setup(mode='full') appelle generate_distribution, build_database, init_fts."""
+        cmd_setup(mode="full", no_taxref=True)
+
+        mock_gen.assert_called_once()
+        mock_build.assert_called_once()
+        mock_fts.assert_called_once()
 
     @patch("daynimal.main.resolve_database", return_value=None)
-    @patch("daynimal.main.generate_distribution")
-    @patch("daynimal.main.build_database")
-    @patch("daynimal.main.init_fts")
-    @patch("daynimal.main.save_db_config")
-    def test_setup_full_no_taxref(self, mock_save, mock_fts, mock_build, mock_gen, mock_resolve, capsys):
-        """Vérifie que cmd_setup(mode='full', no_taxref=True) appelle
-        generate_distribution sans le chemin TAXREF (taxref_path=None)."""
-        # todo
-        pass
+    @patch("daynimal.db.init_fts.init_fts")
+    @patch("daynimal.db.build_db.build_database")
+    @patch("daynimal.db.generate_distribution.generate_distribution")
+    @patch("daynimal.db.first_launch.save_db_config")
+    @patch("daynimal.db.first_launch.download_file")
+    def test_setup_full_no_taxref(self, mock_dl, mock_save, mock_gen, mock_build, mock_fts, mock_resolve, capsys):
+        """Vérifie que cmd_setup(mode='full', no_taxref=True) passe taxref_path=None."""
+        cmd_setup(mode="full", no_taxref=True)
+
+        mock_gen.assert_called_once()
+        call_kwargs = mock_gen.call_args
+        # taxref_path should be None when no_taxref=True
+        assert call_kwargs[1].get("taxref_path") is None or call_kwargs[0][2] is None
 
 
 # =============================================================================
@@ -336,18 +355,37 @@ class TestCmdClearCache:
 
     @patch("daynimal.main.AnimalRepository")
     def test_clear_cache_non_empty(self, mock_repo_class, capsys):
-        """Vérifie que cmd_clear_cache réinitialise le flag is_enriched
-        sur tous les taxa enrichis et affiche le nombre de taxa nettoyés.
-        Mock: session.query retourne 10 taxa enrichis."""
-        # todo
-        pass
+        """Vérifie que cmd_clear_cache supprime le cache et affiche le nombre."""
+        repo = Mock()
+        # Mock session.query().count() to return 10
+        mock_query = Mock()
+        mock_query.count.return_value = 10
+        mock_query.delete.return_value = 10
+        mock_query.filter.return_value = mock_query
+        mock_query.update.return_value = 10
+        repo.session.query.return_value = mock_query
+        mock_repo_class.return_value.__enter__.return_value = repo
+
+        cmd_clear_cache()
+
+        captured = capsys.readouterr()
+        assert "10" in captured.out
+        assert "Cleared" in captured.out
+        repo.session.commit.assert_called_once()
 
     @patch("daynimal.main.AnimalRepository")
     def test_clear_cache_empty(self, mock_repo_class, capsys):
-        """Vérifie que cmd_clear_cache affiche un message approprié
-        quand aucun taxon n'est enrichi (cache déjà vide)."""
-        # todo
-        pass
+        """Vérifie que cmd_clear_cache affiche un message quand le cache est vide."""
+        repo = Mock()
+        mock_query = Mock()
+        mock_query.count.return_value = 0
+        repo.session.query.return_value = mock_query
+        mock_repo_class.return_value.__enter__.return_value = repo
+
+        cmd_clear_cache()
+
+        captured = capsys.readouterr()
+        assert "already empty" in captured.out
 
 
 # =============================================================================
@@ -359,24 +397,41 @@ class TestTemporaryDatabase:
     """Tests pour temporary_database(database_url) context manager."""
 
     def test_none_url_no_change(self):
-        """Vérifie que temporary_database(None) ne modifie pas
-        settings.database_url. On capture la valeur avant et après,
-        elles doivent être identiques."""
-        # todo
-        pass
+        """Vérifie que temporary_database(None) ne modifie pas settings.database_url."""
+        from daynimal.config import settings
+
+        original = settings.database_url
+
+        with temporary_database(None):
+            assert settings.database_url == original
+
+        assert settings.database_url == original
 
     def test_custom_url_sets_and_restores(self):
-        """Vérifie que temporary_database('sqlite:///custom.db')
-        modifie settings.database_url pendant le bloc with,
-        puis restaure la valeur originale après le bloc."""
-        # todo
-        pass
+        """Vérifie que temporary_database('sqlite:///custom.db') modifie puis restaure."""
+        from daynimal.config import settings
+
+        original = settings.database_url
+
+        with temporary_database("sqlite:///custom.db"):
+            assert settings.database_url == "sqlite:///custom.db"
+
+        assert settings.database_url == original
 
     def test_restores_on_exception(self):
-        """Vérifie que même si une exception est levée dans le bloc with,
-        settings.database_url est restauré à sa valeur originale."""
-        # todo
-        pass
+        """Vérifie que settings.database_url est restauré même après exception."""
+        from daynimal.config import settings
+
+        original = settings.database_url
+
+        try:
+            with temporary_database("sqlite:///custom.db"):
+                assert settings.database_url == "sqlite:///custom.db"
+                raise ValueError("test error")
+        except ValueError:
+            pass
+
+        assert settings.database_url == original
 
 
 # =============================================================================
@@ -392,21 +447,23 @@ class TestMainRouting:
     @patch("daynimal.main.cmd_today")
     def test_default_command_is_today(self, mock_today, mock_resolve):
         """Vérifie que sans sous-commande, main() appelle cmd_today()."""
-        # todo
-        pass
+        main()
+        mock_today.assert_called_once()
 
     @patch("sys.argv", ["daynimal", "setup", "--mode", "minimal"])
     @patch("daynimal.main.cmd_setup")
     def test_setup_does_not_require_db(self, mock_setup):
-        """Vérifie que 'daynimal setup' n'appelle pas resolve_database
-        et fonctionne même sans DB."""
-        # todo
-        pass
+        """Vérifie que 'daynimal setup' fonctionne même sans DB."""
+        main()
+        mock_setup.assert_called_once_with(mode="minimal", no_taxref=False)
 
     @patch("sys.argv", ["daynimal", "today"])
     @patch("daynimal.main.resolve_database", return_value=None)
     def test_missing_db_raises_system_exit(self, mock_resolve):
-        """Vérifie que si resolve_database retourne None pour une commande
-        autre que setup, main() lève SystemExit avec un message d'erreur."""
-        # todo
-        pass
+        """Vérifie que si resolve_database retourne None, SystemExit est levé."""
+        import pytest
+
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+
+        assert exc_info.value.code == 1

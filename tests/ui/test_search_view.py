@@ -134,49 +134,49 @@ async def test_perform_search_with_error():
     assert any("DB error" in t.value for t in texts)
 
 
-def test_on_submit_triggers_search():
+@patch("daynimal.ui.views.search_view.asyncio.create_task")
+def test_on_submit_triggers_search(mock_task):
     """Test _on_submit creates a task for perform_search."""
     view, _, app_state, _ = _make_search_view()
     view.build()
     view.search_field.value = "lion"
 
-    with patch("daynimal.ui.views.search_view.asyncio.create_task") as mock_task:
-        view._on_submit(MagicMock())
-        mock_task.assert_called_once()
-        # Close the coroutine to avoid RuntimeWarning
-        mock_task.call_args[0][0].close()
+    view._on_submit(MagicMock())
+    mock_task.assert_called_once()
+    # Close the coroutine to avoid RuntimeWarning
+    mock_task.call_args[0][0].close()
 
 
-def test_on_submit_ignores_empty_query():
+@patch("daynimal.ui.views.search_view.asyncio.create_task")
+def test_on_submit_ignores_empty_query(mock_task):
     """Test _on_submit does nothing when query is empty."""
     view, _, _, _ = _make_search_view()
     view.build()
     view.search_field.value = "   "
 
-    with patch("daynimal.ui.views.search_view.asyncio.create_task") as mock_task:
-        view._on_submit(MagicMock())
-        mock_task.assert_not_called()
+    view._on_submit(MagicMock())
+    mock_task.assert_not_called()
 
 
-def test_on_search_click_triggers_search():
+@patch("daynimal.ui.views.search_view.asyncio.create_task")
+def test_on_search_click_triggers_search(mock_task):
     """Test _on_search_click creates a task for perform_search."""
     view, _, app_state, _ = _make_search_view()
     view.build()
     view.search_field.value = "tiger"
 
-    with patch("daynimal.ui.views.search_view.asyncio.create_task") as mock_task:
-        view._on_search_click(MagicMock())
-        mock_task.assert_called_once()
-        # Close the coroutine to avoid RuntimeWarning
-        mock_task.call_args[0][0].close()
+    view._on_search_click(MagicMock())
+    mock_task.assert_called_once()
+    # Close the coroutine to avoid RuntimeWarning
+    mock_task.call_args[0][0].close()
 
 
-def test_on_search_click_ignores_empty_query():
+@patch("daynimal.ui.views.search_view.asyncio.create_task")
+def test_on_search_click_ignores_empty_query(mock_task):
     """Test _on_search_click does nothing when query is empty."""
     view, _, _, _ = _make_search_view()
     view.build()
     view.search_field.value = ""
 
-    with patch("daynimal.ui.views.search_view.asyncio.create_task") as mock_task:
-        view._on_search_click(MagicMock())
-        mock_task.assert_not_called()
+    view._on_search_click(MagicMock())
+    mock_task.assert_not_called()

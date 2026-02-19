@@ -67,17 +67,18 @@ def test_is_db_valid_ok(tmp_cwd):
 # --- resolve_database ---
 
 
-def test_resolve_database_default(tmp_cwd):
+@patch("daynimal.db.first_launch.settings")
+def test_resolve_database_default(mock_settings, tmp_cwd):
     """Default DB exists -> returns it."""
     db = tmp_cwd / "daynimal.db"
     _create_valid_db(db)
-    with patch("daynimal.db.first_launch.settings") as mock_settings:
-        mock_settings.database_url = f"sqlite:///{db}"
-        result = resolve_database()
+    mock_settings.database_url = f"sqlite:///{db}"
+    result = resolve_database()
     assert result == db
 
 
-def test_resolve_database_via_config(tmp_cwd):
+@patch("daynimal.db.first_launch.settings")
+def test_resolve_database_via_config(mock_settings, tmp_cwd):
     """Default DB missing, .daynimal_config points to minimal DB."""
     minimal_db = tmp_cwd / "daynimal_minimal.db"
     _create_valid_db(minimal_db)
@@ -85,28 +86,27 @@ def test_resolve_database_via_config(tmp_cwd):
     config_path.write_text(
         json.dumps({"database_path": str(minimal_db)}), encoding="utf-8"
     )
-    with patch("daynimal.db.first_launch.settings") as mock_settings:
-        mock_settings.database_url = f"sqlite:///{tmp_cwd / 'daynimal.db'}"
-        result = resolve_database()
+    mock_settings.database_url = f"sqlite:///{tmp_cwd / 'daynimal.db'}"
+    result = resolve_database()
     assert result == minimal_db
 
 
-def test_resolve_database_none(tmp_cwd):
+@patch("daynimal.db.first_launch.settings")
+def test_resolve_database_none(mock_settings, tmp_cwd):
     """No DB and no config -> returns None."""
-    with patch("daynimal.db.first_launch.settings") as mock_settings:
-        mock_settings.database_url = f"sqlite:///{tmp_cwd / 'daynimal.db'}"
-        result = resolve_database()
+    mock_settings.database_url = f"sqlite:///{tmp_cwd / 'daynimal.db'}"
+    result = resolve_database()
     assert result is None
 
 
 # --- save_db_config ---
 
 
-def test_save_db_config(tmp_cwd):
+@patch("daynimal.db.first_launch.settings")
+def test_save_db_config(mock_settings, tmp_cwd):
     db = tmp_cwd / "daynimal_minimal.db"
-    with patch("daynimal.db.first_launch.settings") as mock_settings:
-        mock_settings.database_url = f"sqlite:///{tmp_cwd / 'daynimal.db'}"
-        save_db_config(db)
+    mock_settings.database_url = f"sqlite:///{tmp_cwd / 'daynimal.db'}"
+    save_db_config(db)
     config_path = tmp_cwd / DB_CONFIG_FILENAME
     assert config_path.exists()
     data = json.loads(config_path.read_text(encoding="utf-8"))
@@ -133,7 +133,23 @@ def test_verify_checksum_invalid(tmp_cwd):
 # --- download_and_setup_db ---
 
 
-def test_download_and_setup_db(tmp_cwd):
+@patch("daynimal.db.init_fts.init_fts")
+@patch("daynimal.db.build_db.build_database")
+@patch("daynimal.db.first_launch.shutil")
+@patch("daynimal.db.first_launch.gzip")
+@patch("daynimal.db.first_launch.settings")
+@patch("daynimal.db.first_launch.verify_checksum", return_value=True)
+@patch("daynimal.db.first_launch.download_file")
+def test_download_and_setup_db(
+    mock_download,
+    mock_checksum,
+    mock_settings,
+    mock_gzip,
+    mock_shutil,
+    mock_build,
+    mock_fts,
+    tmp_cwd,
+):
     """Mock httpx and build functions to test the full pipeline."""
     manifest = {
         "files": [
@@ -142,55 +158,43 @@ def test_download_and_setup_db(tmp_cwd):
         ]
     }
 
-    with (
-        patch("daynimal.db.first_launch.download_file") as mock_download,
-        patch("daynimal.db.first_launch.verify_checksum", return_value=True),
-        patch("daynimal.db.first_launch.settings") as mock_settings,
-        patch("daynimal.db.first_launch.gzip") as mock_gzip,
-        patch("daynimal.db.first_launch.shutil"),
-        patch("daynimal.db.build_db.build_database") as mock_build,
-        patch("daynimal.db.init_fts.init_fts") as mock_fts,
-    ):
-        mock_settings.distribution_base_url = "https://example.com"
-        mock_settings.database_url = f"sqlite:///{tmp_cwd / 'daynimal.db'}"
+    mock_settings.distribution_base_url = "https://example.com"
+    mock_settings.database_url = f"sqlite:///{tmp_cwd / 'daynimal.db'}"
 
-        # Make manifest download write the file
-        def fake_download(url, dest, progress_callback=None):
-            if "manifest.json" in url:
-                dest.write_text(json.dumps(manifest), encoding="utf-8")
-            else:
-                dest.write_bytes(b"fake")
-            return dest
+    # Make manifest download write the file
+    def fake_download(url, dest, progress_callback=None):
+        if "manifest.json" in url:
+            dest.write_text(json.dumps(manifest), encoding="utf-8")
+        else:
+            dest.write_bytes(b"fake")
+        return dest
 
-        mock_download.side_effect = fake_download
-        mock_gzip.open.return_value.__enter__ = MagicMock()
-        mock_gzip.open.return_value.__exit__ = MagicMock(return_value=False)
+    mock_download.side_effect = fake_download
+    mock_gzip.open.return_value.__enter__ = MagicMock()
+    mock_gzip.open.return_value.__exit__ = MagicMock(return_value=False)
 
-        callback = MagicMock()
-        download_and_setup_db(progress_callback=callback)
+    callback = MagicMock()
+    download_and_setup_db(progress_callback=callback)
 
-        mock_build.assert_called_once()
-        mock_fts.assert_called_once()
-        # Callback was called for multiple stages
-        assert callback.call_count > 0
+    mock_build.assert_called_once()
+    mock_fts.assert_called_once()
+    # Callback was called for multiple stages
+    assert callback.call_count > 0
 
 
-def test_download_failure_cleanup(tmp_cwd):
+@patch("daynimal.db.first_launch.settings")
+@patch(
+    "daynimal.db.first_launch.download_file", side_effect=RuntimeError("Network error")
+)
+def test_download_failure_cleanup(mock_download, mock_settings, tmp_cwd):
     """On failure, partial DB should be deleted."""
     db_path = tmp_cwd / "daynimal_minimal.db"
 
-    with (
-        patch(
-            "daynimal.db.first_launch.download_file",
-            side_effect=RuntimeError("Network error"),
-        ),
-        patch("daynimal.db.first_launch.settings") as mock_settings,
-    ):
-        mock_settings.distribution_base_url = "https://example.com"
-        mock_settings.database_url = f"sqlite:///{tmp_cwd / 'daynimal.db'}"
+    mock_settings.distribution_base_url = "https://example.com"
+    mock_settings.database_url = f"sqlite:///{tmp_cwd / 'daynimal.db'}"
 
-        with pytest.raises(RuntimeError, match="Network error"):
-            download_and_setup_db()
+    with pytest.raises(RuntimeError, match="Network error"):
+        download_and_setup_db()
 
     assert not db_path.exists()
 
@@ -198,16 +202,14 @@ def test_download_failure_cleanup(tmp_cwd):
 # --- CLI setup ---
 
 
-def test_cli_setup():
+@patch("daynimal.main.cmd_setup")
+@patch("sys.argv", ["daynimal", "setup"])
+def test_cli_setup(mock_setup):
     """Test that 'daynimal setup' calls cmd_setup."""
-    with (
-        patch("sys.argv", ["daynimal", "setup"]),
-        patch("daynimal.main.cmd_setup") as mock_setup,
-    ):
-        from daynimal.main import main
+    from daynimal.main import main
 
-        main()
-        mock_setup.assert_called_once()
+    main()
+    mock_setup.assert_called_once()
 
 
 # =============================================================================
@@ -224,42 +226,84 @@ class TestDownloadFile:
         à chaque chunk reçu. On simule un stream avec 3 chunks de 100 bytes
         et Content-Length: 300. Le callback doit être appelé 3 fois avec
         des valeurs croissantes."""
-        # todo
-        pass
+        from daynimal.db.first_launch import download_file
+
+        mock_response = MagicMock()
+        mock_response.headers = {"content-length": "300"}
+        mock_response.raise_for_status = MagicMock()
+        mock_response.iter_bytes.return_value = [b"a" * 100, b"b" * 100, b"c" * 100]
+        mock_stream.return_value.__enter__ = MagicMock(return_value=mock_response)
+        mock_stream.return_value.__exit__ = MagicMock(return_value=False)
+
+        dest = tmp_path / "downloaded.bin"
+        callback = MagicMock()
+        download_file("https://example.com/file.gz", dest, progress_callback=callback)
+
+        assert dest.exists()
+        assert dest.stat().st_size == 300
+        assert callback.call_count == 3
+        calls = callback.call_args_list
+        assert calls[0].args == (100, 300)
+        assert calls[1].args == (200, 300)
+        assert calls[2].args == (300, 300)
 
     @patch("daynimal.db.first_launch.httpx.stream")
     def test_download_without_content_length(self, mock_stream, tmp_path):
         """Vérifie que download_file fonctionne quand le serveur ne fournit
-        pas Content-Length. Le callback reçoit total=0 dans ce cas."""
-        # todo
-        pass
+        pas Content-Length. Le callback reçoit total=None dans ce cas."""
+        from daynimal.db.first_launch import download_file
+
+        mock_response = MagicMock()
+        mock_response.headers = {}
+        mock_response.raise_for_status = MagicMock()
+        mock_response.iter_bytes.return_value = [b"x" * 50, b"y" * 50]
+        mock_stream.return_value.__enter__ = MagicMock(return_value=mock_response)
+        mock_stream.return_value.__exit__ = MagicMock(return_value=False)
+
+        dest = tmp_path / "downloaded.bin"
+        callback = MagicMock()
+        download_file("https://example.com/file.gz", dest, progress_callback=callback)
+
+        assert dest.exists()
+        assert dest.stat().st_size == 100
+        assert callback.call_count == 2
 
     @patch("daynimal.db.first_launch.httpx.stream")
     def test_download_creates_dest_file(self, mock_stream, tmp_path):
         """Vérifie que download_file crée le fichier à dest avec le
         contenu téléchargé."""
-        # todo
-        pass
+        from daynimal.db.first_launch import download_file
+
+        mock_response = MagicMock()
+        mock_response.headers = {"content-length": "13"}
+        mock_response.raise_for_status = MagicMock()
+        mock_response.iter_bytes.return_value = [b"Hello, ", b"World!"]
+        mock_stream.return_value.__enter__ = MagicMock(return_value=mock_response)
+        mock_stream.return_value.__exit__ = MagicMock(return_value=False)
+
+        dest = tmp_path / "output.txt"
+        result = download_file("https://example.com/file.txt", dest)
+
+        assert result == dest
+        assert dest.exists()
+        assert dest.read_bytes() == b"Hello, World!"
 
 
 class TestDownloadAndSetupDbExtended:
     """Tests supplémentaires pour download_and_setup_db."""
 
-    @patch("daynimal.db.first_launch.download_file")
-    @patch("daynimal.db.first_launch.build_database")
-    @patch("daynimal.db.first_launch.init_fts")
-    def test_manifest_dict_format(self, mock_fts, mock_build, mock_download, tmp_path):
+    def test_manifest_dict_format(self, tmp_path):
         """Vérifie que download_and_setup_db gère le format dict du manifest
         (où chaque fichier est un dict avec 'url', 'sha256', 'size_bytes')
-        en plus du format liste."""
+        en plus du format liste.
+        On patche download_file, build_database, init_fts."""
         # todo
         pass
 
-    @patch("daynimal.db.first_launch.download_file")
-    @patch("daynimal.db.first_launch.verify_checksum", return_value=False)
-    def test_checksum_mismatch_raises(self, mock_verify, mock_download, tmp_path):
+    def test_checksum_mismatch_raises(self, tmp_path):
         """Vérifie que si verify_checksum retourne False, une ValueError
-        est levée avec un message indiquant quel fichier a échoué."""
+        est levée avec un message indiquant quel fichier a échoué.
+        On patche download_file et verify_checksum(return_value=False)."""
         # todo
         pass
 
