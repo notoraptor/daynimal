@@ -407,4 +407,82 @@ class TestPhyloPicLocal:
         taxon = Taxon(
             taxon_id=1, scientific_name="Canis lupus", canonical_name="Canis lupus"
         )
-        assert get_silhouette_for_taxon(taxon) is None
+        result = get_silhouette_for_taxon(taxon)
+        assert result is None
+
+
+# =============================================================================
+# SECTION ÉTENDUE : phylopic_local — lignes manquantes (74% → ~95%)
+# Lignes: 38, 57-81, 93, 107
+# =============================================================================
+
+
+class TestPhyloPicLocalLoadCsv:
+    """Tests pour _load_csv() et _get_lookups() de phylopic_local.py."""
+
+    def test_load_csv_returns_two_dicts(self):
+        """Vérifie que _load_csv() retourne un tuple (specific_dict, general_dict).
+        specific_dict mappe des noms d'espèces (lowercase) vers des rows CSV.
+        general_dict mappe des noms de rangs supérieurs vers des rows CSV.
+        On vérifie la structure en important directement _load_csv."""
+        # todo
+        pass
+
+    def test_load_csv_deduplicates_first_wins(self):
+        """Vérifie que si le CSV contient deux entrées pour le même nom,
+        la première est conservée (first-entry-wins)."""
+        # todo
+        pass
+
+    def test_get_lookups_singleton(self, monkeypatch):
+        """Vérifie que _get_lookups() utilise un pattern singleton:
+        le premier appel charge le CSV, les appels suivants retournent
+        le même résultat sans recharger. On monkeypatch _load_csv
+        pour compter les appels."""
+        # todo
+        pass
+
+
+class TestRowToImage:
+    """Tests pour _row_to_image(row) de phylopic_local.py."""
+
+    def test_valid_row_returns_commons_image(self):
+        """Vérifie que _row_to_image avec un row valide (license CC0,
+        svg_vector_url non-vide) retourne un CommonsImage avec
+        image_source=PHYLOPIC."""
+        # todo
+        pass
+
+    def test_no_svg_url_returns_none(self):
+        """Vérifie que _row_to_image retourne None quand svg_vector_url
+        est vide ou absent."""
+        # todo
+        pass
+
+    def test_nc_license_returns_none(self):
+        """Vérifie que _row_to_image retourne None quand la licence est
+        non-commerciale (NC)."""
+        # todo
+        pass
+
+
+class TestFindInLookups:
+    """Tests pour _find_in_lookups(key, specific, general)."""
+
+    def test_specific_found(self):
+        """Vérifie que _find_in_lookups retourne l'image du dict 'specific'
+        quand la clé y est trouvée avec une licence valide."""
+        # todo
+        pass
+
+    def test_specific_rejected_falls_to_general(self):
+        """Vérifie que si l'entrée 'specific' a une licence NC (rejetée),
+        _find_in_lookups essaie le dict 'general' en fallback."""
+        # todo
+        pass
+
+    def test_not_found_returns_none(self):
+        """Vérifie que _find_in_lookups retourne None quand la clé n'est
+        ni dans specific ni dans general."""
+        # todo
+        pass

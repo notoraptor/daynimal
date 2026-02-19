@@ -208,3 +208,74 @@ def test_cli_setup():
 
         main()
         mock_setup.assert_called_once()
+
+
+# =============================================================================
+# SECTION ÉTENDUE : Couverture des lignes manquantes (83% → ~95%)
+# =============================================================================
+
+
+class TestDownloadFile:
+    """Tests pour download_file(url, dest, progress_callback)."""
+
+    @patch("daynimal.db.first_launch.httpx.stream")
+    def test_download_with_progress_callback(self, mock_stream, tmp_path):
+        """Vérifie que download_file appelle progress_callback(downloaded, total)
+        à chaque chunk reçu. On simule un stream avec 3 chunks de 100 bytes
+        et Content-Length: 300. Le callback doit être appelé 3 fois avec
+        des valeurs croissantes."""
+        # todo
+        pass
+
+    @patch("daynimal.db.first_launch.httpx.stream")
+    def test_download_without_content_length(self, mock_stream, tmp_path):
+        """Vérifie que download_file fonctionne quand le serveur ne fournit
+        pas Content-Length. Le callback reçoit total=0 dans ce cas."""
+        # todo
+        pass
+
+    @patch("daynimal.db.first_launch.httpx.stream")
+    def test_download_creates_dest_file(self, mock_stream, tmp_path):
+        """Vérifie que download_file crée le fichier à dest avec le
+        contenu téléchargé."""
+        # todo
+        pass
+
+
+class TestDownloadAndSetupDbExtended:
+    """Tests supplémentaires pour download_and_setup_db."""
+
+    @patch("daynimal.db.first_launch.download_file")
+    @patch("daynimal.db.first_launch.build_database")
+    @patch("daynimal.db.first_launch.init_fts")
+    def test_manifest_dict_format(self, mock_fts, mock_build, mock_download, tmp_path):
+        """Vérifie que download_and_setup_db gère le format dict du manifest
+        (où chaque fichier est un dict avec 'url', 'sha256', 'size_bytes')
+        en plus du format liste."""
+        # todo
+        pass
+
+    @patch("daynimal.db.first_launch.download_file")
+    @patch("daynimal.db.first_launch.verify_checksum", return_value=False)
+    def test_checksum_mismatch_raises(self, mock_verify, mock_download, tmp_path):
+        """Vérifie que si verify_checksum retourne False, une ValueError
+        est levée avec un message indiquant quel fichier a échoué."""
+        # todo
+        pass
+
+
+class TestResolveDatabaseExtended:
+    """Tests supplémentaires pour resolve_database."""
+
+    def test_config_parse_error(self, tmp_path):
+        """Vérifie que si .daynimal_config contient du JSON invalide,
+        resolve_database retourne None au lieu de planter."""
+        # todo
+        pass
+
+    def test_config_with_invalid_path(self, tmp_path):
+        """Vérifie que si le chemin dans .daynimal_config pointe vers une
+        DB invalide (fichier existe mais pas de table taxa), resolve_database
+        retourne None."""
+        # todo
+        pass

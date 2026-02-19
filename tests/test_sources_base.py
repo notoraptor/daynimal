@@ -63,3 +63,33 @@ class TestDataSourceBase:
         # Second access returns same client
         client2 = api.client
         assert client is client2
+
+
+# =============================================================================
+# SECTION 2 : _request_with_retry — branches manquantes (lignes 134-137)
+# =============================================================================
+
+
+class TestRequestWithRetry:
+    """Tests pour DataSource._request_with_retry(method, url, **kwargs)."""
+
+    def test_post_request(self):
+        """Vérifie que _request_with_retry('POST', url, data=...) appelle
+        self.client.post(url, data=...) au lieu de self.client.get.
+        On crée une WikidataAPI avec un mock client et on vérifie
+        que client.post est appelé."""
+        # todo
+        pass
+
+    def test_unsupported_method_raises_value_error(self):
+        """Vérifie que _request_with_retry('DELETE', url) lève
+        ValueError('Unsupported method: DELETE').
+        Seuls GET et POST sont supportés."""
+        # todo
+        pass
+
+    def test_get_request_passes_kwargs(self):
+        """Vérifie que _request_with_retry('GET', url, params={'q': 'test'})
+        passe les kwargs à self.client.get."""
+        # todo
+        pass

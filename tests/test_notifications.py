@@ -212,3 +212,49 @@ async def test_start_is_idempotent(service):
 
     service.stop()
     await asyncio.sleep(0.05)
+
+
+# =============================================================================
+# SECTION ÉTENDUE : Couverture lignes manquantes (82% → ~95%)
+# Lignes: 9-10 (import plyer), 53-61 (_check_loop), 90-91 (_send_notification)
+# =============================================================================
+
+
+@pytest.mark.asyncio
+async def test_check_loop_calls_send_when_should_notify(service):
+    """Vérifie que _check_loop appelle _send_notification() quand
+    _should_notify() retourne True. On mock _should_notify pour retourner
+    True une fois puis False, et on vérifie que _send_notification est
+    appelé exactement une fois. On laisse tourner la boucle brièvement
+    avec un timeout."""
+    # todo
+    pass
+
+
+@pytest.mark.asyncio
+async def test_check_loop_skips_when_should_not_notify(service):
+    """Vérifie que _check_loop N'appelle PAS _send_notification()
+    quand _should_notify() retourne False. On mock _should_notify
+    pour toujours retourner False et on vérifie qu'aucune notification
+    n'est envoyée."""
+    # todo
+    pass
+
+
+@pytest.mark.asyncio
+async def test_send_notification_plyer_not_available(service):
+    """Vérifie que _send_notification() ne plante pas quand plyer.notification
+    est None (module plyer non installé ou non-disponible sur la plateforme).
+    On patche notifications.notification à None et on vérifie que la
+    méthode retourne silencieusement."""
+    # todo
+    pass
+
+
+@pytest.mark.asyncio
+async def test_send_notification_no_animal(service):
+    """Vérifie que si le repository ne retourne aucun animal
+    (get_animal_of_the_day retourne None), _send_notification()
+    retourne sans essayer d'envoyer une notification."""
+    # todo
+    pass

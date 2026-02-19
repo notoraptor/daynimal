@@ -312,3 +312,89 @@ class TestCacheImagesWithProgress:
 
         entries = db_session.query(ImageCacheModel).all()
         assert len(entries) == 3
+
+
+# =============================================================================
+# SECTION ÉTENDUE : Couverture lignes manquantes (88% → ~95%)
+# Lignes: 82, 100, 102, 115, 124, 144, 155, 176-178, 197-201, 218-220, 238, 280-281
+# =============================================================================
+
+
+class TestImageCacheClientLifecycle:
+    """Tests pour le cycle de vie du client HTTP (lazy init, close)."""
+
+    def test_client_lazy_initialization(self, mock_retry, service):
+        """Vérifie que le client HTTP n'est créé que lors du premier accès
+        à service.client (lazy init). Avant l'accès, _client est None."""
+        # todo
+        pass
+
+    def test_client_returns_same_instance(self, mock_retry, service):
+        """Vérifie que deux accès consécutifs à service.client retournent
+        le même objet httpx.Client."""
+        # todo
+        pass
+
+    def test_close_closes_client(self, mock_retry, service):
+        """Vérifie que service.close() appelle _client.close() si un client
+        a été initialisé. Après close(), un nouvel accès à client devrait
+        créer une nouvelle instance."""
+        # todo
+        pass
+
+
+class TestDownloadAndStoreEdgeCases:
+    """Tests pour _download_and_store — cas limites."""
+
+    def test_non_200_response(self, mock_retry, service, db_session):
+        """Vérifie que _download_and_store retourne None quand
+        retry_with_backoff retourne None (échec HTTP après retries).
+        Aucune entrée ne doit être ajoutée en DB."""
+        # todo
+        pass
+
+    def test_db_insert_failure_rolls_back(self, mock_retry, service, db_session):
+        """Vérifie que si l'insertion en DB échoue (ex: IntegrityError),
+        le fichier téléchargé est supprimé et la session est rollback.
+        L'exception ne doit pas se propager."""
+        # todo
+        pass
+
+    def test_already_cached_returns_existing_path(self, mock_retry, service, db_session):
+        """Vérifie que si l'URL est déjà dans le cache (entrée DB existante),
+        _download_and_store retourne le chemin existant sans télécharger."""
+        # todo
+        pass
+
+
+class TestGetLocalPathEdgeCases:
+    """Tests pour get_local_path — cas limites."""
+
+    def test_file_deleted_removes_db_entry(self, mock_retry, service, db_session):
+        """Vérifie que si un fichier local a été supprimé du disque mais
+        existe encore en DB, get_local_path supprime l'entrée DB et
+        retourne None."""
+        # todo
+        pass
+
+
+class TestClearEdgeCases:
+    """Tests pour clear — gestion des erreurs OS."""
+
+    def test_clear_handles_oserror_on_subdir_removal(self, mock_retry, service, db_session, tmp_path):
+        """Vérifie que clear() ne plante pas si la suppression d'un
+        sous-répertoire échoue (OSError). Les fichiers individuels sont
+        supprimés et les sous-répertoires non-vides sont ignorés."""
+        # todo
+        pass
+
+
+class TestCacheImagesHdMode:
+    """Tests pour le mode HD du cache."""
+
+    def test_hd_mode_downloads_thumbnail_and_original(self, mock_retry, db_session, tmp_path):
+        """Vérifie qu'en mode cache_hd=True, _download_and_store est appelé
+        deux fois par image: une fois pour le thumbnail et une fois pour
+        l'URL originale."""
+        # todo
+        pass

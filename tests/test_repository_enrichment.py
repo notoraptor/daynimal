@@ -893,3 +893,72 @@ def test_get_stats_no_species(populated_session):
     assert stats["species_count"] == 0
     assert stats["enriched_count"] == 0
     assert stats["total_taxa"] > 0  # Still have genus/family/order
+
+
+# =============================================================================
+# SECTION ÉTENDUE : _fetch_and_cache_images — branches manquantes (93% → ~97%)
+# Lignes: 559-565 (Commons via category fallback), 687-689, 704-706, 728-729,
+# 745-746, 752-757, 763-765, 777-778, 782-784
+# =============================================================================
+
+
+class TestFetchAndCacheImagesExtended:
+    """Tests supplémentaires pour _fetch_and_cache_images."""
+
+    def test_commons_category_fallback(self, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie que si commons.get_images_for_wikidata retourne une liste vide
+        ET commons.get_by_taxonomy retourne des images, ces images sont utilisées.
+        C'est le fallback category search quand la recherche par QID échoue.
+        Mock: get_images_for_wikidata retourne [], get_by_taxonomy retourne [image]."""
+        # todo
+        pass
+
+    def test_gbif_media_fallback(self, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie que si Commons ne retourne aucune image (les deux méthodes),
+        _fetch_and_cache_images essaie gbif_media.get_media_for_taxon comme fallback.
+        Mock: commons retourne [], gbif_media retourne [image]."""
+        # todo
+        pass
+
+    def test_phylopic_fallback(self, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie que si ni Commons ni GBIF Media ne retournent d'images,
+        get_phylopic_silhouette est appelé comme dernier recours.
+        Mock: commons retourne [], gbif_media retourne [], phylopic retourne image."""
+        # todo
+        pass
+
+    def test_p18_image_inserted_first(self, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie que quand wikidata a un p18_image (image principale),
+        cette image est récupérée via commons.get_by_source_id et insérée
+        en première position de la liste d'images. Les images de la catégorie
+        sont ajoutées après."""
+        # todo
+        pass
+
+    def test_images_ranked_after_fetch(self, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie que rank_images() est appelé sur les images récupérées
+        pour les trier par qualité (featured > quality > valued > none,
+        BITMAP > DRAWING)."""
+        # todo
+        pass
+
+    def test_first_image_cached_locally(self, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie que image_cache.cache_single_image est appelé avec
+        la première image de la liste pour la mettre en cache local
+        (chargement paresseux — seule la première image est téléchargée)."""
+        # todo
+        pass
+
+    def test_httpx_request_error_sets_offline(self, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie que si une httpx.RequestError est levée pendant la
+        récupération des images, connectivity.set_offline() est appelé
+        et la méthode retourne gracieusement sans images."""
+        # todo
+        pass
+
+    def test_no_wikidata_skips_qid_search(self, populated_session, sync_executor, mock_phylopic_local):
+        """Vérifie que quand wikidata est None, get_images_for_wikidata
+        n'est PAS appelé (pas de QID disponible). La recherche passe
+        directement à get_by_taxonomy."""
+        # todo
+        pass

@@ -1055,3 +1055,59 @@ def test_integration_empty_images_list():
 
     text = data_attr.to_text()
     assert "Image credits:" not in text  # No image section
+
+
+# =============================================================================
+# SECTION ÉTENDUE : Factory functions manquantes (92% → ~98%)
+# Lignes: 217-227 (create_gbif_media_attribution), 241-251 (create_phylopic_attribution)
+# =============================================================================
+
+
+class TestCreateGbifMediaAttribution:
+    """Tests pour create_gbif_media_attribution(author, license, url)."""
+
+    def test_defaults(self):
+        """Vérifie que create_gbif_media_attribution() sans arguments crée
+        une AttributionInfo avec author='Unknown author', license=CC_BY,
+        source_name='GBIF Media', et une URL par défaut pointant vers gbif.org."""
+        # todo
+        pass
+
+    def test_custom_author_and_license(self):
+        """Vérifie que create_gbif_media_attribution(author='John Doe',
+        license='CC BY-SA 4.0', url='https://example.com/img.jpg') crée
+        l'attribution avec les valeurs personnalisées."""
+        # todo
+        pass
+
+    def test_access_date_set(self):
+        """Vérifie que l'access_date est défini à la date du jour."""
+        # todo
+        pass
+
+    def test_source_url_set(self):
+        """Vérifie que source_url pointe vers l'URL de l'image fournie."""
+        # todo
+        pass
+
+
+class TestCreatePhyloPicAttribution:
+    """Tests pour create_phylopic_attribution(author, license, url)."""
+
+    def test_defaults(self):
+        """Vérifie que create_phylopic_attribution() sans arguments crée
+        une AttributionInfo avec license=CC0, source_name='PhyloPic',
+        et une URL par défaut pointant vers phylopic.org."""
+        # todo
+        pass
+
+    def test_custom_values(self):
+        """Vérifie que create_phylopic_attribution(author='Jane', license='CC BY',
+        url='https://phylopic.org/images/abc') utilise les valeurs fournies."""
+        # todo
+        pass
+
+    def test_access_date_set(self):
+        """Vérifie que l'access_date est défini à la date du jour."""
+        # todo
+        pass
