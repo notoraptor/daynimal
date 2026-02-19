@@ -7,9 +7,8 @@ branche correctement entre le mode cached et download, que la progress
 bar est mise a jour, et que la navigation fonctionne.
 """
 
-import asyncio
 from pathlib import Path
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, patch
 
 import flet as ft
 import pytest

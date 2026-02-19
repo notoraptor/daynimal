@@ -12,8 +12,7 @@ async, on utilise pytest-asyncio. On vérifie que les handlers appellent
 les bonnes méthodes du repository et mettent à jour l'UI.
 """
 
-import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock, PropertyMock
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import flet as ft
 import pytest
@@ -27,7 +26,6 @@ from daynimal.schemas import (
     WikipediaArticle,
     WikidataEntity,
     ConservationStatus,
-    ImageSource,
 )
 from daynimal.ui.views.today_view import TodayView
 from daynimal.ui.components.widgets import LoadingWidget, ErrorWidget
@@ -124,9 +122,7 @@ def sample_animal():
 def _make_view(mock_page, mock_app_state, on_favorite_toggle=None):
     """Helper to create a TodayView with mocked dependencies."""
     view = TodayView(
-        page=mock_page,
-        app_state=mock_app_state,
-        on_favorite_toggle=on_favorite_toggle,
+        page=mock_page, app_state=mock_app_state, on_favorite_toggle=on_favorite_toggle
     )
     return view
 
@@ -179,7 +175,7 @@ class TestTodayViewBuild:
         dans today_animal_container."""
         view = _make_view(mock_page, mock_app_state)
         view.current_animal = None
-        result = view.build()
+        view.build()
 
         # The today_animal_container should have welcome text
         container_controls = view.today_animal_container.controls
@@ -198,7 +194,7 @@ class TestTodayViewBuild:
         _display_animal pour restaurer l'affichage de l'animal en cours."""
         view = _make_view(mock_page, mock_app_state)
         view.current_animal = sample_animal
-        result = view.build()
+        view.build()
 
         # After build with a cached animal, _display_animal should have been called
         # which populates today_animal_container with the animal's controls
@@ -345,8 +341,6 @@ class TestTodayViewLoadAnimal:
         view = _make_view(mock_page, mock_app_state)
         view.build()
 
-        original_update = mock_page.update
-
         def capture_loading(*args, **kwargs):
             # Capture controls at the moment page.update is called
             controls = list(view.today_animal_container.controls)
@@ -374,7 +368,9 @@ class TestTodayViewLoadAnimal:
     ):
         """Vérifie que si repo.get_animal_of_the_day lève une exception,
         un ErrorWidget est affiché dans today_animal_container."""
-        mock_app_state.repository.get_animal_of_the_day.side_effect = RuntimeError("DB error")
+        mock_app_state.repository.get_animal_of_the_day.side_effect = RuntimeError(
+            "DB error"
+        )
 
         view = _make_view(mock_page, mock_app_state)
         view.build()
@@ -475,9 +471,7 @@ class TestTodayViewDisplayAnimal:
         # Should contain the scientific name
         assert sample_animal.taxon.scientific_name in text_blob
 
-    def test_shows_favorite_button(
-        self, mock_page, mock_app_state, sample_animal
-    ):
+    def test_shows_favorite_button(self, mock_page, mock_app_state, sample_animal):
         """Vérifie qu'un bouton favori (IconButton avec FAVORITE/FAVORITE_BORDER)
         est créé. Si l'animal est favori, l'icône est FAVORITE (plein),
         sinon FAVORITE_BORDER (contour)."""
@@ -489,7 +483,11 @@ class TestTodayViewDisplayAnimal:
 
         icon_buttons = _find_controls_recursive(
             view.today_animal_container,
-            lambda c: isinstance(c, ft.IconButton) and getattr(c, "icon", None) in (ft.Icons.FAVORITE, ft.Icons.FAVORITE_BORDER),
+            lambda c: (
+                isinstance(c, ft.IconButton)
+                and getattr(c, "icon", None)
+                in (ft.Icons.FAVORITE, ft.Icons.FAVORITE_BORDER)
+            ),
         )
         assert len(icon_buttons) >= 1
         fav_btn = icon_buttons[0]
@@ -503,15 +501,17 @@ class TestTodayViewDisplayAnimal:
 
         icon_buttons2 = _find_controls_recursive(
             view2.today_animal_container,
-            lambda c: isinstance(c, ft.IconButton) and getattr(c, "icon", None) in (ft.Icons.FAVORITE, ft.Icons.FAVORITE_BORDER),
+            lambda c: (
+                isinstance(c, ft.IconButton)
+                and getattr(c, "icon", None)
+                in (ft.Icons.FAVORITE, ft.Icons.FAVORITE_BORDER)
+            ),
         )
         assert len(icon_buttons2) >= 1
         fav_btn2 = icon_buttons2[0]
         assert fav_btn2.icon == ft.Icons.FAVORITE
 
-    def test_shows_share_buttons(
-        self, mock_page, mock_app_state, sample_animal
-    ):
+    def test_shows_share_buttons(self, mock_page, mock_app_state, sample_animal):
         """Vérifie que les boutons de partage (copier texte, ouvrir Wikipedia)
         sont présents dans les contrôles."""
         view = _make_view(mock_page, mock_app_state)
@@ -520,17 +520,14 @@ class TestTodayViewDisplayAnimal:
 
         # Find all icon buttons
         icon_buttons = _find_controls_recursive(
-            view.today_animal_container,
-            lambda c: isinstance(c, ft.IconButton),
+            view.today_animal_container, lambda c: isinstance(c, ft.IconButton)
         )
 
         icons = [getattr(b, "icon", None) for b in icon_buttons]
         assert ft.Icons.CONTENT_COPY in icons, "Copy text button not found"
         assert ft.Icons.LANGUAGE in icons, "Wikipedia button not found"
 
-    def test_shows_image_when_available(
-        self, mock_page, mock_app_state
-    ):
+    def test_shows_image_when_available(self, mock_page, mock_app_state):
         """Vérifie que quand l'animal a des images, un ft.Image est affiché
         avec l'URL/chemin local de la première image."""
         taxon = Taxon(
@@ -555,15 +552,12 @@ class TestTodayViewDisplayAnimal:
 
         # Find ft.Image controls
         images_found = _find_controls_recursive(
-            view.today_animal_container,
-            lambda c: isinstance(c, ft.Image),
+            view.today_animal_container, lambda c: isinstance(c, ft.Image)
         )
         assert len(images_found) >= 1
         assert images_found[0].src == "https://example.com/test.jpg"
 
-    def test_no_images_no_gallery_button(
-        self, mock_page, mock_app_state
-    ):
+    def test_no_images_no_gallery_button(self, mock_page, mock_app_state):
         """Vérifie que quand images est vide, le bouton 'Plus d'images'
         n'est PAS affiché."""
         taxon = Taxon(
@@ -581,10 +575,13 @@ class TestTodayViewDisplayAnimal:
 
         # Should not have a "Plus d'images" button
         buttons = _find_controls_recursive(
-            view.today_animal_container,
-            lambda c: isinstance(c, ft.Button),
+            view.today_animal_container, lambda c: isinstance(c, ft.Button)
         )
-        gallery_buttons = [b for b in buttons if b.content and isinstance(b.content, str) and "Plus d'images" in b.content]
+        gallery_buttons = [
+            b
+            for b in buttons
+            if b.content and isinstance(b.content, str) and "Plus d'images" in b.content
+        ]
         assert len(gallery_buttons) == 0
 
         # Should show "Aucune image disponible"
@@ -594,9 +591,7 @@ class TestTodayViewDisplayAnimal:
         text_blob = " ".join(t for t in all_texts if t)
         assert "Aucune image disponible" in text_blob
 
-    def test_multiple_images_shows_gallery_button(
-        self, mock_page, mock_app_state
-    ):
+    def test_multiple_images_shows_gallery_button(self, mock_page, mock_app_state):
         """Vérifie que quand l'animal a plus d'une image, un bouton
         'Plus d'images' est affiché pour ouvrir la galerie."""
         taxon = Taxon(
@@ -627,10 +622,13 @@ class TestTodayViewDisplayAnimal:
         view._display_animal(animal)
 
         buttons = _find_controls_recursive(
-            view.today_animal_container,
-            lambda c: isinstance(c, ft.Button),
+            view.today_animal_container, lambda c: isinstance(c, ft.Button)
         )
-        gallery_buttons = [b for b in buttons if b.content and isinstance(b.content, str) and "Plus d'images" in b.content]
+        gallery_buttons = [
+            b
+            for b in buttons
+            if b.content and isinstance(b.content, str) and "Plus d'images" in b.content
+        ]
         assert len(gallery_buttons) == 1
 
     def test_updates_current_animal_on_display(
@@ -698,7 +696,9 @@ class TestTodayViewFavoriteToggle:
         event.control.data = sample_animal.taxon.taxon_id
 
         # Spy on _display_animal — must remain with patch.object since `view` is local
-        with patch.object(view, "_display_animal", wraps=view._display_animal) as mock_display:
+        with patch.object(
+            view, "_display_animal", wraps=view._display_animal
+        ) as mock_display:
             view._on_favorite_toggle(event)
             mock_display.assert_called_once_with(sample_animal)
 
@@ -777,13 +777,10 @@ class TestTodayViewGalleryAndSharing:
         view._on_open_wikipedia(None)
 
         mock_page.run_task.assert_called_once_with(
-            mock_launcher_instance.launch_url,
-            sample_animal.wikipedia.article_url,
+            mock_launcher_instance.launch_url, sample_animal.wikipedia.article_url
         )
 
-    def test_on_open_wikipedia_no_article(
-        self, mock_page, mock_app_state
-    ):
+    def test_on_open_wikipedia_no_article(self, mock_page, mock_app_state):
         """Vérifie que _on_open_wikipedia ne fait rien si l'animal
         n'a pas d'article Wikipedia."""
         taxon = Taxon(

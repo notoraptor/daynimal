@@ -8,12 +8,8 @@ AppController. On instancie DaynimalApp avec un mock page et on vérifie
 les propriétés définies et les méthodes appelées.
 """
 
-import asyncio
-import sys
-import traceback
-from unittest.mock import MagicMock, patch, AsyncMock, call
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 def _make_mock_page():
@@ -90,8 +86,6 @@ class TestShowError:
 
         page = MagicMock()
         page.controls = MagicMock()
-
-        error = ValueError("test error")
 
         # Generate a real traceback
         try:

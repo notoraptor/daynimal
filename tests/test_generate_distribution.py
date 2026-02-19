@@ -13,7 +13,7 @@ generes et les statistiques retournees.
 import csv
 import io
 import zipfile
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -310,7 +310,7 @@ class TestExtractAndFilterTaxa:
                 parent_id="9612",
                 accepted_id="",
                 taxonomic_status="accepted",
-            ),
+            )
         ]
         _create_backbone_zip(zip_path, taxon_rows=rows)
 
@@ -360,9 +360,7 @@ class TestExtractAndFilterVernacular:
             _make_vernacular_row(taxon_id="2", name="Cat", language="en"),
             _make_vernacular_row(taxon_id="3", name="Eagle", language="en"),
         ]
-        _create_backbone_zip(
-            zip_path, taxon_rows=[], vernacular_rows=vernacular_rows
-        )
+        _create_backbone_zip(zip_path, taxon_rows=[], vernacular_rows=vernacular_rows)
 
         count = extract_and_filter_vernacular(
             zip_path, output_path, valid_taxon_ids={1, 3}
@@ -428,9 +426,7 @@ class TestExtractAndFilterVernacular:
             _make_vernacular_row(taxon_id="2", name="Cat", language="en"),
             _make_vernacular_row(taxon_id="3", name="Dog", language="en"),
         ]
-        _create_backbone_zip(
-            zip_path, taxon_rows=[], vernacular_rows=vernacular_rows
-        )
+        _create_backbone_zip(zip_path, taxon_rows=[], vernacular_rows=vernacular_rows)
 
         count = extract_and_filter_vernacular(
             zip_path, output_path, valid_taxon_ids={1, 2, 3}
@@ -452,10 +448,36 @@ class TestBuildCanonicalToTaxonIds:
         'Canis lupus' avec ID 1 -> {'canis lupus': 1}."""
         tsv_path = tmp_path / "taxa.tsv"
         rows = [
-            ["1", "Canis lupus Linnaeus", "Canis lupus", "species", "Animalia",
-             "Chordata", "Mammalia", "Carnivora", "Canidae", "Canis", "", "", "0"],
-            ["2", "Felis catus Linnaeus", "Felis catus", "species", "Animalia",
-             "Chordata", "Mammalia", "Carnivora", "Felidae", "Felis", "", "", "0"],
+            [
+                "1",
+                "Canis lupus Linnaeus",
+                "Canis lupus",
+                "species",
+                "Animalia",
+                "Chordata",
+                "Mammalia",
+                "Carnivora",
+                "Canidae",
+                "Canis",
+                "",
+                "",
+                "0",
+            ],
+            [
+                "2",
+                "Felis catus Linnaeus",
+                "Felis catus",
+                "species",
+                "Animalia",
+                "Chordata",
+                "Mammalia",
+                "Carnivora",
+                "Felidae",
+                "Felis",
+                "",
+                "",
+                "0",
+            ],
         ]
         _create_taxa_tsv(tsv_path, rows)
 
@@ -474,18 +496,44 @@ class TestBuildCanonicalToTaxonIds:
                 f, delimiter="\t", quoting=csv.QUOTE_NONE, escapechar="\\"
             )
             # Valid row (13 cols)
-            writer.writerow([
-                "1", "Canis lupus", "Canis lupus", "species", "Animalia",
-                "Chordata", "Mammalia", "Carnivora", "Canidae", "Canis",
-                "", "", "0",
-            ])
+            writer.writerow(
+                [
+                    "1",
+                    "Canis lupus",
+                    "Canis lupus",
+                    "species",
+                    "Animalia",
+                    "Chordata",
+                    "Mammalia",
+                    "Carnivora",
+                    "Canidae",
+                    "Canis",
+                    "",
+                    "",
+                    "0",
+                ]
+            )
             # Malformed row (5 cols)
             writer.writerow(["2", "Bad", "Row", "only", "five"])
             # Malformed row (14 cols)
-            writer.writerow([
-                "3", "Too", "Many", "Cols", "A", "B", "C", "D", "E", "F",
-                "G", "H", "I", "J",
-            ])
+            writer.writerow(
+                [
+                    "3",
+                    "Too",
+                    "Many",
+                    "Cols",
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    "F",
+                    "G",
+                    "H",
+                    "I",
+                    "J",
+                ]
+            )
 
         mapping = build_canonical_to_taxon_ids(tsv_path)
 
@@ -497,10 +545,36 @@ class TestBuildCanonicalToTaxonIds:
         au dictionnaire."""
         tsv_path = tmp_path / "taxa.tsv"
         rows = [
-            ["1", "Canis lupus", "Canis lupus", "species", "Animalia",
-             "Chordata", "Mammalia", "Carnivora", "Canidae", "Canis", "", "", "0"],
-            ["2", "Some name", "", "species", "Animalia",
-             "Chordata", "Mammalia", "Carnivora", "Canidae", "Felis", "", "", "0"],
+            [
+                "1",
+                "Canis lupus",
+                "Canis lupus",
+                "species",
+                "Animalia",
+                "Chordata",
+                "Mammalia",
+                "Carnivora",
+                "Canidae",
+                "Canis",
+                "",
+                "",
+                "0",
+            ],
+            [
+                "2",
+                "Some name",
+                "",
+                "species",
+                "Animalia",
+                "Chordata",
+                "Mammalia",
+                "Carnivora",
+                "Canidae",
+                "Felis",
+                "",
+                "",
+                "0",
+            ],
         ]
         _create_taxa_tsv(tsv_path, rows)
 
@@ -515,10 +589,36 @@ class TestBuildCanonicalToTaxonIds:
         le dernier taxon_id est conserve (la source ecrase les doublons)."""
         tsv_path = tmp_path / "taxa.tsv"
         rows = [
-            ["10", "Canis lupus Linnaeus", "Canis lupus", "species", "Animalia",
-             "Chordata", "Mammalia", "Carnivora", "Canidae", "Canis", "", "", "0"],
-            ["20", "Canis lupus Other", "Canis lupus", "species", "Animalia",
-             "Chordata", "Mammalia", "Carnivora", "Canidae", "Canis", "", "", "0"],
+            [
+                "10",
+                "Canis lupus Linnaeus",
+                "Canis lupus",
+                "species",
+                "Animalia",
+                "Chordata",
+                "Mammalia",
+                "Carnivora",
+                "Canidae",
+                "Canis",
+                "",
+                "",
+                "0",
+            ],
+            [
+                "20",
+                "Canis lupus Other",
+                "Canis lupus",
+                "species",
+                "Animalia",
+                "Chordata",
+                "Mammalia",
+                "Carnivora",
+                "Canidae",
+                "Canis",
+                "",
+                "",
+                "0",
+            ],
         ]
         _create_taxa_tsv(tsv_path, rows)
 
@@ -544,8 +644,11 @@ class TestParseTaxrefFrenchNames:
         rows = [
             {"REGNE": "Animalia", "NOM_VERN": "Loup gris", "LB_NOM": "Canis lupus"},
             {"REGNE": "Plantae", "NOM_VERN": "Chene", "LB_NOM": "Quercus robur"},
-            {"REGNE": "Animalia", "NOM_VERN": "Chat domestique",
-             "LB_NOM": "Felis catus"},
+            {
+                "REGNE": "Animalia",
+                "NOM_VERN": "Chat domestique",
+                "LB_NOM": "Felis catus",
+            },
         ]
         _create_taxref_file(taxref_path, rows)
 
@@ -566,7 +669,7 @@ class TestParseTaxrefFrenchNames:
                 "REGNE": "Animalia",
                 "NOM_VERN": "Loup gris",
                 "LB_NOM": "Canis lupus Linnaeus, 1758",
-            },
+            }
         ]
         _create_taxref_file(taxref_path, rows)
 
@@ -595,8 +698,11 @@ class TestParseTaxrefFrenchNames:
         taxref_path = tmp_path / "TAXREF.txt"
         rows = [
             {"REGNE": "Animalia", "NOM_VERN": "", "LB_NOM": "Canis lupus"},
-            {"REGNE": "Animalia", "NOM_VERN": "Chat domestique",
-             "LB_NOM": "Felis catus"},
+            {
+                "REGNE": "Animalia",
+                "NOM_VERN": "Chat domestique",
+                "LB_NOM": "Felis catus",
+            },
             {"REGNE": "Animalia", "NOM_VERN": "  ", "LB_NOM": "Ursus arctos"},
         ]
         _create_taxref_file(taxref_path, rows)
@@ -616,7 +722,7 @@ class TestParseTaxrefFrenchNames:
                 "REGNE": "Animalia",
                 "NOM_VERN": "Loup gris, Loup commun",
                 "LB_NOM": "Canis lupus",
-            },
+            }
         ]
         _create_taxref_file(taxref_path, rows)
 
@@ -641,10 +747,7 @@ class TestMergeTaxrefIntoVernacular:
         vernaculaire existant. On cree un TSV avec 2 noms, on fusionne
         2 noms TAXREF, et on verifie que le TSV contient 4 lignes."""
         tsv_path = tmp_path / "vernacular.tsv"
-        _create_vernacular_tsv(tsv_path, [
-            ["1", "Wolf", "en"],
-            ["2", "Cat", "en"],
-        ])
+        _create_vernacular_tsv(tsv_path, [["1", "Wolf", "en"], ["2", "Cat", "en"]])
 
         taxref_entries = [
             {"canonical_name": "Canis lupus", "french_name": "Loup gris"},
@@ -670,13 +773,9 @@ class TestMergeTaxrefIntoVernacular:
         taxon_id + meme nom vernaculaire normalise), il n'est pas ajoute
         en double."""
         tsv_path = tmp_path / "vernacular.tsv"
-        _create_vernacular_tsv(tsv_path, [
-            ["1", "Loup gris", "fr"],
-        ])
+        _create_vernacular_tsv(tsv_path, [["1", "Loup gris", "fr"]])
 
-        taxref_entries = [
-            {"canonical_name": "Canis lupus", "french_name": "Loup gris"},
-        ]
+        taxref_entries = [{"canonical_name": "Canis lupus", "french_name": "Loup gris"}]
         canonical_to_id = {"canis lupus": 1}
 
         added, no_match = merge_taxref_into_vernacular(
@@ -695,8 +794,7 @@ class TestMergeTaxrefIntoVernacular:
 
         taxref_entries = [
             {"canonical_name": "Canis lupus", "french_name": "Loup gris"},
-            {"canonical_name": "Unknown species",
-             "french_name": "Espece inconnue"},
+            {"canonical_name": "Unknown species", "french_name": "Espece inconnue"},
             {"canonical_name": "Another missing", "french_name": "Autre"},
         ]
         # Only Canis lupus is mapped
@@ -712,9 +810,12 @@ class TestMergeTaxrefIntoVernacular:
     def test_returns_added_and_skipped_counts(self, tmp_path):
         """Verifie que la fonction retourne (added_count, no_match_count)."""
         tsv_path = tmp_path / "vernacular.tsv"
-        _create_vernacular_tsv(tsv_path, [
-            ["1", "Loup gris", "fr"],  # Will cause dedup for first entry
-        ])
+        _create_vernacular_tsv(
+            tsv_path,
+            [
+                ["1", "Loup gris", "fr"]  # Will cause dedup for first entry
+            ],
+        )
 
         taxref_entries = [
             # dup -> skipped (exists in TSV)
@@ -726,9 +827,7 @@ class TestMergeTaxrefIntoVernacular:
         ]
         canonical_to_id = {"canis lupus": 1}
 
-        result = merge_taxref_into_vernacular(
-            tsv_path, taxref_entries, canonical_to_id
-        )
+        result = merge_taxref_into_vernacular(tsv_path, taxref_entries, canonical_to_id)
 
         assert isinstance(result, tuple)
         assert len(result) == 2
@@ -754,21 +853,59 @@ class TestCleanupTaxaWithoutVernacular:
         vernacular_path = tmp_path / "vernacular.tsv"
         output_path = tmp_path / "taxa_clean.tsv"
 
-        _create_taxa_tsv(taxa_path, [
-            ["1", "Canis lupus", "Canis lupus", "species", "Animalia",
-             "Chordata", "Mammalia", "Carnivora", "Canidae", "Canis",
-             "", "", "0"],
-            ["2", "Felis catus", "Felis catus", "species", "Animalia",
-             "Chordata", "Mammalia", "Carnivora", "Felidae", "Felis",
-             "", "", "0"],
-            ["3", "Aquila chrysaetos", "Aquila chrysaetos", "species",
-             "Animalia", "Chordata", "Aves", "Accipitriformes",
-             "Accipitridae", "Aquila", "", "", "0"],
-        ])
-        _create_vernacular_tsv(vernacular_path, [
-            ["1", "Wolf", "en"],
-            ["3", "Golden Eagle", "en"],
-        ])
+        _create_taxa_tsv(
+            taxa_path,
+            [
+                [
+                    "1",
+                    "Canis lupus",
+                    "Canis lupus",
+                    "species",
+                    "Animalia",
+                    "Chordata",
+                    "Mammalia",
+                    "Carnivora",
+                    "Canidae",
+                    "Canis",
+                    "",
+                    "",
+                    "0",
+                ],
+                [
+                    "2",
+                    "Felis catus",
+                    "Felis catus",
+                    "species",
+                    "Animalia",
+                    "Chordata",
+                    "Mammalia",
+                    "Carnivora",
+                    "Felidae",
+                    "Felis",
+                    "",
+                    "",
+                    "0",
+                ],
+                [
+                    "3",
+                    "Aquila chrysaetos",
+                    "Aquila chrysaetos",
+                    "species",
+                    "Animalia",
+                    "Chordata",
+                    "Aves",
+                    "Accipitriformes",
+                    "Accipitridae",
+                    "Aquila",
+                    "",
+                    "",
+                    "0",
+                ],
+            ],
+        )
+        _create_vernacular_tsv(
+            vernacular_path, [["1", "Wolf", "en"], ["3", "Golden Eagle", "en"]]
+        )
 
         kept, removed = cleanup_taxa_without_vernacular(
             taxa_path, vernacular_path, output_path
@@ -787,19 +924,45 @@ class TestCleanupTaxaWithoutVernacular:
         vernacular_path = tmp_path / "vernacular.tsv"
         output_path = tmp_path / "taxa_clean.tsv"
 
-        _create_taxa_tsv(taxa_path, [
-            ["10", "Canis lupus", "Canis lupus", "species", "Animalia",
-             "Chordata", "Mammalia", "Carnivora", "Canidae", "Canis",
-             "", "", "0"],
-            ["20", "Felis catus", "Felis catus", "species", "Animalia",
-             "Chordata", "Mammalia", "Carnivora", "Felidae", "Felis",
-             "", "", "0"],
-        ])
-        _create_vernacular_tsv(vernacular_path, [
-            ["10", "Wolf", "en"],
-            ["10", "Loup", "fr"],
-            ["20", "Cat", "en"],
-        ])
+        _create_taxa_tsv(
+            taxa_path,
+            [
+                [
+                    "10",
+                    "Canis lupus",
+                    "Canis lupus",
+                    "species",
+                    "Animalia",
+                    "Chordata",
+                    "Mammalia",
+                    "Carnivora",
+                    "Canidae",
+                    "Canis",
+                    "",
+                    "",
+                    "0",
+                ],
+                [
+                    "20",
+                    "Felis catus",
+                    "Felis catus",
+                    "species",
+                    "Animalia",
+                    "Chordata",
+                    "Mammalia",
+                    "Carnivora",
+                    "Felidae",
+                    "Felis",
+                    "",
+                    "",
+                    "0",
+                ],
+            ],
+        )
+        _create_vernacular_tsv(
+            vernacular_path,
+            [["10", "Wolf", "en"], ["10", "Loup", "fr"], ["20", "Cat", "en"]],
+        )
 
         kept, removed = cleanup_taxa_without_vernacular(
             taxa_path, vernacular_path, output_path
@@ -816,22 +979,19 @@ class TestCleanupTaxaWithoutVernacular:
         vernacular_path = tmp_path / "vernacular.tsv"
         output_path = tmp_path / "taxa_clean.tsv"
 
-        _create_taxa_tsv(taxa_path, [
-            ["1", "S1", "S1", "species", "A", "C", "M", "O", "F", "G",
-             "", "", "0"],
-            ["2", "S2", "S2", "species", "A", "C", "M", "O", "F", "G",
-             "", "", "0"],
-            ["3", "S3", "S3", "species", "A", "C", "M", "O", "F", "G",
-             "", "", "0"],
-            ["4", "S4", "S4", "species", "A", "C", "M", "O", "F", "G",
-             "", "", "0"],
-            ["5", "S5", "S5", "species", "A", "C", "M", "O", "F", "G",
-             "", "", "0"],
-        ])
-        _create_vernacular_tsv(vernacular_path, [
-            ["1", "Name1", "en"],
-            ["3", "Name3", "en"],
-        ])
+        _create_taxa_tsv(
+            taxa_path,
+            [
+                ["1", "S1", "S1", "species", "A", "C", "M", "O", "F", "G", "", "", "0"],
+                ["2", "S2", "S2", "species", "A", "C", "M", "O", "F", "G", "", "", "0"],
+                ["3", "S3", "S3", "species", "A", "C", "M", "O", "F", "G", "", "", "0"],
+                ["4", "S4", "S4", "species", "A", "C", "M", "O", "F", "G", "", "", "0"],
+                ["5", "S5", "S5", "species", "A", "C", "M", "O", "F", "G", "", "", "0"],
+            ],
+        )
+        _create_vernacular_tsv(
+            vernacular_path, [["1", "Name1", "en"], ["3", "Name3", "en"]]
+        )
 
         result = cleanup_taxa_without_vernacular(
             taxa_path, vernacular_path, output_path
@@ -864,14 +1024,10 @@ class TestGenerateDistribution:
             _create_backbone_zip(
                 dest_path,
                 taxon_rows=[
-                    _make_taxon_row(
-                        taxon_id="1", kingdom="Animalia", rank="species"
-                    ),
+                    _make_taxon_row(taxon_id="1", kingdom="Animalia", rank="species")
                 ],
                 vernacular_rows=[
-                    _make_vernacular_row(
-                        taxon_id="1", name="Wolf", language="en"
-                    ),
+                    _make_vernacular_row(taxon_id="1", name="Wolf", language="en")
                 ],
             )
             return dest_path
@@ -879,10 +1035,7 @@ class TestGenerateDistribution:
         mock_download.side_effect = fake_download
 
         generate_distribution(
-            mode="minimal",
-            backbone_path=None,
-            taxref_path=None,
-            output_dir=output_dir,
+            mode="minimal", backbone_path=None, taxref_path=None, output_dir=output_dir
         )
 
         mock_download.assert_called_once()
@@ -904,23 +1057,31 @@ class TestGenerateDistribution:
         # Create backbone with species and genus
         taxon_rows = [
             _make_taxon_row(
-                taxon_id="1", scientific_name="Canis lupus",
-                canonical_name="Canis lupus", rank="species",
+                taxon_id="1",
+                scientific_name="Canis lupus",
+                canonical_name="Canis lupus",
+                rank="species",
                 kingdom="Animalia",
             ),
             _make_taxon_row(
-                taxon_id="2", scientific_name="Felis catus",
-                canonical_name="Felis catus", rank="species",
+                taxon_id="2",
+                scientific_name="Felis catus",
+                canonical_name="Felis catus",
+                rank="species",
                 kingdom="Animalia",
             ),
             _make_taxon_row(
-                taxon_id="3", scientific_name="Aquila chrysaetos",
-                canonical_name="Aquila chrysaetos", rank="species",
+                taxon_id="3",
+                scientific_name="Aquila chrysaetos",
+                canonical_name="Aquila chrysaetos",
+                rank="species",
                 kingdom="Animalia",
             ),
             _make_taxon_row(
-                taxon_id="4", scientific_name="Canidae",
-                canonical_name="Canidae", rank="family",
+                taxon_id="4",
+                scientific_name="Canidae",
+                canonical_name="Canidae",
+                rank="family",
                 kingdom="Animalia",
             ),
         ]
@@ -934,12 +1095,17 @@ class TestGenerateDistribution:
         )
 
         # Create TAXREF with a French name for Aquila
-        _create_taxref_file(taxref_path, [
-            {"REGNE": "Animalia", "NOM_VERN": "Aigle royal",
-             "LB_NOM": "Aquila chrysaetos"},
-            {"REGNE": "Animalia", "NOM_VERN": "Loup gris",
-             "LB_NOM": "Canis lupus"},
-        ])
+        _create_taxref_file(
+            taxref_path,
+            [
+                {
+                    "REGNE": "Animalia",
+                    "NOM_VERN": "Aigle royal",
+                    "LB_NOM": "Aquila chrysaetos",
+                },
+                {"REGNE": "Animalia", "NOM_VERN": "Loup gris", "LB_NOM": "Canis lupus"},
+            ],
+        )
 
         generate_distribution(
             mode="minimal",
@@ -979,18 +1145,24 @@ class TestGenerateDistribution:
 
         taxon_rows = [
             _make_taxon_row(
-                taxon_id="1", scientific_name="Canis lupus",
-                canonical_name="Canis lupus", rank="species",
+                taxon_id="1",
+                scientific_name="Canis lupus",
+                canonical_name="Canis lupus",
+                rank="species",
                 kingdom="Animalia",
             ),
             _make_taxon_row(
-                taxon_id="2", scientific_name="Felis catus",
-                canonical_name="Felis catus", rank="species",
+                taxon_id="2",
+                scientific_name="Felis catus",
+                canonical_name="Felis catus",
+                rank="species",
                 kingdom="Animalia",
             ),
             _make_taxon_row(
-                taxon_id="3", scientific_name="No Name Species",
-                canonical_name="No Name Species", rank="species",
+                taxon_id="3",
+                scientific_name="No Name Species",
+                canonical_name="No Name Species",
+                rank="species",
                 kingdom="Animalia",
             ),
         ]
@@ -1028,32 +1200,26 @@ class TestGenerateDistribution:
         output_dir = tmp_path / "output"
 
         taxon_rows = [
+            _make_taxon_row(taxon_id="1", rank="species", kingdom="Animalia"),
+            _make_taxon_row(taxon_id="2", rank="genus", kingdom="Animalia"),
+            _make_taxon_row(taxon_id="3", rank="family", kingdom="Animalia"),
             _make_taxon_row(
-                taxon_id="1", rank="species", kingdom="Animalia",
-            ),
-            _make_taxon_row(
-                taxon_id="2", rank="genus", kingdom="Animalia",
-            ),
-            _make_taxon_row(
-                taxon_id="3", rank="family", kingdom="Animalia",
-            ),
-            _make_taxon_row(
-                taxon_id="4", rank="species", kingdom="Animalia",
-                scientific_name="No vernac", canonical_name="No vernac",
+                taxon_id="4",
+                rank="species",
+                kingdom="Animalia",
+                scientific_name="No vernac",
+                canonical_name="No vernac",
             ),
         ]
         vernacular_rows = [
-            _make_vernacular_row(taxon_id="1", name="Wolf", language="en"),
+            _make_vernacular_row(taxon_id="1", name="Wolf", language="en")
         ]
         _create_backbone_zip(
             zip_path, taxon_rows=taxon_rows, vernacular_rows=vernacular_rows
         )
 
         generate_distribution(
-            mode="full",
-            backbone_path=zip_path,
-            taxref_path=None,
-            output_dir=output_dir,
+            mode="full", backbone_path=zip_path, taxref_path=None, output_dir=output_dir
         )
 
         # Full mode: no '_minimal' suffix
@@ -1076,13 +1242,9 @@ class TestGenerateDistribution:
         zip_path = tmp_path / "backbone.zip"
         output_dir = tmp_path / "output"
 
-        taxon_rows = [
-            _make_taxon_row(
-                taxon_id="1", rank="species", kingdom="Animalia",
-            ),
-        ]
+        taxon_rows = [_make_taxon_row(taxon_id="1", rank="species", kingdom="Animalia")]
         vernacular_rows = [
-            _make_vernacular_row(taxon_id="1", name="Wolf", language="en"),
+            _make_vernacular_row(taxon_id="1", name="Wolf", language="en")
         ]
         _create_backbone_zip(
             zip_path, taxon_rows=taxon_rows, vernacular_rows=vernacular_rows
@@ -1100,10 +1262,7 @@ class TestGenerateDistribution:
 
         # Run again in full mode
         generate_distribution(
-            mode="full",
-            backbone_path=zip_path,
-            taxref_path=None,
-            output_dir=output_dir,
+            mode="full", backbone_path=zip_path, taxref_path=None, output_dir=output_dir
         )
 
         assert (output_dir / "animalia_taxa.tsv").exists()

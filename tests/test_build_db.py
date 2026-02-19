@@ -9,11 +9,9 @@ importées correctement et que les lignes malformées sont ignorées.
 """
 
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import pytest
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
 
 from daynimal.db.build_db import (
     optimize_database_for_import,
@@ -47,13 +45,37 @@ def _write_vernacular_tsv(path, rows):
             f.write("\t".join(str(c) for c in row) + "\n")
 
 
-def _make_taxa_row(taxon_id, sci_name="Test species", canonical="Test species",
-                   rank="species", kingdom="Animalia", phylum="", class_="",
-                   order="", family="", genus="", parent_id="", accepted_id="",
-                   is_synonym="0"):
+def _make_taxa_row(
+    taxon_id,
+    sci_name="Test species",
+    canonical="Test species",
+    rank="species",
+    kingdom="Animalia",
+    phylum="",
+    class_="",
+    order="",
+    family="",
+    genus="",
+    parent_id="",
+    accepted_id="",
+    is_synonym="0",
+):
     """Helper: crée une ligne taxa TSV valide (13 colonnes)."""
-    return [taxon_id, sci_name, canonical, rank, kingdom, phylum,
-            class_, order, family, genus, parent_id, accepted_id, is_synonym]
+    return [
+        taxon_id,
+        sci_name,
+        canonical,
+        rank,
+        kingdom,
+        phylum,
+        class_,
+        order,
+        family,
+        genus,
+        parent_id,
+        accepted_id,
+        is_synonym,
+    ]
 
 
 # =============================================================================
@@ -107,12 +129,51 @@ class TestBulkImportTaxa:
 
         tsv = tmp_path / "taxa.tsv"
         rows = [
-            _make_taxa_row(1, "Canis lupus", "Canis lupus", "species", "Animalia",
-                          "Chordata", "Mammalia", "Carnivora", "Canidae", "Canis", "", "", "0"),
-            _make_taxa_row(2, "Felis catus", "Felis catus", "species", "Animalia",
-                          "Chordata", "Mammalia", "Carnivora", "Felidae", "Felis", "", "", "0"),
-            _make_taxa_row(3, "Ursus arctos", "Ursus arctos", "species", "Animalia",
-                          "Chordata", "Mammalia", "Carnivora", "Ursidae", "Ursus", "", "", "0"),
+            _make_taxa_row(
+                1,
+                "Canis lupus",
+                "Canis lupus",
+                "species",
+                "Animalia",
+                "Chordata",
+                "Mammalia",
+                "Carnivora",
+                "Canidae",
+                "Canis",
+                "",
+                "",
+                "0",
+            ),
+            _make_taxa_row(
+                2,
+                "Felis catus",
+                "Felis catus",
+                "species",
+                "Animalia",
+                "Chordata",
+                "Mammalia",
+                "Carnivora",
+                "Felidae",
+                "Felis",
+                "",
+                "",
+                "0",
+            ),
+            _make_taxa_row(
+                3,
+                "Ursus arctos",
+                "Ursus arctos",
+                "species",
+                "Animalia",
+                "Chordata",
+                "Mammalia",
+                "Carnivora",
+                "Ursidae",
+                "Ursus",
+                "",
+                "",
+                "0",
+            ),
         ]
         _write_taxa_tsv(tsv, rows)
 
@@ -132,11 +193,37 @@ class TestBulkImportTaxa:
 
         tsv = tmp_path / "taxa.tsv"
         rows = [
-            _make_taxa_row(1, "Canis lupus", "Canis lupus", "species", "Animalia",
-                          "Chordata", "Mammalia", "Carnivora", "Canidae", "Canis", "", "", "0"),
+            _make_taxa_row(
+                1,
+                "Canis lupus",
+                "Canis lupus",
+                "species",
+                "Animalia",
+                "Chordata",
+                "Mammalia",
+                "Carnivora",
+                "Canidae",
+                "Canis",
+                "",
+                "",
+                "0",
+            ),
             ["bad", "row", "only", "five", "columns"],
-            _make_taxa_row(2, "Felis catus", "Felis catus", "species", "Animalia",
-                          "Chordata", "Mammalia", "Carnivora", "Felidae", "Felis", "", "", "0"),
+            _make_taxa_row(
+                2,
+                "Felis catus",
+                "Felis catus",
+                "species",
+                "Animalia",
+                "Chordata",
+                "Mammalia",
+                "Carnivora",
+                "Felidae",
+                "Felis",
+                "",
+                "",
+                "0",
+            ),
         ]
         _write_taxa_tsv(tsv, rows)
 
@@ -152,15 +239,32 @@ class TestBulkImportTaxa:
 
         tsv = tmp_path / "taxa.tsv"
         rows = [
-            _make_taxa_row(1, "Canis lupus", "", "species", "Animalia",
-                          "", "", "", "", "", "", "", "0"),
+            _make_taxa_row(
+                1,
+                "Canis lupus",
+                "",
+                "species",
+                "Animalia",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "0",
+            )
         ]
         _write_taxa_tsv(tsv, rows)
 
         bulk_import_taxa(engine, tsv)
 
         with engine.connect() as conn:
-            row = conn.execute(text("SELECT canonical_name, phylum, parent_id FROM taxa WHERE taxon_id = 1")).fetchone()
+            row = conn.execute(
+                text(
+                    "SELECT canonical_name, phylum, parent_id FROM taxa WHERE taxon_id = 1"
+                )
+            ).fetchone()
             assert row[0] is None  # canonical_name empty → None
             assert row[1] is None  # phylum empty → None
             assert row[2] is None  # parent_id empty → None
@@ -174,8 +278,7 @@ class TestBulkImportTaxa:
 
         tsv = tmp_path / "taxa.tsv"
         rows = [
-            _make_taxa_row(i, f"Species {i}", f"Species {i}")
-            for i in range(1, 5501)
+            _make_taxa_row(i, f"Species {i}", f"Species {i}") for i in range(1, 5501)
         ]
         _write_taxa_tsv(tsv, rows)
 
@@ -222,17 +325,17 @@ class TestBulkImportVernacular:
         bulk_import_taxa(engine, taxa_tsv)
 
         vern_tsv = tmp_path / "vernacular.tsv"
-        _write_vernacular_tsv(vern_tsv, [
-            [1, "Wolf", "en"],
-            [1, "Loup", "fr"],
-            [1, "Lobo", "es"],
-        ])
+        _write_vernacular_tsv(
+            vern_tsv, [[1, "Wolf", "en"], [1, "Loup", "fr"], [1, "Lobo", "es"]]
+        )
 
         count = bulk_import_vernacular(engine, vern_tsv)
 
         assert count == 3
         with engine.connect() as conn:
-            db_count = conn.execute(text("SELECT COUNT(*) FROM vernacular_names")).scalar()
+            db_count = conn.execute(
+                text("SELECT COUNT(*) FROM vernacular_names")
+            ).scalar()
             assert db_count == 3
 
         engine.dispose()
@@ -267,10 +370,7 @@ class TestBulkImportVernacular:
         bulk_import_taxa(engine, taxa_tsv)
 
         vern_tsv = tmp_path / "vernacular.tsv"
-        _write_vernacular_tsv(vern_tsv, [
-            [1, "Name1", "en"],
-            [1, "Name2", "fr"],
-        ])
+        _write_vernacular_tsv(vern_tsv, [[1, "Name1", "en"], [1, "Name2", "fr"]])
 
         count = bulk_import_vernacular(engine, vern_tsv)
 
@@ -284,7 +384,9 @@ class TestBulkImportVernacular:
 
         # Create enough taxa
         taxa_tsv = tmp_path / "taxa.tsv"
-        _write_taxa_tsv(taxa_tsv, [_make_taxa_row(i, f"Species {i}") for i in range(1, 101)])
+        _write_taxa_tsv(
+            taxa_tsv, [_make_taxa_row(i, f"Species {i}") for i in range(1, 101)]
+        )
         bulk_import_taxa(engine, taxa_tsv)
 
         vern_tsv = tmp_path / "vernacular.tsv"
@@ -314,10 +416,26 @@ class TestBuildDatabase:
         vern_tsv = tmp_path / "vernacular.tsv"
         db_file = str(tmp_path / "test.db")
 
-        _write_taxa_tsv(taxa_tsv, [
-            _make_taxa_row(1, "Canis lupus", "Canis lupus", "species", "Animalia",
-                          "Chordata", "Mammalia", "Carnivora", "Canidae", "Canis", "", "", "0"),
-        ])
+        _write_taxa_tsv(
+            taxa_tsv,
+            [
+                _make_taxa_row(
+                    1,
+                    "Canis lupus",
+                    "Canis lupus",
+                    "species",
+                    "Animalia",
+                    "Chordata",
+                    "Mammalia",
+                    "Carnivora",
+                    "Canidae",
+                    "Canis",
+                    "",
+                    "",
+                    "0",
+                )
+            ],
+        )
         _write_vernacular_tsv(vern_tsv, [[1, "Wolf", "en"]])
 
         build_database(taxa_tsv, vern_tsv, db_file)
@@ -327,7 +445,12 @@ class TestBuildDatabase:
 
         engine = create_engine(f"sqlite:///{db_file}")
         with engine.connect() as conn:
-            tables = [row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))]
+            tables = [
+                row[0]
+                for row in conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table'")
+                )
+            ]
             assert "taxa" in tables
             assert "vernacular_names" in tables
 
@@ -390,9 +513,9 @@ class TestBuildDatabase:
         vern_tsv = tmp_path / "vernacular.tsv"
         db_file = str(tmp_path / "test.db")
 
-        _write_taxa_tsv(taxa_tsv, [
-            _make_taxa_row(1, "Canis lupus", "Canis lupus", "species"),
-        ])
+        _write_taxa_tsv(
+            taxa_tsv, [_make_taxa_row(1, "Canis lupus", "Canis lupus", "species")]
+        )
         _write_vernacular_tsv(vern_tsv, [[1, "Wolf", "en"]])
 
         build_database(taxa_tsv, vern_tsv, db_file)

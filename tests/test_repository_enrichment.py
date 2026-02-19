@@ -925,7 +925,9 @@ class TestFetchAndCacheImagesExtended:
         )
 
     @patch("daynimal.sources.commons.rank_images", side_effect=lambda imgs, **kw: imgs)
-    def test_commons_category_fallback(self, mock_rank, populated_session, sync_executor, mock_phylopic_local):
+    def test_commons_category_fallback(
+        self, mock_rank, populated_session, sync_executor, mock_phylopic_local
+    ):
         """Vérifie le fallback: QID → vide, category search → images."""
         repo = AnimalRepository(session=populated_session)
         wikidata = self._make_wikidata()
@@ -942,7 +944,9 @@ class TestFetchAndCacheImagesExtended:
         repo.commons.get_by_taxonomy.assert_called_once()
 
     @patch("daynimal.sources.commons.rank_images", side_effect=lambda imgs, **kw: imgs)
-    def test_gbif_media_fallback(self, mock_rank, populated_session, sync_executor, mock_phylopic_local):
+    def test_gbif_media_fallback(
+        self, mock_rank, populated_session, sync_executor, mock_phylopic_local
+    ):
         """Vérifie le fallback: Commons vide → GBIF Media."""
         repo = AnimalRepository(session=populated_session)
         wikidata = self._make_wikidata()
@@ -967,11 +971,15 @@ class TestFetchAndCacheImagesExtended:
 
         repo = AnimalRepository(session=populated_session)
         wikidata = self._make_wikidata()
-        taxon = Taxon(taxon_id=1, scientific_name="Test", canonical_name="Test", rank="species")
+        taxon = Taxon(
+            taxon_id=1, scientific_name="Test", canonical_name="Test", rank="species"
+        )
 
         silhouette = CommonsImage(
-            filename="phylopic.svg", url="https://phylopic.org/test.svg",
-            license=License.CC0, image_source=ImageSource.PHYLOPIC,
+            filename="phylopic.svg",
+            url="https://phylopic.org/test.svg",
+            license=License.CC0,
+            image_source=ImageSource.PHYLOPIC,
             mime_type="image/svg+xml",
         )
         mock_phylopic.return_value = silhouette
@@ -988,7 +996,9 @@ class TestFetchAndCacheImagesExtended:
         assert result[0].image_source == ImageSource.PHYLOPIC
 
     @patch("daynimal.sources.commons.rank_images", side_effect=lambda imgs, **kw: imgs)
-    def test_p18_image_inserted_first(self, mock_rank, populated_session, sync_executor, mock_phylopic_local):
+    def test_p18_image_inserted_first(
+        self, mock_rank, populated_session, sync_executor, mock_phylopic_local
+    ):
         """Vérifie que quand wikidata a un p18_image, elle est ajoutée."""
         repo = AnimalRepository(session=populated_session)
         p18_img = self._make_image("P18_main.jpg")
@@ -1007,7 +1017,9 @@ class TestFetchAndCacheImagesExtended:
         assert "Category.jpg" in filenames
 
     @patch("daynimal.sources.commons.rank_images")
-    def test_images_ranked_after_fetch(self, mock_rank, populated_session, sync_executor, mock_phylopic_local):
+    def test_images_ranked_after_fetch(
+        self, mock_rank, populated_session, sync_executor, mock_phylopic_local
+    ):
         """Vérifie que rank_images() est appelé sur les images récupérées."""
         repo = AnimalRepository(session=populated_session)
         image = self._make_image()
@@ -1023,7 +1035,9 @@ class TestFetchAndCacheImagesExtended:
         mock_rank.assert_called_once()
 
     @patch("daynimal.sources.commons.rank_images", side_effect=lambda imgs, **kw: imgs)
-    def test_first_image_cached_locally(self, mock_rank, populated_session, sync_executor, mock_phylopic_local):
+    def test_first_image_cached_locally(
+        self, mock_rank, populated_session, sync_executor, mock_phylopic_local
+    ):
         """Vérifie que image_cache.cache_single_image est appelé avec la première image."""
         repo = AnimalRepository(session=populated_session)
         image = self._make_image()
@@ -1037,7 +1051,9 @@ class TestFetchAndCacheImagesExtended:
 
         repo.image_cache.cache_single_image.assert_called_once_with(image)
 
-    def test_httpx_request_error_sets_offline(self, populated_session, sync_executor, mock_phylopic_local):
+    def test_httpx_request_error_sets_offline(
+        self, populated_session, sync_executor, mock_phylopic_local
+    ):
         """Vérifie que httpx.RequestError appelle connectivity.set_offline()."""
         import httpx
 
@@ -1056,7 +1072,9 @@ class TestFetchAndCacheImagesExtended:
         repo.connectivity.set_offline.assert_called_once()
 
     @patch("daynimal.sources.commons.rank_images", side_effect=lambda imgs, **kw: imgs)
-    def test_no_wikidata_skips_qid_search(self, mock_rank, populated_session, sync_executor, mock_phylopic_local):
+    def test_no_wikidata_skips_qid_search(
+        self, mock_rank, populated_session, sync_executor, mock_phylopic_local
+    ):
         """Vérifie que quand wikidata est None, get_images_for_wikidata n'est PAS appelé."""
         repo = AnimalRepository(session=populated_session)
         image = self._make_image()
@@ -1065,7 +1083,7 @@ class TestFetchAndCacheImagesExtended:
         repo.commons.get_by_taxonomy = MagicMock(return_value=[image])
         repo.image_cache = MagicMock()
 
-        result = repo._fetch_and_cache_images(1, "Test species", None)
+        repo._fetch_and_cache_images(1, "Test species", None)
 
         repo.commons.get_images_for_wikidata.assert_not_called()
         repo.commons.get_by_taxonomy.assert_called_once()

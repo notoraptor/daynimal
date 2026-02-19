@@ -16,8 +16,6 @@ import pytest
 
 from daynimal.ui.views.setup_view import (
     _global_progress,
-    _STAGE_WEIGHTS,
-    _STAGE_ORDER,
     SetupView,
 )
 
@@ -186,7 +184,12 @@ class TestSetupViewBuild:
         view, page, app_state, on_complete = _make_setup_view()
         view.build()
         buttons = _find_buttons(view.container)
-        commencer_buttons = [b for b in buttons if getattr(b, "text", None) == "Commencer" or getattr(b, "content", None) == "Commencer"]
+        commencer_buttons = [
+            b
+            for b in buttons
+            if getattr(b, "text", None) == "Commencer"
+            or getattr(b, "content", None) == "Commencer"
+        ]
         assert len(commencer_buttons) == 1
         assert commencer_buttons[0].on_click == view._on_start_click
 
@@ -303,7 +306,12 @@ class TestSetupViewStartSetup:
 
         # Should show "Reessayer" button
         buttons = _find_buttons(view.container)
-        retry_buttons = [b for b in buttons if "essayer" in (getattr(b, "text", None) or getattr(b, "content", None) or "").lower()]
+        retry_buttons = [
+            b
+            for b in buttons
+            if "essayer"
+            in (getattr(b, "text", None) or getattr(b, "content", None) or "").lower()
+        ]
         assert len(retry_buttons) == 1
         # The retry button should be wired to _on_start_click
         assert retry_buttons[0].on_click == view._on_start_click

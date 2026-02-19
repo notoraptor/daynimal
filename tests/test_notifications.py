@@ -239,7 +239,9 @@ async def test_check_loop_calls_send_when_should_notify(service):
     with (
         patch("asyncio.sleep", side_effect=fake_sleep),
         patch.object(service, "_should_notify", side_effect=[True, False]),
-        patch.object(service, "_send_notification", new_callable=AsyncMock) as mock_send,
+        patch.object(
+            service, "_send_notification", new_callable=AsyncMock
+        ) as mock_send,
     ):
         service._running = True
         await service._check_loop()
@@ -264,7 +266,9 @@ async def test_check_loop_skips_when_should_not_notify(service):
     with (
         patch("asyncio.sleep", side_effect=fake_sleep),
         patch.object(service, "_should_notify", return_value=False),
-        patch.object(service, "_send_notification", new_callable=AsyncMock) as mock_send,
+        patch.object(
+            service, "_send_notification", new_callable=AsyncMock
+        ) as mock_send,
     ):
         service._running = True
         await service._check_loop()

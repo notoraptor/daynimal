@@ -305,7 +305,9 @@ class TestCmdSetup:
         assert "complete" in captured.out.lower() or "Setup" in captured.out
 
     @patch("daynimal.main.resolve_database", return_value=None)
-    @patch("daynimal.main.download_and_setup_db", side_effect=Exception("Network error"))
+    @patch(
+        "daynimal.main.download_and_setup_db", side_effect=Exception("Network error")
+    )
     def test_setup_minimal_failure(self, mock_download, mock_resolve):
         """Vérifie que si download_and_setup_db échoue, SystemExit(1) est levé."""
         import pytest
@@ -321,7 +323,9 @@ class TestCmdSetup:
     @patch("daynimal.db.generate_distribution.generate_distribution")
     @patch("daynimal.db.first_launch.save_db_config")
     @patch("daynimal.db.first_launch.download_file")
-    def test_setup_full_mode(self, mock_dl, mock_save, mock_gen, mock_build, mock_fts, mock_resolve, capsys):
+    def test_setup_full_mode(
+        self, mock_dl, mock_save, mock_gen, mock_build, mock_fts, mock_resolve, capsys
+    ):
         """Vérifie que cmd_setup(mode='full') appelle generate_distribution, build_database, init_fts."""
         cmd_setup(mode="full", no_taxref=True)
 
@@ -335,7 +339,9 @@ class TestCmdSetup:
     @patch("daynimal.db.generate_distribution.generate_distribution")
     @patch("daynimal.db.first_launch.save_db_config")
     @patch("daynimal.db.first_launch.download_file")
-    def test_setup_full_no_taxref(self, mock_dl, mock_save, mock_gen, mock_build, mock_fts, mock_resolve, capsys):
+    def test_setup_full_no_taxref(
+        self, mock_dl, mock_save, mock_gen, mock_build, mock_fts, mock_resolve, capsys
+    ):
         """Vérifie que cmd_setup(mode='full', no_taxref=True) passe taxref_path=None."""
         cmd_setup(mode="full", no_taxref=True)
 

@@ -7,7 +7,6 @@ On verifie que load_history cree les bons AnimalCards avec les timestamps
 formates, que la pagination fonctionne, et que les clics deleguent au callback.
 """
 
-import asyncio
 from datetime import datetime
 from unittest.mock import MagicMock, patch, AsyncMock
 
@@ -17,7 +16,9 @@ import pytest
 from daynimal.schemas import AnimalInfo, Taxon, TaxonomicRank
 
 
-def _make_animal(taxon_id: int, name: str, viewed_at: datetime | None = None) -> AnimalInfo:
+def _make_animal(
+    taxon_id: int, name: str, viewed_at: datetime | None = None
+) -> AnimalInfo:
     """Helper to create a minimal AnimalInfo for testing."""
     return AnimalInfo(
         taxon=Taxon(
@@ -61,16 +62,15 @@ class TestHistoryViewBuild:
     """Tests pour HistoryView.build()."""
 
     @patch("daynimal.ui.views.history_view.asyncio.create_task")
-    def test_returns_column_with_header(self, _mock_create_task, mock_page, mock_app_state):
+    def test_returns_column_with_header(
+        self, _mock_create_task, mock_page, mock_app_state
+    ):
         """Verifie que build() retourne un ft.Column contenant un header
         'Historique' (via view_header) suivi du container de liste et
         du container de pagination."""
         from daynimal.ui.views.history_view import HistoryView
 
-        view = HistoryView(
-            page=mock_page,
-            app_state=mock_app_state,
-        )
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
         result = view.build()
 
         # build() returns a ft.Column
@@ -104,10 +104,7 @@ class TestHistoryViewBuild:
         load_history() afin de charger les donnees de maniere asynchrone."""
         from daynimal.ui.views.history_view import HistoryView
 
-        view = HistoryView(
-            page=mock_page,
-            app_state=mock_app_state,
-        )
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
         view.build()
 
         # asyncio.create_task was called once with the coroutine from load_history()
@@ -124,7 +121,9 @@ class TestHistoryViewLoadHistory:
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_empty_history_shows_empty_state(self, mock_to_thread, mock_page, mock_app_state):
+    async def test_empty_history_shows_empty_state(
+        self, mock_to_thread, mock_page, mock_app_state
+    ):
         """Verifie que quand repository.get_history retourne ([], 0),
         l'UI affiche un etat vide avec l'icone HISTORY et le message
         'Aucun historique' et 'Consultez un animal pour le voir ici'."""
@@ -133,10 +132,7 @@ class TestHistoryViewLoadHistory:
         mock_app_state.repository.get_history.return_value = ([], 0)
         mock_to_thread.return_value = ([], 0)
 
-        view = HistoryView(
-            page=mock_page,
-            app_state=mock_app_state,
-        )
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
 
         await view.load_history()
 
@@ -167,7 +163,9 @@ class TestHistoryViewLoadHistory:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.create_history_card")
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_with_items_creates_cards(self, mock_to_thread, mock_create_card, mock_page, mock_app_state):
+    async def test_with_items_creates_cards(
+        self, mock_to_thread, mock_create_card, mock_page, mock_app_state
+    ):
         """Verifie que quand get_history retourne des animaux, un
         create_history_card est cree pour chacun. On verifie que
         history_list.controls contient le bon nombre de cards."""
@@ -180,12 +178,11 @@ class TestHistoryViewLoadHistory:
         ]
 
         mock_to_thread.return_value = (animals, 3)
-        mock_create_card.side_effect = lambda animal, on_click, viewed_at: MagicMock(spec=ft.Card)
-
-        view = HistoryView(
-            page=mock_page,
-            app_state=mock_app_state,
+        mock_create_card.side_effect = lambda animal, on_click, viewed_at: MagicMock(
+            spec=ft.Card
         )
+
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
 
         await view.load_history()
 
@@ -198,7 +195,9 @@ class TestHistoryViewLoadHistory:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.create_history_card")
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_formats_timestamp(self, mock_to_thread, mock_create_card, mock_page, mock_app_state):
+    async def test_formats_timestamp(
+        self, mock_to_thread, mock_create_card, mock_page, mock_app_state
+    ):
         """Verifie que le timestamp viewed_at est formate en 'DD/MM/YYYY HH:MM'
         pour chaque carte d'historique."""
         from daynimal.ui.views.history_view import HistoryView
@@ -209,10 +208,7 @@ class TestHistoryViewLoadHistory:
         mock_to_thread.return_value = (animals, 1)
         mock_create_card.return_value = MagicMock(spec=ft.Card)
 
-        view = HistoryView(
-            page=mock_page,
-            app_state=mock_app_state,
-        )
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
 
         await view.load_history()
 
@@ -225,7 +221,9 @@ class TestHistoryViewLoadHistory:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.create_history_card")
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_shows_count_text(self, mock_to_thread, mock_create_card, mock_page, mock_app_state):
+    async def test_shows_count_text(
+        self, mock_to_thread, mock_create_card, mock_page, mock_app_state
+    ):
         """Verifie qu'un texte '{total} animal(aux) consulte(s)' est affiche
         au-dessus de la liste."""
         from daynimal.ui.views.history_view import HistoryView
@@ -238,10 +236,7 @@ class TestHistoryViewLoadHistory:
         mock_to_thread.return_value = (animals, 2)
         mock_create_card.return_value = MagicMock(spec=ft.Card)
 
-        view = HistoryView(
-            page=mock_page,
-            app_state=mock_app_state,
-        )
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
 
         await view.load_history()
 
@@ -253,15 +248,14 @@ class TestHistoryViewLoadHistory:
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_error_shows_error_ui(self, mock_to_thread, mock_page, mock_app_state):
+    async def test_error_shows_error_ui(
+        self, mock_to_thread, mock_page, mock_app_state
+    ):
         """Verifie que si get_history leve une exception, un container d'erreur
         est affiche avec l'icone ERROR et le message d'erreur."""
         from daynimal.ui.views.history_view import HistoryView
 
-        view = HistoryView(
-            page=mock_page,
-            app_state=mock_app_state,
-        )
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
 
         error_msg = "Database connection failed"
         mock_to_thread.side_effect = Exception(error_msg)
@@ -291,13 +285,18 @@ class TestHistoryViewLoadHistory:
         assert isinstance(detail_text, ft.Text)
         assert error_msg in detail_text.value
 
-
-
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.PaginationBar")
     @patch("daynimal.ui.views.history_view.create_history_card")
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_creates_pagination_bar(self, mock_to_thread, mock_create_card, mock_pagination, mock_page, mock_app_state):
+    async def test_creates_pagination_bar(
+        self,
+        mock_to_thread,
+        mock_create_card,
+        mock_pagination,
+        mock_page,
+        mock_app_state,
+    ):
         """Verifie que quand le total depasse per_page (20), un PaginationBar
         est cree dans pagination_container avec les bons parametres
         (page, total, per_page, on_page_change)."""
@@ -318,19 +317,13 @@ class TestHistoryViewLoadHistory:
         mock_bar_instance.build.return_value = mock_bar_build
         mock_pagination.return_value = mock_bar_instance
 
-        view = HistoryView(
-            page=mock_page,
-            app_state=mock_app_state,
-        )
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
 
         await view.load_history()
 
         # PaginationBar was created with the correct arguments
         mock_pagination.assert_called_once_with(
-            page=1,
-            total=25,
-            per_page=PER_PAGE,
-            on_page_change=view._on_page_change,
+            page=1, total=25, per_page=PER_PAGE, on_page_change=view._on_page_change
         )
         # Its build() was called and its content was assigned
         mock_bar_instance.build.assert_called_once()
@@ -346,15 +339,14 @@ class TestHistoryViewInteraction:
     """Tests pour _on_page_change et _on_item_click."""
 
     @patch("daynimal.ui.views.history_view.asyncio.create_task")
-    def test_on_page_change_updates_and_reloads(self, mock_create_task, mock_page, mock_app_state):
+    def test_on_page_change_updates_and_reloads(
+        self, mock_create_task, mock_page, mock_app_state
+    ):
         """Verifie que _on_page_change(2) met a jour self.current_page=2
         et relance load_history() via asyncio.create_task."""
         from daynimal.ui.views.history_view import HistoryView
 
-        view = HistoryView(
-            page=mock_page,
-            app_state=mock_app_state,
-        )
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
 
         view._on_page_change(2)
 
@@ -368,9 +360,7 @@ class TestHistoryViewInteraction:
 
         on_click = MagicMock()
         view = HistoryView(
-            page=mock_page,
-            app_state=mock_app_state,
-            on_animal_click=on_click,
+            page=mock_page, app_state=mock_app_state, on_animal_click=on_click
         )
 
         view._on_item_click(42)
@@ -385,9 +375,7 @@ class TestHistoryViewInteraction:
 
         on_click = MagicMock()
         view = HistoryView(
-            page=mock_page,
-            app_state=mock_app_state,
-            on_animal_click=on_click,
+            page=mock_page, app_state=mock_app_state, on_animal_click=on_click
         )
 
         view._on_item_click(99)
@@ -406,9 +394,7 @@ class TestHistoryViewInteraction:
 
         on_click = MagicMock(side_effect=RuntimeError("Navigation failed"))
         view = HistoryView(
-            page=mock_page,
-            app_state=mock_app_state,
-            on_animal_click=on_click,
+            page=mock_page, app_state=mock_app_state, on_animal_click=on_click
         )
 
         # Should NOT raise

@@ -8,7 +8,6 @@ Stratégie: on crée des AnimalInfo avec différents niveaux de données
 retournés par build().
 """
 
-from unittest.mock import MagicMock
 
 import flet as ft
 import pytest
@@ -16,7 +15,6 @@ import pytest
 from daynimal.schemas import (
     AnimalInfo,
     Taxon,
-    TaxonomicRank,
     WikidataEntity,
     WikipediaArticle,
     CommonsImage,
@@ -178,10 +176,7 @@ class TestBuildClassification:
     def test_no_fields_returns_empty(self):
         """Vérifie que sans champs de classification, retourne liste vide."""
         taxon = Taxon(
-            taxon_id=1,
-            scientific_name="Test",
-            canonical_name="Test",
-            rank="species",
+            taxon_id=1, scientific_name="Test", canonical_name="Test", rank="species"
         )
         animal = AnimalInfo(taxon=taxon)
         display = AnimalDisplay(animal)
@@ -251,7 +246,9 @@ class TestBuildVernacularNames:
 
         controls = display._build_vernacular_names()
         # Count language entries (texts with [lang] pattern, exclude header and divider)
-        lang_texts = [c for c in controls if isinstance(c, ft.Text) and "[" in (c.value or "")]
+        lang_texts = [
+            c for c in controls if isinstance(c, ft.Text) and "[" in (c.value or "")
+        ]
         assert len(lang_texts) == 5
 
     def test_truncated_to_3_names_per_language(self):
@@ -337,7 +334,7 @@ class TestBuildWikidataInfo:
     def test_wikidata_with_no_properties(self):
         """Vérifie que si wikidata n'a aucune propriété, la section est quand même affichée."""
         taxon = Taxon(
-            taxon_id=1, scientific_name="Test", canonical_name="Test", rank="species",
+            taxon_id=1, scientific_name="Test", canonical_name="Test", rank="species"
         )
         wikidata = WikidataEntity(qid="Q123", labels={}, descriptions={})
         animal = AnimalInfo(taxon=taxon, wikidata=wikidata)
@@ -375,10 +372,10 @@ class TestBuildWikipediaDescription:
     def test_wikipedia_without_summary(self):
         """Vérifie que si wikipedia.summary est None, la section n'est pas affichée."""
         taxon = Taxon(
-            taxon_id=1, scientific_name="Test", canonical_name="Test", rank="species",
+            taxon_id=1, scientific_name="Test", canonical_name="Test", rank="species"
         )
         wikipedia = WikipediaArticle(
-            title="Test", language="en", page_id=1, summary=None,
+            title="Test", language="en", page_id=1, summary=None
         )
         animal = AnimalInfo(taxon=taxon, wikipedia=wikipedia)
         display = AnimalDisplay(animal)

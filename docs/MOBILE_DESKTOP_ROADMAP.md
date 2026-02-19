@@ -6,7 +6,7 @@
 
 ## Etat actuel
 
-Application Flet desktop fonctionnelle avec 6 onglets (Aujourd'hui, Historique, Favoris, Recherche, Statistiques, Parametres). Architecture modulaire, 596 tests (55% couverture), infrastructure mobile prete (cache images, mode hors ligne, distribution TSV). Chemins mobile-aware (`get_app_data_dir()`, `get_app_temp_dir()`), detection mobile via `is_mobile()`. Build mobile valide sur emulateur Android (premier lancement + telechargement DB OK). Setup CLI etendu (`daynimal setup --mode full|minimal --no-taxref`). Desktop sans DB : ecran informatif avec commandes CLI (setup auto reserve au mobile). Navbar fixe en bas (scroll deplace vers le contenu). Chargement paresseux des images (1 seule image au chargement, galerie a la demande). Silhouettes PhyloPic locales en fallback. Recherche FTS5 amelioree (pertinence, classement).
+Application Flet desktop fonctionnelle avec 6 onglets (Aujourd'hui, Historique, Favoris, Recherche, Statistiques, Parametres). Architecture modulaire, 949 tests (94% couverture), infrastructure mobile prete (cache images, mode hors ligne, distribution TSV). Chemins mobile-aware (`get_app_data_dir()`, `get_app_temp_dir()`), detection mobile via `is_mobile()`. Build mobile valide sur emulateur Android (premier lancement + telechargement DB OK). Setup CLI etendu (`daynimal setup --mode full|minimal --no-taxref`). Desktop sans DB : ecran informatif avec commandes CLI (setup auto reserve au mobile). Navbar fixe en bas (scroll deplace vers le contenu). Chargement paresseux des images (1 seule image au chargement, galerie a la demande). Silhouettes PhyloPic locales en fallback. Recherche FTS5 amelioree (pertinence, classement). Logging simplifie via `logging` standard Python (suppression du systeme debug custom).
 
 **Prochaine etape** : tests appareil reel et ajustements UI mobile (Phase 3).
 
@@ -127,10 +127,9 @@ App Flet avec 6 onglets : Aujourd'hui (animal du jour + aleatoire, image unique 
 
 - **Bugs critiques corriges** : `datetime.utcnow()` → `datetime.now(UTC)`, `print()` → logger, index `is_synonym`, thread safety `_enrich()`
 - **Refactoring** : `app.py` reduit de 2190 a 128 lignes (-94%). Architecture modulaire dans `daynimal/ui/` : AppState, BaseView, 6 vues, 5 composants, AppController
-- **Tests** : 50 → 499 tests (55% couverture). Modules critiques a 93-100% : attribution, repository, schemas, sources, CLI
+- **Tests** : 50 → 949 tests (94% couverture). Modules critiques a 93-100% : attribution, repository, schemas, sources, CLI. Modules UI a 88-100%.
 - **Corrections mineures** : CLI history double parsing, mutation globale settings
-
-Reste non prioritaire : tests des modules UI a 0% (`app_controller`, `today_view`, `history_view`, `favorites_view`, `settings_view`, `stats_view`, `animal_display`, `image_carousel`, `image_gallery_dialog`) — complexe car async/Flet.
+- **Nettoyage debug** : suppression du systeme `FletDebugger` custom au profit du `logging` standard Python. Suppression du dossier `debug/` et de `daynimal/debug.py`.
 
 ### Phase 2b : Features essentielles mobile (completee fev 2026)
 

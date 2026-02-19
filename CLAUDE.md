@@ -300,13 +300,7 @@ daynimal/
 ├── schemas.py       # Pydantic/dataclass models
 ├── main.py          # CLI entry point
 ├── app.py           # Flet GUI application (delegates to ui/ modules)
-└── debug.py         # Debugging and logging utilities
-
-debug/               # Debugging tools and documentation
-├── run_app_debug.py # Debug launcher for Flet app
-├── debug_filter.py  # Smart log filtering (removes Flet noise)
-├── view_logs.py     # Log viewing utilities
-└── README.md        # Debug system documentation
+└── notifications.py # Desktop notification service
 
 scripts/             # Build and release scripts
 └── prepare_release.py          # Compress TSV + generate manifest for GitHub Release
@@ -342,7 +336,4 @@ logs/                # Application logs (created at runtime)
 - **Database changes**: Create new models or migrations, update import script if needed
 - **CLI commands**: Add to `main.py` following existing command pattern
 - **GUI changes**: New views and components go in `daynimal/ui/` (extend `BaseView` for views, add components in `components/`). Legacy code remains in `app.py` until fully migrated. Use async/await patterns for UI responsiveness
-- **Debugging GUI issues**: Use the debug system in `debug/` folder
-  - Launch with `python debug/run_app_debug.py --quiet`
-  - View logs with `python debug/debug_filter.py`
-  - All UI events are automatically logged (navigation, loading, searches, errors)
+- **Logging**: Uses standard Python `logging` module (`logging.getLogger("daynimal")`)

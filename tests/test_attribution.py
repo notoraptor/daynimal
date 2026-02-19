@@ -1072,6 +1072,7 @@ class TestCreateGbifMediaAttribution:
         source_name='GBIF', et une URL par défaut pointant vers gbif.org."""
         from daynimal.attribution import create_gbif_media_attribution
         from daynimal.schemas import License
+
         attr = create_gbif_media_attribution(None, None)
         assert attr.source_name == "GBIF"
         assert attr.author == "Unknown author"
@@ -1084,6 +1085,7 @@ class TestCreateGbifMediaAttribution:
         l'attribution avec les valeurs personnalisées."""
         from daynimal.attribution import create_gbif_media_attribution
         from daynimal.schemas import License
+
         attr = create_gbif_media_attribution(
             "John Doe", License.CC_BY_SA, "https://example.com/img.jpg"
         )
@@ -1094,12 +1096,14 @@ class TestCreateGbifMediaAttribution:
     def test_access_date_set(self):
         """Vérifie que l'access_date est défini à la date du jour."""
         from daynimal.attribution import create_gbif_media_attribution
+
         attr = create_gbif_media_attribution(None, None)
         assert attr.access_date is not None
 
     def test_source_url_set(self):
         """Vérifie que source_url pointe vers l'URL de l'image fournie."""
         from daynimal.attribution import create_gbif_media_attribution
+
         attr = create_gbif_media_attribution(None, None, "https://example.com/img.jpg")
         assert attr.source_url == "https://example.com/img.jpg"
 
@@ -1113,6 +1117,7 @@ class TestCreatePhyloPicAttribution:
         et une URL par défaut pointant vers phylopic.org."""
         from daynimal.attribution import create_phylopic_attribution
         from daynimal.schemas import License
+
         attr = create_phylopic_attribution(None, None)
         assert attr.source_name == "PhyloPic"
         assert attr.author == "Unknown author"
@@ -1124,6 +1129,7 @@ class TestCreatePhyloPicAttribution:
         url='https://phylopic.org/images/abc') utilise les valeurs fournies."""
         from daynimal.attribution import create_phylopic_attribution
         from daynimal.schemas import License
+
         attr = create_phylopic_attribution(
             "Jane", License.CC_BY, "https://phylopic.org/images/abc"
         )
@@ -1134,5 +1140,6 @@ class TestCreatePhyloPicAttribution:
     def test_access_date_set(self):
         """Vérifie que l'access_date est défini à la date du jour."""
         from daynimal.attribution import create_phylopic_attribution
+
         attr = create_phylopic_attribution(None, None)
         assert attr.access_date is not None

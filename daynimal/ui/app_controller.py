@@ -6,10 +6,8 @@ import traceback
 
 import flet as ft
 
-from daynimal.ui.components.widgets import ErrorWidget, LoadingWidget
-
-logger = logging.getLogger("daynimal")
 from daynimal.notifications import NotificationService
+from daynimal.ui.components.widgets import ErrorWidget, LoadingWidget
 from daynimal.ui.state import AppState
 from daynimal.ui.views.favorites_view import FavoritesView
 from daynimal.ui.views.history_view import HistoryView
@@ -17,6 +15,8 @@ from daynimal.ui.views.search_view import SearchView
 from daynimal.ui.views.settings_view import SettingsView
 from daynimal.ui.views.stats_view import StatsView
 from daynimal.ui.views.today_view import TodayView
+
+logger = logging.getLogger("daynimal")
 
 
 class AppController:
@@ -50,9 +50,7 @@ class AppController:
 
         # Initialize views (repository shared via AppState)
         self.today_view = TodayView(
-            page=page,
-            app_state=self.state,
-            on_favorite_toggle=self.on_favorite_toggle,
+            page=page, app_state=self.state, on_favorite_toggle=self.on_favorite_toggle
         )
         self.today_view.on_load_complete = self._update_offline_banner
 

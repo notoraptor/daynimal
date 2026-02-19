@@ -27,10 +27,7 @@ class SearchView(BaseView):
     """
 
     def __init__(
-        self,
-        page: ft.Page,
-        app_state: AppState,
-        on_result_click: Callable[[int], None],
+        self, page: ft.Page, app_state: AppState, on_result_click: Callable[[int], None]
     ):
         """Initialize search view.
 

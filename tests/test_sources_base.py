@@ -81,6 +81,7 @@ class TestRequestWithRetry:
         """Vérifie que _request_with_retry('POST', url, data=...) appelle
         self.client.post(url, data=...) au lieu de self.client.get."""
         from daynimal.sources.wikidata import WikidataAPI
+
         api = WikidataAPI()
         mock_client = MagicMock()
         mock_response = MagicMock()
@@ -89,15 +90,20 @@ class TestRequestWithRetry:
         mock_client.post.return_value = mock_response
         api._client = mock_client
 
-        result = api._request_with_retry("POST", "http://example.com", data={"q": "test"})
+        result = api._request_with_retry(
+            "POST", "http://example.com", data={"q": "test"}
+        )
 
-        mock_client.post.assert_called_once_with("http://example.com", data={"q": "test"})
+        mock_client.post.assert_called_once_with(
+            "http://example.com", data={"q": "test"}
+        )
         assert result is mock_response
 
     def test_unsupported_method_raises_value_error(self):
         """Vérifie que _request_with_retry('DELETE', url) lève ValueError.
         Seuls GET et POST sont supportés."""
         from daynimal.sources.wikipedia import WikipediaAPI
+
         api = WikipediaAPI()
         mock_client = MagicMock()
         api._client = mock_client
@@ -109,6 +115,7 @@ class TestRequestWithRetry:
         """Vérifie que _request_with_retry('GET', url, params=...) passe
         les kwargs à self.client.get."""
         from daynimal.sources.wikipedia import WikipediaAPI
+
         api = WikipediaAPI()
         mock_client = MagicMock()
         mock_response = MagicMock()
@@ -117,7 +124,11 @@ class TestRequestWithRetry:
         mock_client.get.return_value = mock_response
         api._client = mock_client
 
-        result = api._request_with_retry("GET", "http://example.com", params={"q": "test"})
+        result = api._request_with_retry(
+            "GET", "http://example.com", params={"q": "test"}
+        )
 
-        mock_client.get.assert_called_once_with("http://example.com", params={"q": "test"})
+        mock_client.get.assert_called_once_with(
+            "http://example.com", params={"q": "test"}
+        )
         assert result is mock_response

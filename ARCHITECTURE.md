@@ -11,7 +11,6 @@
 - `daynimal.attribution` — Attribution management for legal compliance.
 - `daynimal.config`
 - `daynimal.connectivity` — Network connectivity detection for offline mode.
-- `daynimal.debug` — Debug utilities for Daynimal Flet app.
 - `daynimal.image_cache` — Image cache service for downloading and serving images locally.
 - `daynimal.main` — Daynimal CLI - Daily Animal Discovery
 - `daynimal.notifications` — Notification service for daily animal reminders.
@@ -73,11 +72,6 @@
 - `daynimal.ui.views.stats_view` — Statistics view for displaying database statistics.
 - `daynimal.ui.views.today_view` — Today view for displaying the animal of the day or random animals.
 
-### debug
-- `debug.debug_filter` — Filter and display relevant logs from Daynimal application.
-- `debug.run_app_debug` — Debug launcher for Daynimal Flet application.
-- `debug.view_logs` — Utility script to view Daynimal logs.
-
 ### root
 - `generate_architecture`
 
@@ -92,9 +86,6 @@
 - daynimal.db.build_db
 - daynimal.db.generate_distribution
 - daynimal.db.init_fts
-- debug.debug_filter
-- debug.run_app_debug
-- debug.view_logs
 - scripts.download_phylopic
 - scripts.prepare_release
 
@@ -214,7 +205,6 @@
 - depends on `daynimal.ui.state`
 
 ### daynimal.ui.app_controller
-- depends on `daynimal.debug`
 - depends on `daynimal.notifications`
 - depends on `daynimal.ui.components.widgets`
 - depends on `daynimal.ui.state`
@@ -302,37 +292,32 @@
 - depends on `daynimal.ui.state`
 - depends on `daynimal.ui.views.base`
 
-### debug.run_app_debug
-- depends on `daynimal.app`
-- depends on `daynimal.debug`
-
 ## 4. External Dependencies
-- flet (used 17 times)
-- pathlib (used 15 times)
+- logging (used 17 times)
+- flet (used 16 times)
 - asyncio (used 12 times)
 - typing (used 12 times)
-- logging (used 10 times)
-- argparse (used 9 times)
-- datetime (used 9 times)
+- pathlib (used 11 times)
 - sqlalchemy (used 9 times)
 - httpx (used 8 times)
+- datetime (used 7 times)
 - traceback (used 7 times)
-- sys (used 6 times)
-- time (used 5 times)
+- argparse (used 6 times)
 - csv (used 4 times)
 - dataclasses (used 4 times)
-- os (used 4 times)
 - re (used 4 times)
+- time (used 4 times)
 - hashlib (used 3 times)
 - io (used 3 times)
 - json (used 3 times)
-- subprocess (used 3 times)
+- os (used 3 times)
 - threading (used 3 times)
 - zipfile (used 3 times)
 - abc (used 2 times)
 - collections (used 2 times)
 - gzip (used 2 times)
 - shutil (used 2 times)
+- sys (used 2 times)
 - __future__ (used 1 times)
 - ast (used 1 times)
 - concurrent (used 1 times)
@@ -344,6 +329,7 @@
 - pydantic_settings (used 1 times)
 - random (used 1 times)
 - sqlite3 (used 1 times)
+- subprocess (used 1 times)
 - types (used 1 times)
 - unicodedata (used 1 times)
 
@@ -374,7 +360,7 @@ def main()
 ```python
 class DaynimalApp  # Main application class for Daynimal Flet app.
     def __init__(self, page)
-    # calls: hasattr, is_mobile, isinstance, self.build, self.debugger.logger.info
+    # calls: hasattr, is_mobile, self.build
     def build(self)  # Build the user interface.
     # calls: AppState, SetupView, is_mobile, resolve_database, self._build_desktop_no_db_screen, self._build_main_app, self._load_theme, self.page.add, self.page.update, self.setup_view.build
     def _build_desktop_no_db_screen(self)  # Show an informational screen when DB is missing on desktop.
@@ -388,11 +374,11 @@ class DaynimalApp  # Main application class for Daynimal Flet app.
     def _load_theme(self)  # Load theme setting from database and apply to page.
     # calls: AnimalRepository
     def cleanup(self)  # Clean up resources (close connections, database, etc.).
-    # calls: hasattr, self.app_controller.cleanup, self.debugger.logger.error, self.debugger.logger.info
+    # calls: hasattr, self.app_controller.cleanup, traceback.print_exc
     def on_disconnect(self, e)  # Handle page disconnect event (when user closes the window).
-    # calls: os._exit, self.cleanup, self.debugger.logger.error, self.debugger.logger.info
+    # calls: os._exit, self.cleanup, traceback.print_exc
     def on_close(self, e)  # Handle page close event.
-    # calls: self.cleanup, self.debugger.logger.error, self.debugger.logger.info
+    # calls: self.cleanup, traceback.print_exc
 ```
 ```python
 def _show_error(page, error)  # Show error visually on the page (critical for mobile debugging).
@@ -726,53 +712,6 @@ def get_engine()  # Create and return SQLAlchemy engine.
 def get_session()  # Create and return a new database session.
 ```
 - calls: `get_engine`, `session_factory`, `sessionmaker`
-
-### Module: daynimal.debug
-> Debug utilities for Daynimal Flet app.
-> 
-> Provides logging configuration and utilities to capture application logs,
-> stdout/stderr, and exceptions for easier debugging of the Flet application.
-```python
-class FletDebugger  # Centralized debugging system for Flet applications.
-    def __init__(self, log_dir, log_to_console)  # Initialize the Flet debugger.
-    # calls: Path, _default_log_dir, datetime.now, datetime.now.strftime, self._setup_logging, self.log_dir.mkdir
-    def _setup_logging(self, log_to_console)  # Configure Python logging with file and optional console handlers.
-    # calls: logging.FileHandler, logging.Formatter, logging.StreamHandler, logging.basicConfig, logging.getLogger, self.logger.addHandler, self.logger.handlers.clear, self.logger.setLevel
-    def log_app_start(self)  # Log application startup.
-    # calls: self.logger.info
-    def log_app_stop(self)  # Log application shutdown.
-    # calls: self.logger.info
-    def log_view_change(self, view_name)  # Log navigation to a new view.
-    # calls: self.logger.info
-    def log_animal_load(self, mode, animal_name)  # Log animal loading.
-    # calls: self.logger.info
-    def log_search(self, query, results_count)  # Log search operation.
-    # calls: self.logger.info
-    def log_error(self, context, error)  # Log an error with context.
-    # calls: self.logger.error, self.logger.exception, type
-    def log_exception(self, exc_type, exc_value, exc_traceback)  # Log uncaught exception (for sys.excepthook).
-    # calls: self.logger.critical
-    def get_logger(self)  # Get the logger instance for custom logging.
-    def print_log_location(self)  # Print the log file location to console.
-    # calls: print, self.log_file.absolute
-```
-```python
-def _default_log_dir()  # Répertoire de logs par défaut, mobile-aware.
-```
-- calls: `Path`, `os.getenv`, `str`
-```python
-def get_debugger(log_dir, log_to_console)  # Get or create the global debugger instance.
-```
-- calls: `FletDebugger`, `sys.__excepthook__`
-```python
-def log_info(message)  # Quick logging function - info level.
-```
-```python
-def log_error(message)  # Quick logging function - error level.
-```
-```python
-def log_debug(message)  # Quick logging function - debug level.
-```
 
 ### Module: daynimal.image_cache
 > Image cache service for downloading and serving images locally.
@@ -1285,12 +1224,12 @@ class WikipediaAPI(DataSource)  # Client for Wikipedia API.
 > App controller for managing views and navigation.
 ```python
 class AppController  # Main application controller.
-    def __init__(self, page, debugger)  # Initialize AppController.
-    # calls: AppState, FavoritesView, HistoryView, NotificationService, SearchView, SettingsView, StatsView, TodayView, asyncio.create_task, ft.Button, ft.ButtonStyle, ft.Column, ft.Container, ft.Icon, ft.NavigationBar, ft.NavigationBarDestination, ft.Padding, ft.Row, ft.Text, get_debugger, self.load_animal_from_favorite, self.load_animal_from_history, self.load_animal_from_search
+    def __init__(self, page)  # Initialize AppController.
+    # calls: AppState, FavoritesView, HistoryView, NotificationService, SearchView, SettingsView, StatsView, TodayView, asyncio.create_task, ft.Button, ft.ButtonStyle, ft.Column, ft.Container, ft.Icon, ft.NavigationBar, ft.NavigationBarDestination, ft.Padding, ft.Row, ft.Text, self.load_animal_from_favorite, self.load_animal_from_history, self.load_animal_from_search
     def build(self)  # Build the app UI.
     # calls: ft.Column, self.notification_service.start, self.show_today_view
     def on_nav_change(self, e)  # Handle navigation bar changes.
-    # calls: len, self.debugger.log_view_change, self.show_favorites_view, self.show_history_view, self.show_search_view, self.show_settings_view, self.show_stats_view, self.show_today_view
+    # calls: len, self.show_favorites_view, self.show_history_view, self.show_search_view, self.show_settings_view, self.show_stats_view, self.show_today_view
     def show_today_view(self)  # Show the Today view.
     # calls: self.page.update, self.today_view.build
     def show_history_view(self)  # Show the History view.
@@ -1310,9 +1249,9 @@ class AppController  # Main application controller.
     async def load_animal_from_search(self, taxon_id)  # Load an animal from search and display in Today view.
     # calls: self._load_and_display_animal
     async def _load_and_display_animal(self, taxon_id, source, enrich, add_to_history)  # Unified method to load and display an animal in Today view.
-    # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, print, self._update_offline_banner, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.page.update, self.show_today_view, self.today_view._display_animal, str, traceback.format_exc
+    # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, self._update_offline_banner, self.page.update, self.show_today_view, self.today_view._display_animal, str, traceback.print_exc
     def on_favorite_toggle(self, taxon_id, is_favorite)  # Handle favorite toggle from any view.
-    # calls: ft.SnackBar, ft.Text, print, self.debugger.log_error, self.debugger.logger.error, self.page.show_dialog, str, traceback.format_exc
+    # calls: ft.SnackBar, ft.Text, self.page.show_dialog, str, traceback.print_exc
     def _update_offline_banner(self)  # Update offline banner visibility based on connectivity state.
     # calls: self.page.update
     async def _retry_connection(self, e)  # Retry network connection and reload current animal if back online.
@@ -1481,7 +1420,7 @@ class Debouncer  # Debouncer to delay function execution until input stabilizes.
 > All views inherit from BaseView to ensure consistent interface and behavior.
 ```python
 class BaseView(ABC)  # Abstract base class for all views in the Daynimal app.
-    def __init__(self, page, app_state, debugger)  # Initialize base view.
+    def __init__(self, page, app_state)  # Initialize base view.
     # calls: ft.Column
     @abstractmethod
     def build(self)  # Build the view's UI.
@@ -1492,42 +1431,41 @@ class BaseView(ABC)  # Abstract base class for all views in the Daynimal app.
     # calls: ErrorWidget, self.page.update
     def show_empty_state(self, icon, title, description, icon_size, icon_color)  # Show empty state.
     # calls: EmptyStateWidget, self.page.update
-    def log_info(self, message)  # Log info message (with fallback to print).
-    # calls: print, self.debugger.logger.info
-    def log_error(self, context, error)  # Log error message (with fallback to print).
-    # calls: print, self.debugger.log_error
+    def log_info(self, message)  # Log info message.
+    def log_error(self, context, error)  # Log error message.
+    # calls: type
 ```
 
 ### Module: daynimal.ui.views.favorites_view
 > Favorites view for displaying favorite animals.
 ```python
 class FavoritesView(BaseView)  # View for displaying and managing favorite animals.
-    def __init__(self, page, app_state, on_animal_click, debugger)  # Initialize FavoritesView.
+    def __init__(self, page, app_state, on_animal_click)  # Initialize FavoritesView.
     # calls: ft.Column, ft.Container, super, super.__init__
     def build(self)  # Build the favorites view UI.
     # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, self.load_favorites, view_header
     async def load_favorites(self)  # Load favorites from repository.
-    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, create_favorite_card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self.app_state.repository.get_favorites, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, create_favorite_card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, self.app_state.repository.get_favorites, self.page.update, str, traceback.print_exc
     def _on_page_change(self, new_page)  # Handle page change from pagination bar.
     # calls: asyncio.create_task, self.load_favorites
     def _on_item_click(self, taxon_id)  # Handle click on a favorite item.
-    # calls: print, self.debugger.log_error, self.debugger.logger.error, self.debugger.logger.info, self.on_animal_click, traceback.format_exc
+    # calls: self.on_animal_click, traceback.print_exc
 ```
 
 ### Module: daynimal.ui.views.history_view
 > History view for displaying animal viewing history.
 ```python
 class HistoryView(BaseView)  # View for displaying and managing animal viewing history.
-    def __init__(self, page, app_state, on_animal_click, debugger)  # Initialize HistoryView.
+    def __init__(self, page, app_state, on_animal_click)  # Initialize HistoryView.
     # calls: ft.Column, ft.Container, super, super.__init__
     def build(self)  # Build the history view UI.
     # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, self.load_history, view_header
     async def load_history(self)  # Load history from repository.
-    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, create_history_card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self.app_state.repository.get_history, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, create_history_card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, self.app_state.repository.get_history, self.page.update, str, traceback.print_exc
     def _on_page_change(self, new_page)  # Handle page change from pagination bar.
     # calls: asyncio.create_task, self.load_history
     def _on_item_click(self, taxon_id)  # Handle click on a history item.
-    # calls: print, self.debugger.log_error, self.debugger.logger.error, self.debugger.logger.info, self.on_animal_click, traceback.format_exc
+    # calls: self.on_animal_click, traceback.print_exc
 ```
 
 ### Module: daynimal.ui.views.search_view
@@ -1537,7 +1475,7 @@ class HistoryView(BaseView)  # View for displaying and managing animal viewing h
 > (submit on Enter or button click).
 ```python
 class SearchView(BaseView)  # Search view with search field and results list.
-    def __init__(self, page, app_state, on_result_click, debugger)  # Initialize search view.
+    def __init__(self, page, app_state, on_result_click)  # Initialize search view.
     # calls: ft.Column, ft.IconButton, ft.TextField, super, super.__init__
     def build(self)  # Build the search view UI.
     # calls: ft.Container, ft.Divider, ft.Padding, ft.Row, self.show_empty_search_state, view_header
@@ -1556,29 +1494,29 @@ class SearchView(BaseView)  # Search view with search field and results list.
 > Settings view for app configuration and credits.
 ```python
 class SettingsView(BaseView)  # View for app settings, preferences, and credits.
-    def __init__(self, page, app_state, debugger)  # Initialize SettingsView.
+    def __init__(self, page, app_state)  # Initialize SettingsView.
     # calls: ft.Column, super, super.__init__
     def build(self)  # Build the settings view UI.
     # calls: asyncio.create_task, self._load_settings
     async def _load_settings(self)  # Load settings and build the UI.
-    # calls: asyncio.to_thread, ft.Button, ft.Column, ft.Container, ft.Divider, ft.Dropdown, ft.Icon, ft.Padding, ft.Row, ft.Switch, ft.Text, ft.dropdown.Option, print, range, self.app_state.image_cache.get_cache_size, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc, view_header
+    # calls: asyncio.to_thread, ft.Button, ft.Column, ft.Container, ft.Divider, ft.Dropdown, ft.Icon, ft.Padding, ft.Row, ft.Switch, ft.Text, ft.dropdown.Option, range, self.app_state.image_cache.get_cache_size, self.page.update, str, traceback.print_exc, view_header
     def _on_clear_cache(self, e)  # Handle clear cache button click.
-    # calls: asyncio.create_task, self._load_settings, self.app_state.image_cache.clear, self.debugger.log_error, self.debugger.logger.info
+    # calls: asyncio.create_task, self._load_settings, self.app_state.image_cache.clear, traceback.print_exc
     def _on_offline_toggle(self, e)  # Handle forced offline mode toggle.
-    # calls: self.debugger.log_error, self.debugger.logger.info
+    # calls: traceback.print_exc
     def _on_theme_toggle(self, e)  # Handle theme toggle switch change.
-    # calls: print, self.app_state.repository.set_setting, self.debugger.log_error, self.debugger.logger.error, self.debugger.logger.info, self.page.update, traceback.format_exc
+    # calls: self.app_state.repository.set_setting, self.page.update, traceback.print_exc
     def _on_notifications_toggle(self, e)  # Handle notification toggle switch change.
-    # calls: getattr, self.debugger.log_error, self.debugger.logger.info
+    # calls: getattr, traceback.print_exc
     def _on_notification_time_change(self, e)  # Handle notification time dropdown change.
-    # calls: self.app_state.repository.set_setting, self.debugger.log_error, self.debugger.logger.info
+    # calls: self.app_state.repository.set_setting, traceback.print_exc
 ```
 
 ### Module: daynimal.ui.views.setup_view
 > Setup view for first-launch database installation.
 ```python
 class SetupView(BaseView)  # View displayed on first launch when no database is found.
-    def __init__(self, page, app_state, on_setup_complete, debugger)  # Initialize SetupView.
+    def __init__(self, page, app_state, on_setup_complete)  # Initialize SetupView.
     # calls: super, super.__init__
     def build(self)  # Build the setup view UI — shows welcome screen.
     # calls: self._show_welcome
@@ -1601,7 +1539,7 @@ def _global_progress(stage, local_progress)  # Convert a per-stage progress to a
 > Statistics view for displaying database statistics.
 ```python
 class StatsView(BaseView)  # View for displaying database statistics with responsive cards.
-    def __init__(self, page, app_state, debugger)  # Initialize StatsView.
+    def __init__(self, page, app_state)  # Initialize StatsView.
     # calls: ft.Column, super, super.__init__
     def build(self)  # Build the statistics view UI.
     # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, self._display_stats, self.load_stats, self.page.update, view_header
@@ -1610,14 +1548,14 @@ class StatsView(BaseView)  # View for displaying database statistics with respon
     def _display_stats(self, stats)  # Display statistics cards.
     # calls: self._stat_card
     async def load_stats(self)  # Load statistics from repository.
-    # calls: asyncio.sleep, asyncio.to_thread, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, print, self._display_stats, self.app_state.repository.get_stats, self.debugger.log_error, self.debugger.logger.error, self.page.update, str, traceback.format_exc
+    # calls: asyncio.sleep, asyncio.to_thread, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, self._display_stats, self.app_state.repository.get_stats, self.page.update, str, traceback.print_exc
 ```
 
 ### Module: daynimal.ui.views.today_view
 > Today view for displaying the animal of the day or random animals.
 ```python
 class TodayView(BaseView)  # View for displaying the animal of the day or random animals.
-    def __init__(self, page, app_state, on_favorite_toggle, debugger)  # Initialize TodayView.
+    def __init__(self, page, app_state, on_favorite_toggle)  # Initialize TodayView.
     # calls: ft.Column, super, super.__init__
     def build(self)  # Build the today view UI.
     # calls: ft.Alignment, ft.Button, ft.ButtonStyle, ft.Column, ft.Container, ft.Divider, ft.Icon, ft.Padding, ft.Row, ft.Text, self._display_animal, view_header
@@ -1626,7 +1564,7 @@ class TodayView(BaseView)  # View for displaying the animal of the day or random
     async def _load_random_animal(self, e)  # Load a random animal.
     # calls: self._load_animal_for_today_view
     async def _load_animal_for_today_view(self, mode)  # Load and display an animal in the Today view.
-    # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, print, self._display_animal, self.debugger.log_animal_load, self.debugger.log_error, self.debugger.logger.error, self.on_load_complete, self.page.update, str, traceback.format_exc
+    # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, self._display_animal, self.on_load_complete, self.page.update, str, traceback.print_exc
     def _display_animal(self, animal)  # Display animal information in the Today view.
     # calls: AnimalDisplay, ft.Button, ft.Column, ft.Container, ft.Divider, ft.Icon, ft.IconButton, ft.Image, ft.Padding, ft.Row, ft.Text, len, self._open_gallery, self.app_state.image_cache.get_local_path, self.app_state.repository.is_favorite, self.page.update, str
     def _on_favorite_toggle(self, e)  # Handle favorite button toggle.
@@ -1641,89 +1579,6 @@ class TodayView(BaseView)  # View for displaying the animal of the day or random
     def _on_open_wikipedia(self, e)  # Open Wikipedia article in default browser.
     # calls: ft.UrlLauncher, self.page.run_task
 ```
-
-### Module: debug.debug_filter
-> Filter and display relevant logs from Daynimal application.
-> 
-> This script filters out verbose Flet internal logs and shows only
-> application-level events (INFO, WARNING, ERROR, CRITICAL).
-> 
-> Usage (from project root):
->     python debug/debug_filter.py                    # Show filtered latest log
->     python debug/debug_filter.py --tail             # Follow filtered log
->     python debug/debug_filter.py --errors-only      # Show only errors
->     python debug/debug_filter.py --search "keyword" # Search for specific keyword
-```python
-def get_latest_log()  # Get the most recent log file.
-```
-- calls: `Path`, `sorted`
-```python
-def filter_line(line, errors_only, search)  # Determine if a line should be displayed.
-```
-- calls: `any`
-```python
-def colorize_log_line(line)  # Add color to log lines based on level (ANSI escape codes).
-```
-```python
-def show_filtered_log(log_file, errors_only, search, colorize)  # Display filtered log file.
-```
-- calls: `colorize_log_line`, `filter_line`, `open`, `print`, `sys.stdout.isatty`
-```python
-def tail_filtered_log(log_file, errors_only, search)  # Follow log file and display filtered lines in real-time.
-```
-- calls: `colorize_log_line`, `filter_line`, `open`, `print`, `sys.stdout.isatty`, `time.sleep`
-```python
-def show_statistics(log_file)  # Show statistics about the log file.
-```
-- calls: `open`, `print`
-```python
-def main()  # Main entry point.
-```
-- calls: `argparse.ArgumentParser`, `get_latest_log`, `print`, `show_filtered_log`, `show_statistics`, `sys.exit`, `tail_filtered_log`
-
-### Module: debug.run_app_debug
-> Debug launcher for Daynimal Flet application.
-> 
-> This script launches the Flet app with full debug logging enabled.
-> Logs are written to logs/ directory with timestamps.
-> 
-> Usage (from project root):
->     python debug/run_app_debug.py              # Run with console logs
->     python debug/run_app_debug.py --quiet      # Run without console logs (file only)
->     python debug/run_app_debug.py --tail       # Run and tail the log file in parallel
-```python
-def main()  # Launch the Flet app with debugging enabled.
-```
-- calls: `DaynimalApp`, `_install_asyncio_exception_handler`, `argparse.ArgumentParser`, `ft.run`, `get_debugger`, `print`, `subprocess.Popen`
-
-### Module: debug.view_logs
-> Utility script to view Daynimal logs.
-> 
-> Usage (from project root):
->     python debug/view_logs.py              # Show latest log file
->     python debug/view_logs.py --tail       # Follow latest log file (real-time)
->     python debug/view_logs.py --list       # List all log files
->     python debug/view_logs.py --all        # Show all logs concatenated
-```python
-def get_log_files()  # Get all log files sorted by modification time (newest first).
-```
-- calls: `Path`, `sorted`
-```python
-def show_latest_log(tail)  # Show or tail the latest log file.
-```
-- calls: `get_log_files`, `open`, `print`, `str`, `subprocess.run`
-```python
-def list_log_files()  # List all log files with their sizes and timestamps.
-```
-- calls: `Path`, `Path.stat`, `datetime.fromtimestamp`, `datetime.fromtimestamp.strftime`, `get_log_files`, `len`, `print`
-```python
-def show_all_logs()  # Show all log files concatenated.
-```
-- calls: `get_log_files`, `len`, `open`, `print`, `reversed`
-```python
-def main()  # Main entry point.
-```
-- calls: `argparse.ArgumentParser`, `list_log_files`, `show_all_logs`, `show_latest_log`
 
 ### Module: generate_architecture
 ```python

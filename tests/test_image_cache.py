@@ -372,9 +372,7 @@ class TestDownloadAndStoreEdgeCases:
         with (
             patch("daynimal.image_cache.retry_with_backoff", return_value=mock_resp),
             patch.object(
-                db_session,
-                "add",
-                side_effect=IntegrityError("", {}, Exception()),
+                db_session, "add", side_effect=IntegrityError("", {}, Exception())
             ),
         ):
             with pytest.raises(IntegrityError):
@@ -390,7 +388,9 @@ class TestDownloadAndStoreEdgeCases:
         url = "https://example.com/img.jpg"
 
         # First cache the image
-        with patch("daynimal.image_cache.retry_with_backoff", return_value=_mock_response()):
+        with patch(
+            "daynimal.image_cache.retry_with_backoff", return_value=_mock_response()
+        ):
             first_path = service._download_and_store(url, is_thumbnail=True)
 
         # Second call should return existing path without downloading again
@@ -414,7 +414,9 @@ class TestGetLocalPathEdgeCases:
             thumbnail_url="https://example.com/test_thumb.jpg",
         )
 
-        with patch("daynimal.image_cache.retry_with_backoff", return_value=_mock_response()):
+        with patch(
+            "daynimal.image_cache.retry_with_backoff", return_value=_mock_response()
+        ):
             service.cache_images([img])
 
         # Manually delete the file from disk
@@ -430,7 +432,9 @@ class TestGetLocalPathEdgeCases:
 class TestClearEdgeCases:
     """Tests pour clear — gestion des erreurs OS."""
 
-    def test_clear_handles_oserror_on_subdir_removal(self, service, db_session, tmp_path):
+    def test_clear_handles_oserror_on_subdir_removal(
+        self, service, db_session, tmp_path
+    ):
         """Vérifie que clear() ne plante pas si la suppression d un
         sous-répertoire échoue (OSError). Les fichiers individuels sont
         supprimés et les sous-répertoires non-vides sont ignorés."""
@@ -440,7 +444,9 @@ class TestClearEdgeCases:
             thumbnail_url="https://example.com/test_thumb.jpg",
         )
 
-        with patch("daynimal.image_cache.retry_with_backoff", return_value=_mock_response()):
+        with patch(
+            "daynimal.image_cache.retry_with_backoff", return_value=_mock_response()
+        ):
             service.cache_images([img])
 
         # Patch rmdir to raise OSError (simulate non-empty/locked directory)
@@ -468,7 +474,9 @@ class TestCacheImagesHdMode:
             thumbnail_url="https://example.com/thumb.jpg",
         )
 
-        with patch("daynimal.image_cache.retry_with_backoff", return_value=_mock_response()):
+        with patch(
+            "daynimal.image_cache.retry_with_backoff", return_value=_mock_response()
+        ):
             svc.cache_images([img])
 
         entries = db_session.query(ImageCacheModel).all()

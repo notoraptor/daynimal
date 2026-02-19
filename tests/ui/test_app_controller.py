@@ -12,8 +12,7 @@ NOTE: On instancie le vrai AppController mais avec des dépendances mockées.
 Les vues sont réelles (instanciées avec des mocks de page/state).
 """
 
-import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock, PropertyMock
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import flet as ft
 import pytest
@@ -38,7 +37,6 @@ def mock_page():
     page.controls = []
     page.window = MagicMock()
     return page
-
 
 
 @pytest.fixture
@@ -185,9 +183,7 @@ class TestAppControllerInit:
         controller = _create_controller(mock_page, mock_repository)
         assert controller.state is not None
 
-    def test_creates_notification_service(
-        self, mock_page, mock_repository
-    ):
+    def test_creates_notification_service(self, mock_page, mock_repository):
         """Vérifie que __init__ crée un NotificationService."""
         controller = _create_controller(mock_page, mock_repository)
         assert controller.notification_service is not None

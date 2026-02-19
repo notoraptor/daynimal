@@ -133,7 +133,7 @@ The application follows a three-layer architecture:
 - **`daynimal/schemas.py`** - Data models and schemas
 - **`daynimal/main.py`** - CLI entry point
 - **`daynimal/app.py`** - Flet GUI application
-- **`daynimal/debug.py`** - Debugging and logging utilities
+- **`daynimal/notifications.py`** - Desktop notification service
 
 ## Data Sources
 
@@ -157,18 +157,12 @@ daynimal/
 │   ├── db/            # Database layer
 │   ├── sources/       # External API integrations
 │   ├── app.py         # Flet GUI application
-│   ├── debug.py       # Debugging utilities
 │   ├── main.py        # CLI entry point
 │   ├── repository.py  # Data access layer
 │   └── schemas.py     # Data models
 ├── data/              # Raw data files (GBIF, TAXREF) - gitignored
 ├── dist/              # Distribution files (.gz, manifest) - gitignored
 ├── tmp/               # Temporary/decompressed files - gitignored
-├── debug/             # Debugging tools
-│   ├── run_app_debug.py    # Debug launcher
-│   ├── debug_filter.py     # Log filtering
-│   ├── view_logs.py        # Log viewer
-│   └── README.md           # Debug documentation
 ├── scripts/           # Build and release scripts
 │   └── prepare_release.py  # Compress TSV + generate manifest
 ├── docs/              # Documentation

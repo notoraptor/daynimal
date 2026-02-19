@@ -6,9 +6,8 @@ Stratégie: extract_canonical_name et parse_int sont des fonctions pures
 facilement testables. download_backbone nécessite le mock de httpx.
 """
 
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 
-import pytest
 
 from daynimal.db.import_gbif_utils import (
     extract_canonical_name,
@@ -50,7 +49,9 @@ class TestExtractCanonicalName:
 
     def test_subspecies(self):
         """Vérifie que 'Canis lupus familiaris Linnaeus' retourne 'Canis lupus'."""
-        assert extract_canonical_name("Canis lupus familiaris Linnaeus") == "Canis lupus"
+        assert (
+            extract_canonical_name("Canis lupus familiaris Linnaeus") == "Canis lupus"
+        )
 
     def test_empty_string(self):
         """Vérifie que '' retourne ''."""
@@ -59,7 +60,9 @@ class TestExtractCanonicalName:
     def test_complex_authority(self):
         """Vérifie que 'Balaenoptera musculus (Linnaeus, 1758) ssp. indica'
         retourne 'Balaenoptera musculus'."""
-        result = extract_canonical_name("Balaenoptera musculus (Linnaeus, 1758) ssp. indica")
+        result = extract_canonical_name(
+            "Balaenoptera musculus (Linnaeus, 1758) ssp. indica"
+        )
         assert result == "Balaenoptera musculus"
 
 
@@ -116,7 +119,10 @@ class TestDownloadBackbone:
 
         # Mock HEAD response
         mock_head_response = MagicMock()
-        mock_head_response.headers = {"content-length": "1000", "accept-ranges": "bytes"}
+        mock_head_response.headers = {
+            "content-length": "1000",
+            "accept-ranges": "bytes",
+        }
         mock_head_response.raise_for_status = MagicMock()
         mock_head.return_value = mock_head_response
 
@@ -143,7 +149,10 @@ class TestDownloadBackbone:
 
         # Mock HEAD
         mock_head_response = MagicMock()
-        mock_head_response.headers = {"content-length": "1000", "accept-ranges": "bytes"}
+        mock_head_response.headers = {
+            "content-length": "1000",
+            "accept-ranges": "bytes",
+        }
         mock_head_response.raise_for_status = MagicMock()
         mock_head.return_value = mock_head_response
 
@@ -169,7 +178,10 @@ class TestDownloadBackbone:
         partial.write_bytes(b"x" * 1000)
 
         mock_head_response = MagicMock()
-        mock_head_response.headers = {"content-length": "1000", "accept-ranges": "bytes"}
+        mock_head_response.headers = {
+            "content-length": "1000",
+            "accept-ranges": "bytes",
+        }
         mock_head_response.raise_for_status = MagicMock()
         mock_head.return_value = mock_head_response
 

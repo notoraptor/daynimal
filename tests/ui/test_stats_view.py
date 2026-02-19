@@ -37,13 +37,15 @@ def mock_app_state():
     """Mock d'AppState avec repository.get_stats."""
     state = MagicMock()
     state.repository = MagicMock()
-    state.repository.get_stats = MagicMock(return_value={
-        "total_taxa": 163000,
-        "species_count": 160000,
-        "enriched_count": 500,
-        "vernacular_names": 1100000,
-        "enrichment_progress": "500/160000 (0.3%)",
-    })
+    state.repository.get_stats = MagicMock(
+        return_value={
+            "total_taxa": 163000,
+            "species_count": 160000,
+            "enriched_count": 500,
+            "vernacular_names": 1100000,
+            "enrichment_progress": "500/160000 (0.3%)",
+        }
+    )
     state.current_animal = None
     state.current_image_index = 0
     state.cached_stats = None
@@ -76,7 +78,9 @@ class TestStatsViewBuild:
     """Tests pour StatsView.build()."""
 
     @patch("daynimal.ui.views.stats_view.asyncio.create_task")
-    def test_returns_column_with_header(self, _mock_create_task, mock_page, mock_app_state):
+    def test_returns_column_with_header(
+        self, _mock_create_task, mock_page, mock_app_state
+    ):
         """Verifie que build() retourne un ft.Column contenant un header
         'Statistiques' et le stats_container."""
         view = _make_view(mock_page, mock_app_state)
@@ -125,7 +129,9 @@ class TestStatsViewBuild:
         call_args.close()
 
     @patch("daynimal.ui.views.stats_view.asyncio.create_task")
-    def test_uses_cached_stats(self, _mock_create_task, mock_page, mock_app_state, sample_stats):
+    def test_uses_cached_stats(
+        self, _mock_create_task, mock_page, mock_app_state, sample_stats
+    ):
         """Verifie que quand cached_stats est defini, build() appelle
         _display_stats immediatement sans passer par le loading.
         Au deuxieme appel de build, les stats sont deja en cache."""
@@ -135,7 +141,9 @@ class TestStatsViewBuild:
         view.cached_stats = sample_stats
 
         # patch.object on local view must remain with-statement
-        with patch.object(view, "_display_stats", wraps=view._display_stats) as mock_display:
+        with patch.object(
+            view, "_display_stats", wraps=view._display_stats
+        ) as mock_display:
             view.build()
 
         # _display_stats should have been called immediately with cached stats
@@ -156,7 +164,9 @@ class TestStatsViewLoadStats:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.stats_view.asyncio.sleep", new_callable=AsyncMock)
     @patch("daynimal.ui.views.stats_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_shows_loading_when_no_cache(self, mock_to_thread, _mock_sleep, mock_page, mock_app_state):
+    async def test_shows_loading_when_no_cache(
+        self, mock_to_thread, _mock_sleep, mock_page, mock_app_state
+    ):
         """Verifie que quand cached_stats est None, load_stats() affiche
         d'abord un ProgressRing pendant le chargement."""
         view = _make_view(mock_page, mock_app_state)
@@ -168,7 +178,9 @@ class TestStatsViewLoadStats:
             # Capture the controls at the moment update is called
             if view.stats_container.controls:
                 ctrl = view.stats_container.controls[0]
-                if isinstance(ctrl, ft.Container) and isinstance(ctrl.content, ft.Column):
+                if isinstance(ctrl, ft.Container) and isinstance(
+                    ctrl.content, ft.Column
+                ):
                     for child in ctrl.content.controls:
                         if isinstance(child, ft.ProgressRing):
                             loading_controls_captured.append(True)
@@ -186,12 +198,16 @@ class TestStatsViewLoadStats:
         await view.load_stats()
 
         # The loading ProgressRing should have been shown
-        assert len(loading_controls_captured) > 0, "ProgressRing should have been shown during loading"
+        assert len(loading_controls_captured) > 0, (
+            "ProgressRing should have been shown during loading"
+        )
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.stats_view.asyncio.sleep", new_callable=AsyncMock)
     @patch("daynimal.ui.views.stats_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_creates_four_stat_cards(self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, sample_stats):
+    async def test_creates_four_stat_cards(
+        self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, sample_stats
+    ):
         """Verifie que load_stats() cree exactement 4 stat cards dans
         stats_container: total_taxa, species_count, enriched_count,
         vernacular_names."""
@@ -211,7 +227,9 @@ class TestStatsViewLoadStats:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.stats_view.asyncio.sleep", new_callable=AsyncMock)
     @patch("daynimal.ui.views.stats_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_error_shows_error(self, mock_to_thread, _mock_sleep, mock_page, mock_app_state):
+    async def test_error_shows_error(
+        self, mock_to_thread, _mock_sleep, mock_page, mock_app_state
+    ):
         """Verifie que si get_stats() leve une exception, un container
         d'erreur est affiche."""
         view = _make_view(mock_page, mock_app_state)
@@ -244,7 +262,9 @@ class TestStatsViewLoadStats:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.stats_view.asyncio.sleep", new_callable=AsyncMock)
     @patch("daynimal.ui.views.stats_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_sets_cached_stats(self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, sample_stats):
+    async def test_sets_cached_stats(
+        self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, sample_stats
+    ):
         """Verifie que apres un chargement reussi, self.cached_stats
         est mis a jour avec le dict retourne par get_stats()."""
         view = _make_view(mock_page, mock_app_state)
@@ -330,8 +350,11 @@ class TestStatCard:
         view = _make_view(mock_page, mock_app_state)
 
         card = view._stat_card(
-            ft.Icons.INFO, ft.Colors.GREEN_500, "500", "Enrichis",
-            subtitle="0.3% des especes"
+            ft.Icons.INFO,
+            ft.Colors.GREEN_500,
+            "500",
+            "Enrichis",
+            subtitle="0.3% des especes",
         )
 
         row = card.content.content
@@ -428,7 +451,9 @@ class TestDisplayStats:
         icon = icon_circle.content
         assert icon.icon == ft.Icons.FAVORITE
 
-    def test_displays_enriched_with_progress(self, mock_page, mock_app_state, sample_stats):
+    def test_displays_enriched_with_progress(
+        self, mock_page, mock_app_state, sample_stats
+    ):
         """Verifie que le card 'enriched' affiche le nombre d'animaux enrichis
         avec un sous-titre montrant le pourcentage (ex: '0.3% des especes')."""
         view = _make_view(mock_page, mock_app_state)

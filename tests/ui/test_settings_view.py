@@ -10,8 +10,7 @@ Dropdown.on_change, Button.on_click) et on verifie les appels au repository
 et les changements d'UI.
 """
 
-import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock, PropertyMock
+from unittest.mock import MagicMock, patch, PropertyMock
 
 import flet as ft
 import pytest
@@ -141,9 +140,7 @@ class TestSettingsViewBuild:
         assert mock_create_task.called
 
     @pytest.mark.asyncio
-    async def test_load_settings_creates_theme_toggle(
-        self, mock_page, mock_app_state
-    ):
+    async def test_load_settings_creates_theme_toggle(self, mock_page, mock_app_state):
         """Verifie que _load_settings cree un ft.Switch pour le theme
         sombre. La valeur initiale depend de get_setting('theme_mode'):
         'dark' -> value=True, sinon False."""
@@ -237,9 +234,7 @@ class TestSettingsViewBuild:
         assert dropdown.value == "08:00"
 
     @pytest.mark.asyncio
-    async def test_load_settings_shows_cache_size(
-        self, mock_page, mock_app_state
-    ):
+    async def test_load_settings_shows_cache_size(self, mock_page, mock_app_state):
         """Verifie que _load_settings affiche la taille du cache d'images.
         Mock: image_cache.get_cache_size retourne 5242880 (5 Mo).
         Le texte doit afficher '5.0 Mo'."""
@@ -252,9 +247,7 @@ class TestSettingsViewBuild:
         assert len(cache_texts) >= 1
 
     @pytest.mark.asyncio
-    async def test_load_settings_shows_db_stats(
-        self, mock_page, mock_app_state
-    ):
+    async def test_load_settings_shows_db_stats(self, mock_page, mock_app_state):
         """Verifie que _load_settings affiche les statistiques de la DB
         (nombre d'especes, etc.) depuis repository.get_stats()."""
         view = _make_view(mock_page, mock_app_state)
@@ -271,9 +264,7 @@ class TestSettingsViewBuild:
         assert "500" in all_text
 
     @pytest.mark.asyncio
-    async def test_load_settings_error_shows_error(
-        self, mock_page, mock_app_state
-    ):
+    async def test_load_settings_error_shows_error(self, mock_page, mock_app_state):
         """Verifie que si une exception est levee pendant le chargement,
         un container d'erreur est affiche."""
         # Make get_setting raise an exception
@@ -291,7 +282,6 @@ class TestSettingsViewBuild:
             t for t in text_values if "Erreur" in t or "DB connection failed" in t
         ]
         assert len(error_texts) >= 1
-
 
 
 # =============================================================================
@@ -469,9 +459,7 @@ class TestCacheManagement:
     """Tests pour _on_clear_cache."""
 
     @patch("daynimal.ui.views.settings_view.asyncio.create_task")
-    def test_clear_cache(
-        self, mock_create_task, mock_page, mock_app_state
-    ):
+    def test_clear_cache(self, mock_create_task, mock_page, mock_app_state):
         """Verifie que _on_clear_cache appelle image_cache.clear()
         puis recharge les settings (appelle _load_settings) pour
         mettre a jour l'affichage de la taille du cache."""

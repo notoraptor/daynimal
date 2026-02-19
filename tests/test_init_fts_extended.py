@@ -38,7 +38,9 @@ class TestCreateFtsTable:
 
             # Verify table exists
             result = populated_session.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='taxa_fts'")
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='taxa_fts'"
+                )
             ).fetchone()
             assert result is not None
         except Exception:
@@ -173,8 +175,13 @@ class TestInitFts:
 
         # Add test data
         taxon = TaxonModel(
-            taxon_id=1, scientific_name="Canis lupus", canonical_name="Canis lupus",
-            rank="species", kingdom="Animalia", is_enriched=False, is_synonym=False,
+            taxon_id=1,
+            scientific_name="Canis lupus",
+            canonical_name="Canis lupus",
+            rank="species",
+            kingdom="Animalia",
+            is_enriched=False,
+            is_synonym=False,
         )
         vn = VernacularNameModel(taxon_id=1, name="Wolf", language="en")
         session.add(taxon)
@@ -191,9 +198,7 @@ class TestInitFts:
             Session2 = sessionmaker(bind=engine2)
             session2 = Session2()
 
-            result = session2.execute(
-                text("SELECT COUNT(*) FROM taxa_fts")
-            ).scalar()
+            result = session2.execute(text("SELECT COUNT(*) FROM taxa_fts")).scalar()
             assert result == 1
 
             # FTS search

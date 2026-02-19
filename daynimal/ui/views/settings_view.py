@@ -309,9 +309,7 @@ class SettingsView(BaseView):
             repo.set_setting("force_offline", "true" if is_forced else "false")
             repo.connectivity.force_offline = is_forced
 
-            logger.info(
-                f"Force offline mode: {'enabled' if is_forced else 'disabled'}"
-            )
+            logger.info(f"Force offline mode: {'enabled' if is_forced else 'disabled'}")
 
         except Exception as error:
             logger.error(f"Error in on_offline_toggle: {error}")
@@ -351,9 +349,7 @@ class SettingsView(BaseView):
                 else:
                     notif_service.stop()
 
-            logger.info(
-                f"Notifications: {'enabled' if is_enabled else 'disabled'}"
-            )
+            logger.info(f"Notifications: {'enabled' if is_enabled else 'disabled'}")
 
         except Exception as error:
             logger.error(f"Error in on_notifications_toggle: {error}")
