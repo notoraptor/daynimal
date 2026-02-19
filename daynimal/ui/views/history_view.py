@@ -1,6 +1,7 @@
 """History view for displaying animal viewing history."""
 
 import asyncio
+import logging
 import traceback
 from typing import Callable
 
@@ -11,6 +12,8 @@ from daynimal.ui.components.pagination import PaginationBar
 from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
+
+logger = logging.getLogger("daynimal")
 
 PER_PAGE = 20
 
@@ -23,7 +26,6 @@ class HistoryView(BaseView):
         page: ft.Page,
         app_state: AppState | None = None,
         on_animal_click: Callable[[int], None] | None = None,
-        debugger=None,
     ):
         """
         Initialize HistoryView.
@@ -32,9 +34,8 @@ class HistoryView(BaseView):
             page: Flet page instance
             app_state: Shared application state
             on_animal_click: Callback when an animal is clicked (receives taxon_id)
-            debugger: Optional debugger instance for logging
         """
-        super().__init__(page, app_state, debugger)
+        super().__init__(page, app_state)
         self.on_animal_click = on_animal_click
         self.current_page = 1
         self.total_count = 0
@@ -146,17 +147,8 @@ class HistoryView(BaseView):
                 )
 
         except Exception as error:
-            # Log error with full traceback
-            error_msg = f"Error in load_history: {error}"
-            error_traceback = traceback.format_exc()
-
-            if self.debugger:
-                self.debugger.log_error("load_history", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                # Fallback: print to console if no debugger
-                print(f"ERROR: {error_msg}")
-                print(f"Traceback:\n{error_traceback}")
+            logger.error(f"Error in load_history: {error}")
+            traceback.print_exc()
 
             # Show error
             self.history_list.controls = [
@@ -189,15 +181,9 @@ class HistoryView(BaseView):
     def _on_item_click(self, taxon_id: int):
         """Handle click on a history item."""
         try:
-            if self.debugger:
-                self.debugger.logger.info(f"History item clicked: taxon_id={taxon_id}")
+            logger.info(f"History item clicked: taxon_id={taxon_id}")
             if self.on_animal_click:
                 self.on_animal_click(taxon_id)
         except Exception as error:
-            error_traceback = traceback.format_exc()
-            if self.debugger:
-                self.debugger.log_error("on_history_item_click", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                print(f"ERROR: Error clicking history item: {error}")
-                print(f"Traceback:\n{error_traceback}")
+            logger.error(f"Error in on_history_item_click: {error}")
+            traceback.print_exc()

@@ -64,16 +64,6 @@ def mock_app_state():
 
 
 @pytest.fixture
-def mock_debugger():
-    """Mock de FletDebugger."""
-    debugger = MagicMock()
-    debugger.logger = MagicMock()
-    debugger.log_animal_load = MagicMock()
-    debugger.log_error = MagicMock()
-    return debugger
-
-
-@pytest.fixture
 def sample_animal():
     """Crée un AnimalInfo pour les tests d'affichage."""
     taxon = Taxon(
@@ -131,13 +121,12 @@ def sample_animal():
     )
 
 
-def _make_view(mock_page, mock_app_state, mock_debugger, on_favorite_toggle=None):
+def _make_view(mock_page, mock_app_state, on_favorite_toggle=None):
     """Helper to create a TodayView with mocked dependencies."""
     view = TodayView(
         page=mock_page,
         app_state=mock_app_state,
         on_favorite_toggle=on_favorite_toggle,
-        debugger=mock_debugger,
     )
     return view
 
@@ -184,11 +173,11 @@ def _find_text_values(control):
 class TestTodayViewBuild:
     """Tests pour TodayView.build()."""
 
-    def test_shows_welcome_when_no_animal(self, mock_page, mock_app_state, mock_debugger):
+    def test_shows_welcome_when_no_animal(self, mock_page, mock_app_state):
         """Vérifie que build() sans current_animal dans app_state affiche
         un message de bienvenue (texte contenant 'Bienvenue' ou 'Découvrez')
         dans today_animal_container."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.current_animal = None
         result = view.build()
 
@@ -204,10 +193,10 @@ class TestTodayViewBuild:
         text_blob = " ".join(t for t in all_texts if t)
         assert "Bienvenue" in text_blob or "Découvrez" in text_blob
 
-    def test_restores_animal_if_cached(self, mock_page, mock_app_state, mock_debugger, sample_animal):
+    def test_restores_animal_if_cached(self, mock_page, mock_app_state, sample_animal):
         """Vérifie que build() avec app_state.current_animal défini appelle
         _display_animal pour restaurer l'affichage de l'animal en cours."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.current_animal = sample_animal
         result = view.build()
 
@@ -223,10 +212,10 @@ class TestTodayViewBuild:
         text_blob = " ".join(t for t in all_texts if t)
         assert sample_animal.display_name.upper() in text_blob
 
-    def test_has_today_button(self, mock_page, mock_app_state, mock_debugger):
+    def test_has_today_button(self, mock_page, mock_app_state):
         """Vérifie que build() crée un bouton 'Animal du jour' avec l'icône
         TODAY et le handler _load_today_animal."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         result = view.build()
 
         # Find buttons in the result
@@ -238,10 +227,10 @@ class TestTodayViewBuild:
         assert btn.icon == ft.Icons.CALENDAR_TODAY
         assert btn.on_click == view._load_today_animal
 
-    def test_has_random_button(self, mock_page, mock_app_state, mock_debugger):
+    def test_has_random_button(self, mock_page, mock_app_state):
         """Vérifie que build() crée un bouton 'Animal aléatoire' avec l'icône
         SHUFFLE et le handler _load_random_animal."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         result = view.build()
 
         buttons = _find_controls_recursive(result, lambda c: isinstance(c, ft.Button))
@@ -264,13 +253,13 @@ class TestTodayViewLoadAnimal:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.today_view.asyncio.to_thread")
     async def test_load_today_animal_calls_get_animal_of_the_day(
-        self, mock_to_thread, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, mock_to_thread, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que _load_today_animal appelle
         repo.get_animal_of_the_day() via asyncio.to_thread.
         Mock: repo.get_animal_of_the_day retourne sample_animal."""
         mock_app_state.repository.get_animal_of_the_day.return_value = sample_animal
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
 
         async def run_closure(fn, *args, **kwargs):
@@ -284,12 +273,12 @@ class TestTodayViewLoadAnimal:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.today_view.asyncio.to_thread")
     async def test_load_today_animal_adds_to_history(
-        self, mock_to_thread, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, mock_to_thread, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que après le chargement, repo.add_to_history est
         appelé avec (taxon_id, command='today')."""
         mock_app_state.repository.get_animal_of_the_day.return_value = sample_animal
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
 
         async def run_closure(fn, *args, **kwargs):
@@ -305,12 +294,12 @@ class TestTodayViewLoadAnimal:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.today_view.asyncio.to_thread")
     async def test_load_random_animal_calls_get_random(
-        self, mock_to_thread, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, mock_to_thread, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que _load_random_animal appelle repo.get_random()
         via asyncio.to_thread."""
         mock_app_state.repository.get_random.return_value = sample_animal
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
 
         async def run_closure(fn, *args, **kwargs):
@@ -324,11 +313,11 @@ class TestTodayViewLoadAnimal:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.today_view.asyncio.to_thread")
     async def test_load_random_animal_adds_to_history(
-        self, mock_to_thread, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, mock_to_thread, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que repo.add_to_history est appelé avec command='random'."""
         mock_app_state.repository.get_random.return_value = sample_animal
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
 
         async def run_closure(fn, *args, **kwargs):
@@ -345,7 +334,7 @@ class TestTodayViewLoadAnimal:
     @patch("daynimal.ui.views.today_view.asyncio.sleep", new_callable=AsyncMock)
     @patch("daynimal.ui.views.today_view.asyncio.to_thread")
     async def test_shows_loading_during_fetch(
-        self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que pendant le chargement, today_animal_container.controls
         contient un LoadingWidget."""
@@ -353,7 +342,7 @@ class TestTodayViewLoadAnimal:
 
         mock_app_state.repository.get_animal_of_the_day.return_value = sample_animal
 
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
 
         original_update = mock_page.update
@@ -381,13 +370,13 @@ class TestTodayViewLoadAnimal:
     @patch("daynimal.ui.views.today_view.asyncio.sleep", new_callable=AsyncMock)
     @patch("daynimal.ui.views.today_view.asyncio.to_thread")
     async def test_error_shows_error_widget(
-        self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, mock_debugger
+        self, mock_to_thread, _mock_sleep, mock_page, mock_app_state
     ):
         """Vérifie que si repo.get_animal_of_the_day lève une exception,
         un ErrorWidget est affiché dans today_animal_container."""
         mock_app_state.repository.get_animal_of_the_day.side_effect = RuntimeError("DB error")
 
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
 
         async def run_closure(fn, *args, **kwargs):
@@ -405,7 +394,7 @@ class TestTodayViewLoadAnimal:
     @patch("daynimal.ui.views.today_view.asyncio.sleep", new_callable=AsyncMock)
     @patch("daynimal.ui.views.today_view.asyncio.to_thread")
     async def test_none_result_shows_error(
-        self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, mock_debugger
+        self, mock_to_thread, _mock_sleep, mock_page, mock_app_state
     ):
         """Vérifie que si le repository retourne None,
         un message d'erreur est affiché."""
@@ -413,7 +402,7 @@ class TestTodayViewLoadAnimal:
         # on None will raise AttributeError, which triggers the error path
         mock_app_state.repository.get_animal_of_the_day.return_value = None
 
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
 
         async def run_closure(fn, *args, **kwargs):
@@ -431,12 +420,12 @@ class TestTodayViewLoadAnimal:
     @patch("daynimal.ui.views.today_view.asyncio.sleep", new_callable=AsyncMock)
     @patch("daynimal.ui.views.today_view.asyncio.to_thread")
     async def test_calls_on_load_complete(
-        self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que on_load_complete() est appelé après le chargement
         réussi (callback optionnel défini par AppController)."""
         mock_app_state.repository.get_animal_of_the_day.return_value = sample_animal
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
 
         on_load_complete_mock = MagicMock()
@@ -461,11 +450,11 @@ class TestTodayViewDisplayAnimal:
     """Tests pour _display_animal."""
 
     def test_shows_animal_display_controls(
-        self, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que _display_animal ajoute les contrôles de AnimalDisplay
         dans today_animal_container (titre, classification, etc.)."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
         view._display_animal(sample_animal)
 
@@ -487,14 +476,14 @@ class TestTodayViewDisplayAnimal:
         assert sample_animal.taxon.scientific_name in text_blob
 
     def test_shows_favorite_button(
-        self, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie qu'un bouton favori (IconButton avec FAVORITE/FAVORITE_BORDER)
         est créé. Si l'animal est favori, l'icône est FAVORITE (plein),
         sinon FAVORITE_BORDER (contour)."""
         # Test when NOT favorite
         mock_app_state.repository.is_favorite.return_value = False
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
         view._display_animal(sample_animal)
 
@@ -508,7 +497,7 @@ class TestTodayViewDisplayAnimal:
 
         # Test when IS favorite
         mock_app_state.repository.is_favorite.return_value = True
-        view2 = _make_view(mock_page, mock_app_state, mock_debugger)
+        view2 = _make_view(mock_page, mock_app_state)
         view2.build()
         view2._display_animal(sample_animal)
 
@@ -521,11 +510,11 @@ class TestTodayViewDisplayAnimal:
         assert fav_btn2.icon == ft.Icons.FAVORITE
 
     def test_shows_share_buttons(
-        self, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que les boutons de partage (copier texte, ouvrir Wikipedia)
         sont présents dans les contrôles."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
         view._display_animal(sample_animal)
 
@@ -540,7 +529,7 @@ class TestTodayViewDisplayAnimal:
         assert ft.Icons.LANGUAGE in icons, "Wikipedia button not found"
 
     def test_shows_image_when_available(
-        self, mock_page, mock_app_state, mock_debugger
+        self, mock_page, mock_app_state
     ):
         """Vérifie que quand l'animal a des images, un ft.Image est affiché
         avec l'URL/chemin local de la première image."""
@@ -560,7 +549,7 @@ class TestTodayViewDisplayAnimal:
         )
         animal = AnimalInfo(taxon=taxon, images=[image])
 
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
         view._display_animal(animal)
 
@@ -573,7 +562,7 @@ class TestTodayViewDisplayAnimal:
         assert images_found[0].src == "https://example.com/test.jpg"
 
     def test_no_images_no_gallery_button(
-        self, mock_page, mock_app_state, mock_debugger
+        self, mock_page, mock_app_state
     ):
         """Vérifie que quand images est vide, le bouton 'Plus d'images'
         n'est PAS affiché."""
@@ -586,7 +575,7 @@ class TestTodayViewDisplayAnimal:
         )
         animal = AnimalInfo(taxon=taxon, images=[])
 
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
         view._display_animal(animal)
 
@@ -606,7 +595,7 @@ class TestTodayViewDisplayAnimal:
         assert "Aucune image disponible" in text_blob
 
     def test_multiple_images_shows_gallery_button(
-        self, mock_page, mock_app_state, mock_debugger
+        self, mock_page, mock_app_state
     ):
         """Vérifie que quand l'animal a plus d'une image, un bouton
         'Plus d'images' est affiché pour ouvrir la galerie."""
@@ -633,7 +622,7 @@ class TestTodayViewDisplayAnimal:
         ]
         animal = AnimalInfo(taxon=taxon, images=images)
 
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
         view._display_animal(animal)
 
@@ -645,12 +634,12 @@ class TestTodayViewDisplayAnimal:
         assert len(gallery_buttons) == 1
 
     def test_updates_current_animal_on_display(
-        self, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que _display_animal met à jour today_animal_container
         avec les contrôles de l'animal affiché. Note: current_animal est
         mis à jour dans _load_animal_for_today_view, pas dans _display_animal."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
 
         # Manually set current_animal as _load_animal_for_today_view would
@@ -671,12 +660,12 @@ class TestTodayViewFavoriteToggle:
     """Tests pour _on_favorite_toggle."""
 
     def test_calls_callback_with_correct_args(
-        self, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que _on_favorite_toggle appelle on_favorite_toggle_callback
         avec (taxon_id, is_favorite). Le callback est fourni par AppController."""
         callback = MagicMock()
-        view = _make_view(mock_page, mock_app_state, mock_debugger, on_favorite_toggle=callback)
+        view = _make_view(mock_page, mock_app_state, on_favorite_toggle=callback)
         view.build()
         view.current_animal = sample_animal
 
@@ -693,12 +682,12 @@ class TestTodayViewFavoriteToggle:
         callback.assert_called_once_with(sample_animal.taxon.taxon_id, False)
 
     def test_refreshes_display_after_toggle(
-        self, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que après le toggle, _display_animal est rappelé pour
         mettre à jour l'icône favori (plein ↔ contour)."""
         callback = MagicMock()
-        view = _make_view(mock_page, mock_app_state, mock_debugger, on_favorite_toggle=callback)
+        view = _make_view(mock_page, mock_app_state, on_favorite_toggle=callback)
         view.build()
         view.current_animal = sample_animal
 
@@ -724,11 +713,11 @@ class TestTodayViewGalleryAndSharing:
 
     @patch("daynimal.ui.views.today_view.ImageGalleryDialog")
     def test_open_gallery_creates_dialog(
-        self, MockDialog, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, MockDialog, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que _open_gallery instancie ImageGalleryDialog avec
         les images de l'animal et appelle dialog.open()."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
 
         mock_dialog_instance = MagicMock()
@@ -748,12 +737,12 @@ class TestTodayViewGalleryAndSharing:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.today_view.ft.Clipboard")
     async def test_on_copy_text_copies_to_clipboard(
-        self, MockClipboard, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, MockClipboard, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que _on_copy_text crée un ft.Clipboard et appelle
         clipboard.set(text) avec le texte de partage formaté.
         Puis un SnackBar 'Copié' est affiché."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
         view.current_animal = sample_animal
 
@@ -774,11 +763,11 @@ class TestTodayViewGalleryAndSharing:
 
     @patch("daynimal.ui.views.today_view.ft.UrlLauncher")
     def test_on_open_wikipedia_launches_url(
-        self, MockUrlLauncher, mock_page, mock_app_state, mock_debugger, sample_animal
+        self, MockUrlLauncher, mock_page, mock_app_state, sample_animal
     ):
         """Vérifie que _on_open_wikipedia appelle page.run_task avec
         ft.UrlLauncher().launch_url et l'URL Wikipedia de l'animal."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
         view.current_animal = sample_animal
 
@@ -793,7 +782,7 @@ class TestTodayViewGalleryAndSharing:
         )
 
     def test_on_open_wikipedia_no_article(
-        self, mock_page, mock_app_state, mock_debugger
+        self, mock_page, mock_app_state
     ):
         """Vérifie que _on_open_wikipedia ne fait rien si l'animal
         n'a pas d'article Wikipedia."""
@@ -806,7 +795,7 @@ class TestTodayViewGalleryAndSharing:
         )
         animal_no_wiki = AnimalInfo(taxon=taxon, wikipedia=None)
 
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.build()
         view.current_animal = animal_no_wiki
 

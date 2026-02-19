@@ -1,6 +1,7 @@
 """Today view for displaying the animal of the day or random animals."""
 
 import asyncio
+import logging
 import traceback
 from typing import Callable
 
@@ -13,6 +14,8 @@ from daynimal.ui.components.widgets import ErrorWidget, LoadingWidget, view_head
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
+logger = logging.getLogger("daynimal")
+
 
 class TodayView(BaseView):
     """View for displaying the animal of the day or random animals."""
@@ -22,7 +25,6 @@ class TodayView(BaseView):
         page: ft.Page,
         app_state: AppState | None = None,
         on_favorite_toggle: Callable[[int, bool], None] | None = None,
-        debugger=None,
     ):
         """
         Initialize TodayView.
@@ -32,9 +34,8 @@ class TodayView(BaseView):
             app_state: Shared application state
             on_favorite_toggle: Callback when favorite button is clicked
                                 (receives taxon_id, is_currently_favorite)
-            debugger: Optional debugger instance for logging
         """
-        super().__init__(page, app_state, debugger)
+        super().__init__(page, app_state)
         self.on_favorite_toggle_callback = on_favorite_toggle
         self.on_load_complete: Callable[[], None] | None = None
         self.today_animal_container = ft.Column(controls=[], spacing=10)
@@ -131,8 +132,7 @@ class TodayView(BaseView):
 
     async def _load_animal_for_today_view(self, mode: str):
         """Load and display an animal in the Today view."""
-        if self.debugger:
-            self.debugger.log_animal_load(mode)
+        logger.info(f"Loading animal ({mode})...")
 
         # Show loading message
         subtitle = (
@@ -159,8 +159,7 @@ class TodayView(BaseView):
             animal = await asyncio.to_thread(fetch_animal)
             self.current_animal = animal
 
-            if self.debugger:
-                self.debugger.log_animal_load(mode, animal.display_name)
+            logger.info(f"Loading animal ({mode}): {animal.display_name}")
 
             # Display animal in Today view
             self._display_animal(animal)
@@ -170,17 +169,8 @@ class TodayView(BaseView):
                 self.on_load_complete()
 
         except Exception as error:
-            # Log error with full traceback
-            error_msg = f"Error in load_animal_for_today_view ({mode}): {error}"
-            error_traceback = traceback.format_exc()
-
-            if self.debugger:
-                self.debugger.log_error(f"load_animal_for_today_view ({mode})", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                # Fallback: print to console if no debugger
-                print(f"ERROR: {error_msg}")
-                print(f"Traceback:\n{error_traceback}")
+            logger.error(f"Error in load_animal_for_today_view ({mode}): {error}")
+            traceback.print_exc()
 
             # Show error
             self.today_animal_container.controls = [

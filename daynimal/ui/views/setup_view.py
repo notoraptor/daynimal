@@ -43,16 +43,15 @@ class SetupView(BaseView):
     3. "Tout est prêt !" then auto-navigate to animal of the day
     """
 
-    def __init__(self, page, app_state, on_setup_complete, debugger=None):
+    def __init__(self, page, app_state, on_setup_complete):
         """Initialize SetupView.
 
         Args:
             page: Flet page instance.
             app_state: Shared application state.
             on_setup_complete: Callback when setup finishes successfully.
-            debugger: Optional debugger for logging.
         """
-        super().__init__(page, app_state, debugger)
+        super().__init__(page, app_state)
         self.on_setup_complete = on_setup_complete
 
     def build(self) -> ft.Control:

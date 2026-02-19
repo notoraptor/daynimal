@@ -1,6 +1,7 @@
 """Settings view for app configuration and credits."""
 
 import asyncio
+import logging
 import traceback
 
 import flet as ft
@@ -9,20 +10,21 @@ from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
+logger = logging.getLogger("daynimal")
+
 
 class SettingsView(BaseView):
     """View for app settings, preferences, and credits."""
 
-    def __init__(self, page: ft.Page, app_state: AppState | None = None, debugger=None):
+    def __init__(self, page: ft.Page, app_state: AppState | None = None):
         """
         Initialize SettingsView.
 
         Args:
             page: Flet page instance
             app_state: Shared application state
-            debugger: Optional debugger instance for logging
         """
-        super().__init__(page, app_state, debugger)
+        super().__init__(page, app_state)
         self.settings_container = ft.Column(controls=[])
 
     def build(self) -> ft.Control:
@@ -262,15 +264,8 @@ class SettingsView(BaseView):
             ]
 
         except Exception as error:
-            error_msg = f"Error loading settings: {error}"
-            error_traceback = traceback.format_exc()
-
-            if self.debugger:
-                self.debugger.log_error("load_settings", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                print(f"ERROR: {error_msg}")
-                print(f"Traceback:\n{error_traceback}")
+            logger.error(f"Error loading settings: {error}")
+            traceback.print_exc()
 
             # Show error
             self.settings_container.controls = [
@@ -301,13 +296,10 @@ class SettingsView(BaseView):
             count = self.app_state.image_cache.clear()
             # Reload settings to update cache size display
             asyncio.create_task(self._load_settings())
-            if self.debugger:
-                self.debugger.logger.info(
-                    f"Image cache cleared: {count} images removed"
-                )
+            logger.info(f"Image cache cleared: {count} images removed")
         except Exception as error:
-            if self.debugger:
-                self.debugger.log_error("clear_cache", error)
+            logger.error(f"Error in clear_cache: {error}")
+            traceback.print_exc()
 
     def _on_offline_toggle(self, e):
         """Handle forced offline mode toggle."""
@@ -317,14 +309,13 @@ class SettingsView(BaseView):
             repo.set_setting("force_offline", "true" if is_forced else "false")
             repo.connectivity.force_offline = is_forced
 
-            if self.debugger:
-                self.debugger.logger.info(
-                    f"Force offline mode: {'enabled' if is_forced else 'disabled'}"
-                )
+            logger.info(
+                f"Force offline mode: {'enabled' if is_forced else 'disabled'}"
+            )
 
         except Exception as error:
-            if self.debugger:
-                self.debugger.log_error("on_offline_toggle", error)
+            logger.error(f"Error in on_offline_toggle: {error}")
+            traceback.print_exc()
 
     def _on_theme_toggle(self, e):
         """Handle theme toggle switch change."""
@@ -339,19 +330,11 @@ class SettingsView(BaseView):
             self.page.theme_mode = ft.ThemeMode.DARK if is_dark else ft.ThemeMode.LIGHT
             self.page.update()
 
-            if self.debugger:
-                self.debugger.logger.info(f"Theme changed to: {new_theme}")
+            logger.info(f"Theme changed to: {new_theme}")
 
         except Exception as error:
-            error_msg = f"Error toggling theme: {error}"
-            error_traceback = traceback.format_exc()
-
-            if self.debugger:
-                self.debugger.log_error("on_theme_toggle", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                print(f"ERROR: {error_msg}")
-                print(f"Traceback:\n{error_traceback}")
+            logger.error(f"Error in on_theme_toggle: {error}")
+            traceback.print_exc()
 
     def _on_notifications_toggle(self, e):
         """Handle notification toggle switch change."""
@@ -368,14 +351,13 @@ class SettingsView(BaseView):
                 else:
                     notif_service.stop()
 
-            if self.debugger:
-                self.debugger.logger.info(
-                    f"Notifications: {'enabled' if is_enabled else 'disabled'}"
-                )
+            logger.info(
+                f"Notifications: {'enabled' if is_enabled else 'disabled'}"
+            )
 
         except Exception as error:
-            if self.debugger:
-                self.debugger.log_error("on_notifications_toggle", error)
+            logger.error(f"Error in on_notifications_toggle: {error}")
+            traceback.print_exc()
 
     def _on_notification_time_change(self, e):
         """Handle notification time dropdown change."""
@@ -383,9 +365,8 @@ class SettingsView(BaseView):
             new_time = e.control.value
             self.app_state.repository.set_setting("notification_time", new_time)
 
-            if self.debugger:
-                self.debugger.logger.info(f"Notification time changed to: {new_time}")
+            logger.info(f"Notification time changed to: {new_time}")
 
         except Exception as error:
-            if self.debugger:
-                self.debugger.log_error("on_notification_time_change", error)
+            logger.error(f"Error in on_notification_time_change: {error}")
+            traceback.print_exc()

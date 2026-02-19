@@ -9,7 +9,7 @@ On vérifie que la navigation dispatch aux bonnes vues, que les actions
 et que le lifecycle (cleanup) ferme proprement les ressources.
 
 NOTE: On instancie le vrai AppController mais avec des dépendances mockées.
-Les vues sont réelles (instanciées avec des mocks de page/state/debugger).
+Les vues sont réelles (instanciées avec des mocks de page/state).
 """
 
 import asyncio
@@ -39,17 +39,6 @@ def mock_page():
     page.window = MagicMock()
     return page
 
-
-@pytest.fixture
-def mock_debugger():
-    """Crée un mock de FletDebugger."""
-    debugger = MagicMock()
-    debugger.logger = MagicMock()
-    debugger.log_view_change = MagicMock()
-    debugger.log_animal_load = MagicMock()
-    debugger.log_error = MagicMock()
-    debugger.log_search = MagicMock()
-    return debugger
 
 
 @pytest.fixture
@@ -90,7 +79,7 @@ def sample_animal():
     return AnimalInfo(taxon=taxon)
 
 
-def _create_controller(mock_page, mock_debugger, mock_repository):
+def _create_controller(mock_page, mock_repository):
     """Helper: crée un AppController avec des dépendances mockées."""
     with (
         patch("daynimal.ui.app_controller.AppState") as MockAppState,
@@ -112,15 +101,15 @@ def _create_controller(mock_page, mock_debugger, mock_repository):
 
         from daynimal.ui.app_controller import AppController
 
-        controller = AppController(page=mock_page, debugger=mock_debugger)
+        controller = AppController(page=mock_page)
 
     return controller
 
 
 @pytest.fixture
-def controller(mock_page, mock_debugger, mock_repository):
+def controller(mock_page, mock_repository):
     """Crée un AppController avec toutes les dépendances mockées."""
-    return _create_controller(mock_page, mock_debugger, mock_repository)
+    return _create_controller(mock_page, mock_repository)
 
 
 # =============================================================================
@@ -129,13 +118,13 @@ def controller(mock_page, mock_debugger, mock_repository):
 
 
 class TestAppControllerInit:
-    """Tests pour AppController.__init__(page, debugger)."""
+    """Tests pour AppController.__init__(page)."""
 
-    def test_creates_all_six_views(self, mock_page, mock_debugger, mock_repository):
+    def test_creates_all_six_views(self, mock_page, mock_repository):
         """Vérifie que __init__ crée les 6 vues: TodayView, HistoryView,
         FavoritesView, SearchView, StatsView, SettingsView.
         Chaque vue doit être stockée dans l'attribut correspondant."""
-        controller = _create_controller(mock_page, mock_debugger, mock_repository)
+        controller = _create_controller(mock_page, mock_repository)
 
         from daynimal.ui.views.today_view import TodayView
         from daynimal.ui.views.history_view import HistoryView
@@ -151,11 +140,11 @@ class TestAppControllerInit:
         assert isinstance(controller.stats_view, StatsView)
         assert isinstance(controller.settings_view, SettingsView)
 
-    def test_creates_navigation_bar(self, mock_page, mock_debugger, mock_repository):
+    def test_creates_navigation_bar(self, mock_page, mock_repository):
         """Vérifie que __init__ crée une NavigationBar avec 6 destinations
         (Aujourd'hui, Historique, Favoris, Recherche, Stats, Paramètres).
         La barre de navigation doit avoir on_change connecté à on_nav_change."""
-        controller = _create_controller(mock_page, mock_debugger, mock_repository)
+        controller = _create_controller(mock_page, mock_repository)
 
         assert isinstance(controller.nav_bar, ft.NavigationBar)
         assert len(controller.nav_bar.destinations) == 6
@@ -170,11 +159,11 @@ class TestAppControllerInit:
         assert "Statistiques" in labels
         assert "Paramètres" in labels
 
-    def test_creates_offline_banner(self, mock_page, mock_debugger, mock_repository):
+    def test_creates_offline_banner(self, mock_page, mock_repository):
         """Vérifie que __init__ crée un bandeau offline (Container avec
         Row contenant un Icon WIFI_OFF et un texte 'Mode hors ligne').
         Le bandeau doit être initialement invisible (visible=False)."""
-        controller = _create_controller(mock_page, mock_debugger, mock_repository)
+        controller = _create_controller(mock_page, mock_repository)
 
         banner = controller.offline_banner
         assert isinstance(banner, ft.Container)
@@ -191,16 +180,16 @@ class TestAppControllerInit:
         assert icons[0].icon == ft.Icons.WIFI_OFF
         assert any("hors ligne" in t.value.lower() for t in texts)
 
-    def test_creates_app_state(self, mock_page, mock_debugger, mock_repository):
+    def test_creates_app_state(self, mock_page, mock_repository):
         """Vérifie que __init__ crée un AppState stocké dans self.state."""
-        controller = _create_controller(mock_page, mock_debugger, mock_repository)
+        controller = _create_controller(mock_page, mock_repository)
         assert controller.state is not None
 
     def test_creates_notification_service(
-        self, mock_page, mock_debugger, mock_repository
+        self, mock_page, mock_repository
     ):
         """Vérifie que __init__ crée un NotificationService."""
-        controller = _create_controller(mock_page, mock_debugger, mock_repository)
+        controller = _create_controller(mock_page, mock_repository)
         assert controller.notification_service is not None
 
 
@@ -298,13 +287,13 @@ class TestAppControllerNavigation:
             mock_show.assert_called_once()
 
     @patch("asyncio.create_task")
-    def test_on_nav_change_logs_view_change(
-        self, _mock_task, controller, mock_debugger
-    ):
-        """Vérifie que on_nav_change appelle debugger.log_view_change()
-        avec le nom de la vue."""
+    @patch("daynimal.ui.app_controller.logger")
+    def test_on_nav_change_logs_view_change(self, mock_logger, _mock_task, controller):
+        """Vérifie que on_nav_change logue le changement de vue."""
         controller.on_nav_change(_make_nav_event(2))
-        mock_debugger.log_view_change.assert_called_with("Favorites")
+        mock_logger.info.assert_called()
+        log_msg = mock_logger.info.call_args[0][0]
+        assert "Favorites" in log_msg
 
     def test_show_today_view_sets_content(self, controller, mock_page):
         """Vérifie que show_today_view() remplace le contenu du

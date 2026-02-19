@@ -127,27 +127,7 @@ uv run daynimal credits
 # Run the desktop/mobile app (via entry point or directly)
 uv run daynimal-app
 # or: python daynimal/app.py
-
-# Run with debug logging (RECOMMENDED for development)
-python debug/run_app_debug.py --quiet
 ```
-
-**Debugging the GUI:**
-```bash
-# Launch app with debug
-python debug/run_app_debug.py --quiet
-
-# View filtered logs (in another terminal)
-python debug/debug_filter.py
-
-# View only errors
-python debug/debug_filter.py --errors-only
-
-# Follow logs in real-time
-python debug/debug_filter.py --tail
-```
-
-See [`debug/README.md`](debug/README.md) for complete debugging documentation.
 
 **Android Build & Test (via ADB):**
 ```bash
@@ -366,17 +346,3 @@ logs/                # Application logs (created at runtime)
   - Launch with `python debug/run_app_debug.py --quiet`
   - View logs with `python debug/debug_filter.py`
   - All UI events are automatically logged (navigation, loading, searches, errors)
-
-## Debugging Flet Application
-
-See [`debug/README.md`](debug/README.md) for the complete debugging guide.
-
-The `daynimal/debug.py` module provides `FletDebugger`, `get_debugger()`, `log_info()`, `log_error()`, `log_debug()`.
-
-Usage in other modules:
-```python
-from daynimal.debug import get_debugger
-
-debugger = get_debugger()
-debugger.logger.info("Your message here")
-```

@@ -1,12 +1,14 @@
 """App controller for managing views and navigation."""
 
 import asyncio
+import logging
 import traceback
 
 import flet as ft
 
-from daynimal.debug import get_debugger
 from daynimal.ui.components.widgets import ErrorWidget, LoadingWidget
+
+logger = logging.getLogger("daynimal")
 from daynimal.notifications import NotificationService
 from daynimal.ui.state import AppState
 from daynimal.ui.views.favorites_view import FavoritesView
@@ -24,16 +26,14 @@ class AppController:
     Manages navigation, views, and orchestrates interactions between components.
     """
 
-    def __init__(self, page: ft.Page, debugger=None):
+    def __init__(self, page: ft.Page):
         """
         Initialize AppController.
 
         Args:
             page: Flet page instance
-            debugger: Optional debugger instance for logging
         """
         self.page = page
-        self.debugger = debugger or get_debugger()
 
         # Shared state
         self.state = AppState()
@@ -53,7 +53,6 @@ class AppController:
             page=page,
             app_state=self.state,
             on_favorite_toggle=self.on_favorite_toggle,
-            debugger=self.debugger,
         )
         self.today_view.on_load_complete = self._update_offline_banner
 
@@ -63,7 +62,6 @@ class AppController:
             on_animal_click=lambda taxon_id: asyncio.create_task(
                 self.load_animal_from_history(taxon_id)
             ),
-            debugger=self.debugger,
         )
 
         self.favorites_view = FavoritesView(
@@ -72,7 +70,6 @@ class AppController:
             on_animal_click=lambda taxon_id: asyncio.create_task(
                 self.load_animal_from_favorite(taxon_id)
             ),
-            debugger=self.debugger,
         )
 
         self.search_view = SearchView(
@@ -81,16 +78,11 @@ class AppController:
             on_result_click=lambda taxon_id: asyncio.create_task(
                 self.load_animal_from_search(taxon_id)
             ),
-            debugger=self.debugger,
         )
 
-        self.stats_view = StatsView(
-            page=page, app_state=self.state, debugger=self.debugger
-        )
+        self.stats_view = StatsView(page=page, app_state=self.state)
 
-        self.settings_view = SettingsView(
-            page=page, app_state=self.state, debugger=self.debugger
-        )
+        self.settings_view = SettingsView(page=page, app_state=self.state)
 
         # Offline banner
         self.offline_banner = ft.Container(
@@ -155,8 +147,8 @@ class AppController:
         selected_index = e.control.selected_index
 
         view_names = ["Today", "History", "Favorites", "Search", "Stats", "Settings"]
-        if self.debugger and selected_index < len(view_names):
-            self.debugger.log_view_change(view_names[selected_index])
+        if selected_index < len(view_names):
+            logger.info(f"View changed to: {view_names[selected_index]}")
 
         # Update current view
         if selected_index == 0:
@@ -268,8 +260,7 @@ class AppController:
                 self.today_view.current_animal = animal
                 self.today_view.current_image_index = 0  # Reset carousel
 
-                if self.debugger:
-                    self.debugger.log_animal_load(source, animal.display_name)
+                logger.info(f"Loading animal ({source}): {animal.display_name}")
 
                 # Display animal in Today view
                 self.today_view._display_animal(animal)
@@ -286,15 +277,8 @@ class AppController:
                 self.page.update()
 
         except Exception as error:
-            error_msg = f"Error loading animal from {source} (ID {taxon_id}): {error}"
-            error_traceback = traceback.format_exc()
-
-            if self.debugger:
-                self.debugger.log_error(f"load_animal_from_{source}", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                print(f"ERROR: {error_msg}")
-                print(f"Traceback:\n{error_traceback}")
+            logger.error(f"Error loading animal from {source} (ID {taxon_id}): {error}")
+            traceback.print_exc()
 
             # Show error in UI
             self.today_view.today_animal_container.controls = [
@@ -319,15 +303,8 @@ class AppController:
                     self.page.show_dialog(ft.SnackBar(ft.Text("Ajouté aux favoris")))
 
         except Exception as error:
-            error_msg = f"Error in on_favorite_toggle: {error}"
-            error_traceback = traceback.format_exc()
-
-            if self.debugger:
-                self.debugger.log_error("on_favorite_toggle", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                print(f"ERROR: {error_msg}")
-                print(f"Traceback:\n{error_traceback}")
+            logger.error(f"Error in on_favorite_toggle: {error}")
+            traceback.print_exc()
 
             # Show error snackbar
             self.page.show_dialog(

@@ -21,9 +21,12 @@ if "daynimal" not in sys.modules:
     sys.modules["daynimal"] = _pkg
 
 import asyncio
+import logging
 import traceback
 
 import flet as ft
+
+logger = logging.getLogger("daynimal")
 
 
 def _show_error(page: ft.Page, error: Exception):
@@ -61,14 +64,7 @@ class DaynimalApp:
             self.page.window.width = 420
             self.page.window.height = 820
 
-        # Get debugger from page data if available
-        self.debugger = None
-        if hasattr(page, "data") and isinstance(page.data, dict):
-            self.debugger = page.data.get("debugger")
-
-        # Log app initialization
-        if self.debugger:
-            self.debugger.logger.info("DaynimalApp initialized")
+        logger.info("DaynimalApp initialized")
 
         # Register cleanup handlers
         self.page.on_disconnect = self.on_disconnect
@@ -99,7 +95,6 @@ class DaynimalApp:
                     page=self.page,
                     app_state=AppState(),
                     on_setup_complete=self._on_setup_complete,
-                    debugger=self.debugger,
                 )
                 self.page.add(self.setup_view.build())
             else:
@@ -185,7 +180,7 @@ class DaynimalApp:
         from daynimal.ui.app_controller import AppController
 
         self.page.controls.clear()
-        self.app_controller = AppController(page=self.page, debugger=self.debugger)
+        self.app_controller = AppController(page=self.page)
         self.page.add(self.app_controller.build())
 
     def _on_setup_complete(self):
@@ -216,31 +211,26 @@ class DaynimalApp:
 
         This is called when the app is closing to properly release resources.
         """
-        if self.debugger:
-            self.debugger.logger.info("Cleaning up application resources...")
+        logger.info("Cleaning up application resources...")
 
-        # Cleanup app controller
         if hasattr(self, "app_controller"):
             try:
                 self.app_controller.cleanup()
-                if self.debugger:
-                    self.debugger.logger.info("AppController cleaned up successfully")
-            except Exception as e:
-                if self.debugger:
-                    self.debugger.logger.error(f"Error cleaning up AppController: {e}")
+                logger.info("AppController cleaned up successfully")
+            except Exception:
+                logger.error("Error cleaning up AppController")
+                traceback.print_exc()
 
-        if self.debugger:
-            self.debugger.logger.info("Cleanup completed")
+        logger.info("Cleanup completed")
 
     def on_disconnect(self, e):
         """Handle page disconnect event (when user closes the window)."""
-        if self.debugger:
-            self.debugger.logger.info("Page disconnected, cleaning up...")
+        logger.info("Page disconnected, cleaning up...")
         try:
             self.cleanup()
-        except Exception as error:
-            if self.debugger:
-                self.debugger.logger.error(f"Error during disconnect cleanup: {error}")
+        except Exception:
+            logger.error("Error during disconnect cleanup")
+            traceback.print_exc()
 
         # Force exit: on Windows the asyncio proactor event loop hangs
         # after the Flutter client disconnects (ConnectionResetError).
@@ -248,13 +238,12 @@ class DaynimalApp:
 
     def on_close(self, e):
         """Handle page close event."""
-        if self.debugger:
-            self.debugger.logger.info("Page closed, cleaning up...")
+        logger.info("Page closed, cleaning up...")
         try:
             self.cleanup()
-        except Exception as error:
-            if self.debugger:
-                self.debugger.logger.error(f"Error during close cleanup: {error}")
+        except Exception:
+            logger.error("Error during close cleanup")
+            traceback.print_exc()
 
 
 def _install_asyncio_exception_handler():

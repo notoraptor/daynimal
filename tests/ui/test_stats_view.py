@@ -51,16 +51,6 @@ def mock_app_state():
 
 
 @pytest.fixture
-def mock_debugger():
-    """Mock de FletDebugger."""
-    debugger = MagicMock()
-    debugger.logger = MagicMock()
-    debugger.log_error = MagicMock()
-    debugger.log_info = MagicMock()
-    return debugger
-
-
-@pytest.fixture
 def sample_stats():
     """Statistiques simulees retournees par get_stats()."""
     return {
@@ -72,9 +62,9 @@ def sample_stats():
     }
 
 
-def _make_view(mock_page, mock_app_state, mock_debugger):
+def _make_view(mock_page, mock_app_state):
     """Helper to create a StatsView with mocked dependencies."""
-    return StatsView(page=mock_page, app_state=mock_app_state, debugger=mock_debugger)
+    return StatsView(page=mock_page, app_state=mock_app_state)
 
 
 # =============================================================================
@@ -86,10 +76,10 @@ class TestStatsViewBuild:
     """Tests pour StatsView.build()."""
 
     @patch("daynimal.ui.views.stats_view.asyncio.create_task")
-    def test_returns_column_with_header(self, _mock_create_task, mock_page, mock_app_state, mock_debugger):
+    def test_returns_column_with_header(self, _mock_create_task, mock_page, mock_app_state):
         """Verifie que build() retourne un ft.Column contenant un header
         'Statistiques' et le stats_container."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         result = view.build()
 
@@ -119,9 +109,9 @@ class TestStatsViewBuild:
         assert stats_wrapper.content is view.stats_container
 
     @patch("daynimal.ui.views.stats_view.asyncio.create_task")
-    def test_triggers_load_stats(self, mock_create_task, mock_page, mock_app_state, mock_debugger):
+    def test_triggers_load_stats(self, mock_create_task, mock_page, mock_app_state):
         """Verifie que build() lance load_stats() en tache async."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         view.build()
 
@@ -135,11 +125,11 @@ class TestStatsViewBuild:
         call_args.close()
 
     @patch("daynimal.ui.views.stats_view.asyncio.create_task")
-    def test_uses_cached_stats(self, _mock_create_task, mock_page, mock_app_state, mock_debugger, sample_stats):
+    def test_uses_cached_stats(self, _mock_create_task, mock_page, mock_app_state, sample_stats):
         """Verifie que quand cached_stats est defini, build() appelle
         _display_stats immediatement sans passer par le loading.
         Au deuxieme appel de build, les stats sont deja en cache."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         # Pre-set cached stats
         view.cached_stats = sample_stats
@@ -166,10 +156,10 @@ class TestStatsViewLoadStats:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.stats_view.asyncio.sleep", new_callable=AsyncMock)
     @patch("daynimal.ui.views.stats_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_shows_loading_when_no_cache(self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, mock_debugger):
+    async def test_shows_loading_when_no_cache(self, mock_to_thread, _mock_sleep, mock_page, mock_app_state):
         """Verifie que quand cached_stats est None, load_stats() affiche
         d'abord un ProgressRing pendant le chargement."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
         view.cached_stats = None
 
         loading_controls_captured = []
@@ -201,11 +191,11 @@ class TestStatsViewLoadStats:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.stats_view.asyncio.sleep", new_callable=AsyncMock)
     @patch("daynimal.ui.views.stats_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_creates_four_stat_cards(self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, mock_debugger, sample_stats):
+    async def test_creates_four_stat_cards(self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, sample_stats):
         """Verifie que load_stats() cree exactement 4 stat cards dans
         stats_container: total_taxa, species_count, enriched_count,
         vernacular_names."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         mock_to_thread.return_value = sample_stats
 
@@ -221,10 +211,10 @@ class TestStatsViewLoadStats:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.stats_view.asyncio.sleep", new_callable=AsyncMock)
     @patch("daynimal.ui.views.stats_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_error_shows_error(self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, mock_debugger):
+    async def test_error_shows_error(self, mock_to_thread, _mock_sleep, mock_page, mock_app_state):
         """Verifie que si get_stats() leve une exception, un container
         d'erreur est affiche."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         mock_to_thread.side_effect = RuntimeError("DB connection failed")
 
@@ -254,10 +244,10 @@ class TestStatsViewLoadStats:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.stats_view.asyncio.sleep", new_callable=AsyncMock)
     @patch("daynimal.ui.views.stats_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_sets_cached_stats(self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, mock_debugger, sample_stats):
+    async def test_sets_cached_stats(self, mock_to_thread, _mock_sleep, mock_page, mock_app_state, sample_stats):
         """Verifie que apres un chargement reussi, self.cached_stats
         est mis a jour avec le dict retourne par get_stats()."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         # Initially no cache
         assert view.cached_stats is None
@@ -282,11 +272,11 @@ class TestStatsViewLoadStats:
 class TestStatCard:
     """Tests pour _stat_card(icon, color, value, label, subtitle)."""
 
-    def test_returns_ft_card(self, mock_page, mock_app_state, mock_debugger):
+    def test_returns_ft_card(self, mock_page, mock_app_state):
         """Verifie que _stat_card retourne un ft.Card contenant un Row
         avec un cercle colore (Container avec border_radius) contenant
         l'icone, et une Column avec la valeur et le label."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         card = view._stat_card(ft.Icons.PETS, ft.Colors.BLUE, "1,000", "Taxa")
 
@@ -317,10 +307,10 @@ class TestStatCard:
         text_column = row.controls[1]
         assert isinstance(text_column, ft.Column)
 
-    def test_card_has_correct_value(self, mock_page, mock_app_state, mock_debugger):
+    def test_card_has_correct_value(self, mock_page, mock_app_state):
         """Verifie que la valeur affichee dans le card correspond au
         parametre 'value' (ex: '163,000' pour 163000)."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         card = view._stat_card(ft.Icons.PETS, ft.Colors.BLUE, "163,000", "Taxa totaux")
 
@@ -334,10 +324,10 @@ class TestStatCard:
         assert value_text.value == "163,000"
         assert value_text.weight == ft.FontWeight.BOLD
 
-    def test_card_with_subtitle(self, mock_page, mock_app_state, mock_debugger):
+    def test_card_with_subtitle(self, mock_page, mock_app_state):
         """Verifie que quand subtitle est fourni, il est affiche
         sous le label principal."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         card = view._stat_card(
             ft.Icons.INFO, ft.Colors.GREEN_500, "500", "Enrichis",
@@ -359,10 +349,10 @@ class TestStatCard:
         assert subtitle_text.value == "0.3% des especes"
         assert subtitle_text.size == 12
 
-    def test_card_without_subtitle(self, mock_page, mock_app_state, mock_debugger):
+    def test_card_without_subtitle(self, mock_page, mock_app_state):
         """Verifie que quand subtitle est None, seuls la valeur et le label
         sont affiches (pas de texte supplementaire)."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         card = view._stat_card(ft.Icons.PETS, ft.Colors.BLUE, "1,000", "Taxa")
 
@@ -386,10 +376,10 @@ class TestStatCard:
 class TestDisplayStats:
     """Tests pour _display_stats(stats)."""
 
-    def test_displays_total_taxa(self, mock_page, mock_app_state, mock_debugger, sample_stats):
+    def test_displays_total_taxa(self, mock_page, mock_app_state, sample_stats):
         """Verifie que le premier card affiche le nombre total de taxa
         avec l'icone PETS et la couleur bleue."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         view._display_stats(sample_stats)
 
@@ -414,9 +404,9 @@ class TestDisplayStats:
         label_text = text_column.controls[1]
         assert label_text.value == "Taxa totaux"
 
-    def test_displays_species_count(self, mock_page, mock_app_state, mock_debugger, sample_stats):
+    def test_displays_species_count(self, mock_page, mock_app_state, sample_stats):
         """Verifie que le deuxieme card affiche le nombre d'especes."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         view._display_stats(sample_stats)
 
@@ -438,10 +428,10 @@ class TestDisplayStats:
         icon = icon_circle.content
         assert icon.icon == ft.Icons.FAVORITE
 
-    def test_displays_enriched_with_progress(self, mock_page, mock_app_state, mock_debugger, sample_stats):
+    def test_displays_enriched_with_progress(self, mock_page, mock_app_state, sample_stats):
         """Verifie que le card 'enriched' affiche le nombre d'animaux enrichis
         avec un sous-titre montrant le pourcentage (ex: '0.3% des especes')."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         view._display_stats(sample_stats)
 
@@ -470,9 +460,9 @@ class TestDisplayStats:
         icon = icon_circle.content
         assert icon.icon == ft.Icons.INFO
 
-    def test_displays_vernacular_names(self, mock_page, mock_app_state, mock_debugger, sample_stats):
+    def test_displays_vernacular_names(self, mock_page, mock_app_state, sample_stats):
         """Verifie que le dernier card affiche le nombre de noms vernaculaires."""
-        view = _make_view(mock_page, mock_app_state, mock_debugger)
+        view = _make_view(mock_page, mock_app_state)
 
         view._display_stats(sample_stats)
 

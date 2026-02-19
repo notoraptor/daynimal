@@ -3,11 +3,14 @@
 All views inherit from BaseView to ensure consistent interface and behavior.
 """
 
+import logging
 from abc import ABC, abstractmethod
 
 import flet as ft
 
 from daynimal.ui.state import AppState
+
+logger = logging.getLogger("daynimal")
 
 
 class BaseView(ABC):
@@ -17,24 +20,21 @@ class BaseView(ABC):
     - Common interface (build, refresh)
     - Helper methods for loading/error/empty states
     - Access to shared app state
-    - Unified logging (with fallback to print)
 
     Subclasses must implement:
     - build(): Return the view's UI controls
     - refresh(): Reload/update view data
     """
 
-    def __init__(self, page: ft.Page, app_state: AppState, debugger=None):
+    def __init__(self, page: ft.Page, app_state: AppState):
         """Initialize base view.
 
         Args:
             page: Flet page instance
             app_state: Shared application state
-            debugger: Optional debugger instance for logging
         """
         self.page = page
         self.app_state = app_state
-        self.debugger = debugger
         self.container = ft.Column(controls=[], spacing=10)
 
     @abstractmethod
@@ -112,24 +112,19 @@ class BaseView(ABC):
             pass
 
     def log_info(self, message: str):
-        """Log info message (with fallback to print).
+        """Log info message.
 
         Args:
             message: Message to log.
         """
-        if self.debugger:
-            self.debugger.logger.info(message)
-        else:
-            print(f"[INFO] {message}")
+        logger.info(message)
 
     def log_error(self, context: str, error: Exception):
-        """Log error message (with fallback to print).
+        """Log error message.
 
         Args:
             context: Context where error occurred.
             error: The exception that was raised.
         """
-        if self.debugger:
-            self.debugger.log_error(context, error)
-        else:
-            print(f"[ERROR] {context}: {error}")
+        logger.error(f"Error in {context}: {type(error).__name__}: {error}")
+        logger.exception(error)

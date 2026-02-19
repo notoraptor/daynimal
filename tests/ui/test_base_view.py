@@ -6,7 +6,7 @@ log_info, log_error, and default refresh behavior.
 """
 
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import flet as ft
 
@@ -33,17 +33,6 @@ class TestBaseViewInit:
 
         assert view.page is page
         assert view.app_state is state
-        assert view.debugger is None
-
-    def test_init_with_debugger(self):
-        """Test initialization with debugger."""
-        page = MagicMock(spec=ft.Page)
-        state = MagicMock(spec=AppState)
-        debugger = MagicMock()
-
-        view = ConcreteView(page, state, debugger=debugger)
-
-        assert view.debugger is debugger
 
     def test_container_initialized(self):
         """Test that container is initialized as empty Column."""
@@ -192,42 +181,20 @@ class TestBaseViewShowEmptyState:
 class TestBaseViewLogging:
     """Tests for BaseView logging methods."""
 
-    def test_log_info_with_debugger(self):
-        """Test log_info with debugger."""
-        page = MagicMock(spec=ft.Page)
-        state = MagicMock(spec=AppState)
-        debugger = MagicMock()
-
-        view = ConcreteView(page, state, debugger=debugger)
-        view.log_info("Test message")
-
-        debugger.logger.info.assert_called_once_with("Test message")
-
-    def test_log_info_without_debugger(self, capsys):
-        """Test log_info falls back to print."""
+    @patch("daynimal.ui.views.base.logger")
+    def test_log_info_calls_logger(self, mock_logger):
+        """Test log_info calls logger.info."""
         page = MagicMock(spec=ft.Page)
         state = MagicMock(spec=AppState)
 
         view = ConcreteView(page, state)
         view.log_info("Test message")
 
-        captured = capsys.readouterr()
-        assert "[INFO] Test message" in captured.out
+        mock_logger.info.assert_called_once_with("Test message")
 
-    def test_log_error_with_debugger(self):
-        """Test log_error with debugger."""
-        page = MagicMock(spec=ft.Page)
-        state = MagicMock(spec=AppState)
-        debugger = MagicMock()
-
-        view = ConcreteView(page, state, debugger=debugger)
-        error = ValueError("test error")
-        view.log_error("context", error)
-
-        debugger.log_error.assert_called_once_with("context", error)
-
-    def test_log_error_without_debugger(self, capsys):
-        """Test log_error falls back to print."""
+    @patch("daynimal.ui.views.base.logger")
+    def test_log_error_calls_logger(self, mock_logger):
+        """Test log_error calls logger.error and logger.exception."""
         page = MagicMock(spec=ft.Page)
         state = MagicMock(spec=AppState)
 
@@ -235,5 +202,6 @@ class TestBaseViewLogging:
         error = ValueError("test error")
         view.log_error("context", error)
 
-        captured = capsys.readouterr()
-        assert "[ERROR] context: test error" in captured.out
+        mock_logger.error.assert_called_once()
+        assert "context" in mock_logger.error.call_args[0][0]
+        mock_logger.exception.assert_called_once_with(error)

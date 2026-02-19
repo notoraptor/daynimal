@@ -31,7 +31,6 @@ class SearchView(BaseView):
         page: ft.Page,
         app_state: AppState,
         on_result_click: Callable[[int], None],
-        debugger=None,
     ):
         """Initialize search view.
 
@@ -39,9 +38,8 @@ class SearchView(BaseView):
             page: Flet page instance.
             app_state: Shared application state.
             on_result_click: Callback when search result is clicked. Receives taxon_id.
-            debugger: Optional debugger instance for logging.
         """
-        super().__init__(page, app_state, debugger)
+        super().__init__(page, app_state)
         self.on_result_click = on_result_click
 
         # Create UI components

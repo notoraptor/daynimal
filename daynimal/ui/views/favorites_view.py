@@ -1,6 +1,7 @@
 """Favorites view for displaying favorite animals."""
 
 import asyncio
+import logging
 import traceback
 from typing import Callable
 
@@ -11,6 +12,8 @@ from daynimal.ui.components.pagination import PaginationBar
 from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
+
+logger = logging.getLogger("daynimal")
 
 PER_PAGE = 20
 
@@ -23,7 +26,6 @@ class FavoritesView(BaseView):
         page: ft.Page,
         app_state: AppState | None = None,
         on_animal_click: Callable[[int], None] | None = None,
-        debugger=None,
     ):
         """
         Initialize FavoritesView.
@@ -32,9 +34,8 @@ class FavoritesView(BaseView):
             page: Flet page instance
             app_state: Shared application state
             on_animal_click: Callback when an animal is clicked (receives taxon_id)
-            debugger: Optional debugger instance for logging
         """
-        super().__init__(page, app_state, debugger)
+        super().__init__(page, app_state)
         self.on_animal_click = on_animal_click
         self.current_page = 1
         self.total_count = 0
@@ -139,17 +140,8 @@ class FavoritesView(BaseView):
                 )
 
         except Exception as error:
-            # Log error with full traceback
-            error_msg = f"Error in load_favorites: {error}"
-            error_traceback = traceback.format_exc()
-
-            if self.debugger:
-                self.debugger.log_error("load_favorites", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                # Fallback: print to console if no debugger
-                print(f"ERROR: {error_msg}")
-                print(f"Traceback:\n{error_traceback}")
+            logger.error(f"Error in load_favorites: {error}")
+            traceback.print_exc()
 
             # Show error
             self.favorites_list.controls = [
@@ -182,15 +174,9 @@ class FavoritesView(BaseView):
     def _on_item_click(self, taxon_id: int):
         """Handle click on a favorite item."""
         try:
-            if self.debugger:
-                self.debugger.logger.info(f"Favorite item clicked: taxon_id={taxon_id}")
+            logger.info(f"Favorite item clicked: taxon_id={taxon_id}")
             if self.on_animal_click:
                 self.on_animal_click(taxon_id)
         except Exception as error:
-            error_traceback = traceback.format_exc()
-            if self.debugger:
-                self.debugger.log_error("on_favorite_item_click", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                print(f"ERROR: Error clicking favorite item: {error}")
-                print(f"Traceback:\n{error_traceback}")
+            logger.error(f"Error in on_favorite_item_click: {error}")
+            traceback.print_exc()

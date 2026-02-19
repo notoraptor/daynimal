@@ -225,15 +225,6 @@ class TestDaynimalAppInit:
         assert page.on_disconnect == app.on_disconnect
         assert page.on_close == app.on_close
 
-    def test_uses_debugger_from_page_data(self):
-        """Vérifie que si page.data est un dict contenant 'debugger',
-        l'app utilise ce debugger au lieu d'en créer un nouveau."""
-        page = _make_mock_page()
-        mock_debugger = MagicMock()
-        page.data = {"debugger": mock_debugger}
-        app = self._make_app(page)
-        assert app.debugger is mock_debugger
-
 
 # =============================================================================
 # SECTION 4 : DaynimalApp.build

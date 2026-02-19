@@ -79,9 +79,6 @@ uv run daynimal credits
 ```bash
 # Run the desktop/mobile app
 python daynimal/app.py
-
-# OR run with debug logging (recommended for development)
-python debug/run_app_debug.py --quiet
 ```
 
 The GUI application provides an intuitive interface with 6 tabs:
@@ -93,26 +90,6 @@ The GUI application provides an intuitive interface with 6 tabs:
 - **Settings** - Theme, credits, preferences
 
 ## Development
-
-### Debugging the Flet App
-
-The project includes a complete debugging system for the Flet GUI application:
-
-```bash
-# Launch app with debug logging
-python debug/run_app_debug.py --quiet
-
-# View filtered logs (removes Flet internal noise)
-python debug/debug_filter.py
-
-# View only errors
-python debug/debug_filter.py --errors-only
-
-# Follow logs in real-time
-python debug/debug_filter.py --tail
-```
-
-📚 **Full documentation**: See [`debug/README.md`](debug/README.md) for complete debugging guide.
 
 ### Running Tests
 

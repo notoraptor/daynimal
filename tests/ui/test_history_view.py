@@ -52,17 +52,6 @@ def mock_app_state():
     return state
 
 
-@pytest.fixture
-def mock_debugger():
-    """Mock de FletDebugger."""
-    debugger = MagicMock()
-    debugger.logger = MagicMock()
-    debugger.logger.info = MagicMock()
-    debugger.logger.error = MagicMock()
-    debugger.log_error = MagicMock()
-    return debugger
-
-
 # =============================================================================
 # SECTION 1 : HistoryView.build
 # =============================================================================
@@ -72,7 +61,7 @@ class TestHistoryViewBuild:
     """Tests pour HistoryView.build()."""
 
     @patch("daynimal.ui.views.history_view.asyncio.create_task")
-    def test_returns_column_with_header(self, _mock_create_task, mock_page, mock_app_state, mock_debugger):
+    def test_returns_column_with_header(self, _mock_create_task, mock_page, mock_app_state):
         """Verifie que build() retourne un ft.Column contenant un header
         'Historique' (via view_header) suivi du container de liste et
         du container de pagination."""
@@ -81,7 +70,6 @@ class TestHistoryViewBuild:
         view = HistoryView(
             page=mock_page,
             app_state=mock_app_state,
-            debugger=mock_debugger,
         )
         result = view.build()
 
@@ -111,7 +99,7 @@ class TestHistoryViewBuild:
         assert result.controls[3] is view.pagination_container
 
     @patch("daynimal.ui.views.history_view.asyncio.create_task")
-    def test_triggers_load_history(self, mock_create_task, mock_page, mock_app_state, mock_debugger):
+    def test_triggers_load_history(self, mock_create_task, mock_page, mock_app_state):
         """Verifie que build() lance un asyncio.create_task pour
         load_history() afin de charger les donnees de maniere asynchrone."""
         from daynimal.ui.views.history_view import HistoryView
@@ -119,7 +107,6 @@ class TestHistoryViewBuild:
         view = HistoryView(
             page=mock_page,
             app_state=mock_app_state,
-            debugger=mock_debugger,
         )
         view.build()
 
@@ -137,7 +124,7 @@ class TestHistoryViewLoadHistory:
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_empty_history_shows_empty_state(self, mock_to_thread, mock_page, mock_app_state, mock_debugger):
+    async def test_empty_history_shows_empty_state(self, mock_to_thread, mock_page, mock_app_state):
         """Verifie que quand repository.get_history retourne ([], 0),
         l'UI affiche un etat vide avec l'icone HISTORY et le message
         'Aucun historique' et 'Consultez un animal pour le voir ici'."""
@@ -149,7 +136,6 @@ class TestHistoryViewLoadHistory:
         view = HistoryView(
             page=mock_page,
             app_state=mock_app_state,
-            debugger=mock_debugger,
         )
 
         await view.load_history()
@@ -181,7 +167,7 @@ class TestHistoryViewLoadHistory:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.create_history_card")
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_with_items_creates_cards(self, mock_to_thread, mock_create_card, mock_page, mock_app_state, mock_debugger):
+    async def test_with_items_creates_cards(self, mock_to_thread, mock_create_card, mock_page, mock_app_state):
         """Verifie que quand get_history retourne des animaux, un
         create_history_card est cree pour chacun. On verifie que
         history_list.controls contient le bon nombre de cards."""
@@ -199,7 +185,6 @@ class TestHistoryViewLoadHistory:
         view = HistoryView(
             page=mock_page,
             app_state=mock_app_state,
-            debugger=mock_debugger,
         )
 
         await view.load_history()
@@ -213,7 +198,7 @@ class TestHistoryViewLoadHistory:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.create_history_card")
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_formats_timestamp(self, mock_to_thread, mock_create_card, mock_page, mock_app_state, mock_debugger):
+    async def test_formats_timestamp(self, mock_to_thread, mock_create_card, mock_page, mock_app_state):
         """Verifie que le timestamp viewed_at est formate en 'DD/MM/YYYY HH:MM'
         pour chaque carte d'historique."""
         from daynimal.ui.views.history_view import HistoryView
@@ -227,7 +212,6 @@ class TestHistoryViewLoadHistory:
         view = HistoryView(
             page=mock_page,
             app_state=mock_app_state,
-            debugger=mock_debugger,
         )
 
         await view.load_history()
@@ -241,7 +225,7 @@ class TestHistoryViewLoadHistory:
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.create_history_card")
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_shows_count_text(self, mock_to_thread, mock_create_card, mock_page, mock_app_state, mock_debugger):
+    async def test_shows_count_text(self, mock_to_thread, mock_create_card, mock_page, mock_app_state):
         """Verifie qu'un texte '{total} animal(aux) consulte(s)' est affiche
         au-dessus de la liste."""
         from daynimal.ui.views.history_view import HistoryView
@@ -257,7 +241,6 @@ class TestHistoryViewLoadHistory:
         view = HistoryView(
             page=mock_page,
             app_state=mock_app_state,
-            debugger=mock_debugger,
         )
 
         await view.load_history()
@@ -270,7 +253,7 @@ class TestHistoryViewLoadHistory:
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_error_shows_error_ui(self, mock_to_thread, mock_page, mock_app_state, mock_debugger):
+    async def test_error_shows_error_ui(self, mock_to_thread, mock_page, mock_app_state):
         """Verifie que si get_history leve une exception, un container d'erreur
         est affiche avec l'icone ERROR et le message d'erreur."""
         from daynimal.ui.views.history_view import HistoryView
@@ -278,7 +261,6 @@ class TestHistoryViewLoadHistory:
         view = HistoryView(
             page=mock_page,
             app_state=mock_app_state,
-            debugger=mock_debugger,
         )
 
         error_msg = "Database connection failed"
@@ -309,14 +291,13 @@ class TestHistoryViewLoadHistory:
         assert isinstance(detail_text, ft.Text)
         assert error_msg in detail_text.value
 
-        # Debugger was notified
-        mock_debugger.log_error.assert_called_once()
+
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.PaginationBar")
     @patch("daynimal.ui.views.history_view.create_history_card")
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
-    async def test_creates_pagination_bar(self, mock_to_thread, mock_create_card, mock_pagination, mock_page, mock_app_state, mock_debugger):
+    async def test_creates_pagination_bar(self, mock_to_thread, mock_create_card, mock_pagination, mock_page, mock_app_state):
         """Verifie que quand le total depasse per_page (20), un PaginationBar
         est cree dans pagination_container avec les bons parametres
         (page, total, per_page, on_page_change)."""
@@ -340,7 +321,6 @@ class TestHistoryViewLoadHistory:
         view = HistoryView(
             page=mock_page,
             app_state=mock_app_state,
-            debugger=mock_debugger,
         )
 
         await view.load_history()
@@ -366,7 +346,7 @@ class TestHistoryViewInteraction:
     """Tests pour _on_page_change et _on_item_click."""
 
     @patch("daynimal.ui.views.history_view.asyncio.create_task")
-    def test_on_page_change_updates_and_reloads(self, mock_create_task, mock_page, mock_app_state, mock_debugger):
+    def test_on_page_change_updates_and_reloads(self, mock_create_task, mock_page, mock_app_state):
         """Verifie que _on_page_change(2) met a jour self.current_page=2
         et relance load_history() via asyncio.create_task."""
         from daynimal.ui.views.history_view import HistoryView
@@ -374,7 +354,6 @@ class TestHistoryViewInteraction:
         view = HistoryView(
             page=mock_page,
             app_state=mock_app_state,
-            debugger=mock_debugger,
         )
 
         view._on_page_change(2)
@@ -382,7 +361,7 @@ class TestHistoryViewInteraction:
         assert view.current_page == 2
         mock_create_task.assert_called_once()
 
-    def test_on_item_click_calls_callback(self, mock_page, mock_app_state, mock_debugger):
+    def test_on_item_click_calls_callback(self, mock_page, mock_app_state):
         """Verifie que _on_item_click(42) appelle on_animal_click(42)
         (le callback fourni par AppController)."""
         from daynimal.ui.views.history_view import HistoryView
@@ -392,16 +371,16 @@ class TestHistoryViewInteraction:
             page=mock_page,
             app_state=mock_app_state,
             on_animal_click=on_click,
-            debugger=mock_debugger,
         )
 
         view._on_item_click(42)
 
         on_click.assert_called_once_with(42)
 
-    def test_on_item_click_logs_info(self, mock_page, mock_app_state, mock_debugger):
+    @patch("daynimal.ui.views.history_view.logger")
+    def test_on_item_click_logs_info(self, mock_logger, mock_page, mock_app_state):
         """Verifie que _on_item_click log un message d'info via
-        debugger.logger.info contenant le taxon_id."""
+        logger.info contenant le taxon_id."""
         from daynimal.ui.views.history_view import HistoryView
 
         on_click = MagicMock()
@@ -409,19 +388,19 @@ class TestHistoryViewInteraction:
             page=mock_page,
             app_state=mock_app_state,
             on_animal_click=on_click,
-            debugger=mock_debugger,
         )
 
         view._on_item_click(99)
 
-        # Check that debugger.logger.info was called with a message containing the taxon_id
-        mock_debugger.logger.info.assert_called_once()
-        log_message = mock_debugger.logger.info.call_args[0][0]
+        # Check that logger.info was called with a message containing the taxon_id
+        mock_logger.info.assert_called_once()
+        log_message = mock_logger.info.call_args[0][0]
         assert "99" in log_message
 
-    def test_on_item_click_error_handled(self, mock_page, mock_app_state, mock_debugger):
+    @patch("daynimal.ui.views.history_view.logger")
+    def test_on_item_click_error_handled(self, mock_logger, mock_page, mock_app_state):
         """Verifie que si on_animal_click leve une exception,
-        _on_item_click l'attrape et la log via debugger.log_error
+        _on_item_click l'attrape et la log via logger.error
         sans la propager."""
         from daynimal.ui.views.history_view import HistoryView
 
@@ -430,14 +409,10 @@ class TestHistoryViewInteraction:
             page=mock_page,
             app_state=mock_app_state,
             on_animal_click=on_click,
-            debugger=mock_debugger,
         )
 
         # Should NOT raise
         view._on_item_click(42)
 
         # Error was logged
-        mock_debugger.log_error.assert_called_once()
-        call_args = mock_debugger.log_error.call_args[0]
-        assert "on_history_item_click" in call_args[0]
-        assert isinstance(call_args[1], RuntimeError)
+        mock_logger.error.assert_called_once()

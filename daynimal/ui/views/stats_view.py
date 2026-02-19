@@ -1,6 +1,7 @@
 """Statistics view for displaying database statistics."""
 
 import asyncio
+import logging
 import traceback
 
 import flet as ft
@@ -9,20 +10,21 @@ from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
+logger = logging.getLogger("daynimal")
+
 
 class StatsView(BaseView):
     """View for displaying database statistics with responsive cards."""
 
-    def __init__(self, page: ft.Page, app_state: AppState | None = None, debugger=None):
+    def __init__(self, page: ft.Page, app_state: AppState | None = None):
         """
         Initialize StatsView.
 
         Args:
             page: Flet page instance
             app_state: Shared application state
-            debugger: Optional debugger instance for logging
         """
-        super().__init__(page, app_state, debugger)
+        super().__init__(page, app_state)
         self.stats_container = ft.Column(controls=[], spacing=10)
         self.cached_stats: dict | None = None
 
@@ -149,17 +151,8 @@ class StatsView(BaseView):
             self.page.update()
 
         except Exception as error:
-            # Log error with full traceback
-            error_msg = f"Error loading stats: {error}"
-            error_traceback = traceback.format_exc()
-
-            if self.debugger:
-                self.debugger.log_error("load_stats", error)
-                self.debugger.logger.error(f"Full traceback:\n{error_traceback}")
-            else:
-                # Fallback: print to console if no debugger
-                print(f"ERROR: {error_msg}")
-                print(f"Traceback:\n{error_traceback}")
+            logger.error(f"Error loading stats: {error}")
+            traceback.print_exc()
 
             # Show error
             self.stats_container.controls = [
