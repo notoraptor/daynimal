@@ -130,41 +130,58 @@ uv run daynimal-app
 ```
 
 **Android Build & Test (via ADB):**
+
+**CRITICAL — ADB & Emulator paths on this machine:**
+`$ANDROID_HOME` is NOT set. The Android SDK is at a non-standard location.
+Always define these shell variables before running any ADB/emulator command:
 ```bash
+ADB="$HOME/Android/Sdk/platform-tools/adb"
+EMULATOR="$HOME/Android/Sdk/emulator/emulator"
+```
+Do NOT use bare `adb` or `$ANDROID_HOME` — they will fail with "command not found".
+
+```bash
+# Define tool paths (required in every terminal session)
+ADB="$HOME/Android/Sdk/platform-tools/adb"
+EMULATOR="$HOME/Android/Sdk/emulator/emulator"
+
 # Build APK (requires Android SDK — auto-installed by Flet CLI)
 PYTHONUTF8=1 PYTHONIOENCODING=utf-8 uv run flet build apk --no-rich-output
 
 # APKs are in build/apk/ (arm64-v8a, armeabi-v7a, x86_64)
 
 # Launch Android emulator (AVD "daynimal_test" already created)
-$ANDROID_HOME/emulator/emulator -avd daynimal_test -no-audio &
+# Visible window (for interactive testing / user can see it):
+"$EMULATOR" -avd daynimal_test -no-audio &
+# Headless (for automated testing, no window):
+# "$EMULATOR" -avd daynimal_test -no-audio -no-window &
 
-# Wait for emulator, then install and launch
-adb wait-for-device
-adb install -r build/apk/app-x86_64-release.apk   # x86_64 for emulator
-adb shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
+# Wait for emulator to be ready
+"$ADB" wait-for-device
 
-# Take screenshot to verify UI
-adb exec-out screencap -p > screenshot.png
+# Install and launch
+"$ADB" install -r build/apk/app-x86_64-release.apk   # x86_64 for emulator
+"$ADB" shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
+
+# Take screenshot (always save to tmp/, which is git-ignored)
+"$ADB" exec-out screencap -p > tmp/screenshot.png
 
 # Check logs for errors
-adb logcat -d | grep -i "flutter\|python\|error" | grep -v "audit\|InetDiag"
+"$ADB" logcat -d | grep -i "flutter\|python\|error" | grep -v "audit\|InetDiag"
 
 # Force stop and relaunch
-adb shell am force-stop com.daynimal.daynimal
+"$ADB" shell am force-stop com.daynimal.daynimal
 ```
 
-**Note**: BlueStacks is incompatible with Flet apps (white screen). Use Android Studio emulator (AVD) instead. On Windows, use Unix-style paths for adb/emulator in Git Bash (e.g. `"/c/Users/.../Android/sdk/platform-tools/adb"`).
+**Note**: BlueStacks is incompatible with Flet apps (white screen). Use Android Studio emulator (AVD) instead.
 
-**Clicking buttons in the emulator via ADB**: Flet uses Flutter rendering — `adb shell input tap X Y` requires exact pixel coordinates. Do NOT guess coordinates from screenshots. Instead:
-1. Dump the UI hierarchy: `adb shell uiautomator dump //sdcard/ui.xml && adb shell cat //sdcard/ui.xml`
+**Clicking buttons in the emulator via ADB**: Flet uses Flutter rendering — `"$ADB" shell input tap X Y` requires exact pixel coordinates. Do NOT guess coordinates from screenshots. Instead:
+1. Dump the UI hierarchy: `"$ADB" shell uiautomator dump //sdcard/ui.xml && "$ADB" shell cat //sdcard/ui.xml`
 2. Find the button's `bounds="[left,top][right,bottom]"` in the XML
 3. Compute center: `x = (left + right) / 2`, `y = (top + bottom) / 2`
-4. Tap: `adb shell input tap <x> <y>`
+4. Tap: `"$ADB" shell input tap <x> <y>`
 
 On Windows/Git Bash, use `//sdcard/` (double slash) to prevent path conversion by MSYS.
-
-**Emulator screenshots**: Save screenshots to `tmp/` (git-ignored), not the project root. Example: `adb exec-out screencap -p > tmp/screenshot.png`
 
 ## Architecture
 

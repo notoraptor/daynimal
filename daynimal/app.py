@@ -8,6 +8,11 @@ daily animal discoveries with enriched information.
 import os
 import sys
 import types
+import asyncio
+import logging
+import traceback
+
+import flet as ft
 
 # On Android/mobile, Flet copies package contents to an "app" directory.
 # Absolute imports like "from daynimal.xxx" fail because there's no "daynimal"
@@ -20,11 +25,14 @@ if "daynimal" not in sys.modules:
     _pkg.__file__ = os.path.join(_app_dir, "__init__.py")
     sys.modules["daynimal"] = _pkg
 
-import asyncio
-import logging
-import traceback
 
-import flet as ft
+# NB: Daynimal imports must always come **after** sys hack above.
+from daynimal.config import is_mobile
+from daynimal.db.first_launch import resolve_database
+from daynimal.ui.state import AppState
+from daynimal.ui.views.setup_view import SetupView
+from daynimal.ui.app_controller import AppController
+from daynimal.repository import AnimalRepository
 
 logger = logging.getLogger("daynimal")
 
@@ -39,7 +47,6 @@ class DaynimalApp:
         self.page.scroll = None
 
         # Portrait window on desktop (simulates mobile aspect ratio)
-        from daynimal.config import is_mobile
 
         if not is_mobile():
             self.page.window.width = 420
@@ -57,7 +64,6 @@ class DaynimalApp:
 
     def build(self):
         """Build the user interface."""
-        from daynimal.db.first_launch import resolve_database
 
         # Load and apply theme from settings
         self._load_theme()
@@ -65,13 +71,8 @@ class DaynimalApp:
         # Check if database exists
         db_path = resolve_database()
         if db_path is None:
-            from daynimal.config import is_mobile
-
             if is_mobile():
                 # Mobile: show first-launch setup screen
-                from daynimal.ui.state import AppState
-                from daynimal.ui.views.setup_view import SetupView
-
                 self.setup_view = SetupView(
                     page=self.page,
                     app_state=AppState(),
@@ -158,7 +159,6 @@ class DaynimalApp:
 
     def _build_main_app(self):
         """Build the main application UI (after DB is available)."""
-        from daynimal.ui.app_controller import AppController
 
         self.page.controls.clear()
         self.app_controller = AppController(page=self.page)
@@ -166,7 +166,6 @@ class DaynimalApp:
 
     def _on_setup_complete(self):
         """Called when first-launch setup finishes successfully."""
-        from daynimal.db.first_launch import resolve_database
 
         resolve_database()  # Update settings with new DB path
         self._build_main_app()
@@ -175,8 +174,6 @@ class DaynimalApp:
     def _load_theme(self):
         """Load theme setting from database and apply to page."""
         try:
-            from daynimal.repository import AnimalRepository
-
             with AnimalRepository() as repo:
                 theme_mode = repo.get_setting("theme_mode", "light")
                 self.page.theme_mode = (
@@ -252,7 +249,6 @@ def _install_asyncio_exception_handler():
     except RuntimeError:
         return
 
-
     loop.set_exception_handler(_asyncio_exception_handler)
 
 
@@ -264,15 +260,12 @@ def _asyncio_exception_handler(loop, context):
         if isinstance(exc, ConnectionResetError):
             return
         print("\n--- Unhandled Flet exception ---", file=sys.stderr, flush=True)
-        traceback.print_exception(
-            type(exc), exc, exc.__traceback__, file=sys.stderr
-        )
+        traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
         print("--------------------------------\n", file=sys.stderr, flush=True)
 
 
 def _show_error(page: ft.Page, error: Exception):
     """Show error visually on the page (critical for mobile debugging)."""
-    import traceback
 
     page.controls.clear()
     page.add(
