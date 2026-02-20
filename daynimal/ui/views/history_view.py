@@ -219,10 +219,7 @@ class HistoryView(BaseView):
                 )
             else:
                 self.page.show_dialog(
-                    ft.SnackBar(
-                        ft.Text("Entrée introuvable"),
-                        show_close_icon=True,
-                    )
+                    ft.SnackBar(ft.Text("Entrée introuvable"), show_close_icon=True)
                 )
         except Exception as error:
             logger.error(f"Error deleting history entry {history_id}: {error}")

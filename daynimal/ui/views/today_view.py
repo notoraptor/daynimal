@@ -421,7 +421,9 @@ class TodayView(BaseView):
             return
         text = self._build_share_text(self.current_animal)
         await ft.Clipboard().set(text)
-        self.page.show_dialog(ft.SnackBar(ft.Text("Texte copié !"), show_close_icon=True))
+        self.page.show_dialog(
+            ft.SnackBar(ft.Text("Texte copié !"), show_close_icon=True)
+        )
 
     def _on_open_wikipedia(self, e):
         """Open Wikipedia article in default browser."""

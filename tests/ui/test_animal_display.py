@@ -8,7 +8,6 @@ Stratégie: on crée des AnimalInfo avec différents niveaux de données
 retournés par build().
 """
 
-
 import flet as ft
 import pytest
 

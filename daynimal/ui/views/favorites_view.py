@@ -209,16 +209,12 @@ class FavoritesView(BaseView):
                 label = _truncate_name(display_name)
                 self.page.show_dialog(
                     ft.SnackBar(
-                        ft.Text(f"Retiré des favoris : {label}"),
-                        show_close_icon=True,
+                        ft.Text(f"Retiré des favoris : {label}"), show_close_icon=True
                     )
                 )
             else:
                 self.page.show_dialog(
-                    ft.SnackBar(
-                        ft.Text("Favori introuvable"),
-                        show_close_icon=True,
-                    )
+                    ft.SnackBar(ft.Text("Favori introuvable"), show_close_icon=True)
                 )
         except Exception as error:
             logger.error(f"Error removing favorite {taxon_id}: {error}")

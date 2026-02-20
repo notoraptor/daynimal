@@ -217,7 +217,9 @@ def test_create_history_card_with_delete_returns_row():
     on_click = MagicMock()
     on_delete = MagicMock()
 
-    result = create_history_card_with_delete(animal, on_click, "10/02/2026 14:30", on_delete)
+    result = create_history_card_with_delete(
+        animal, on_click, "10/02/2026 14:30", on_delete
+    )
 
     assert isinstance(result, ft.Row)
     assert len(result.controls) == 2

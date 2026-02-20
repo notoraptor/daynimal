@@ -11,7 +11,6 @@ les propriétés définies et les méthodes appelées.
 from unittest.mock import MagicMock, patch
 
 
-
 def _make_mock_page():
     """Create a properly configured mock ft.Page for tests."""
     page = MagicMock()

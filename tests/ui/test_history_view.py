@@ -178,8 +178,8 @@ class TestHistoryViewLoadHistory:
         ]
 
         mock_to_thread.return_value = (animals, 3)
-        mock_create_card.side_effect = (
-            lambda animal, on_click, viewed_at, on_delete: MagicMock(spec=ft.Card)
+        mock_create_card.side_effect = lambda animal, on_click, viewed_at, on_delete: (
+            MagicMock(spec=ft.Card)
         )
 
         view = HistoryView(page=mock_page, app_state=mock_app_state)

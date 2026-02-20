@@ -14,10 +14,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 import flet as ft
 import pytest
 
-from daynimal.ui.views.setup_view import (
-    _global_progress,
-    SetupView,
-)
+from daynimal.ui.views.setup_view import _global_progress, SetupView
 
 
 # =============================================================================
