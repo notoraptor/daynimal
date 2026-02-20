@@ -29,25 +29,6 @@ import flet as ft
 logger = logging.getLogger("daynimal")
 
 
-def _show_error(page: ft.Page, error: Exception):
-    """Show error visually on the page (critical for mobile debugging)."""
-    import traceback
-
-    page.controls.clear()
-    page.add(
-        ft.Column(
-            [
-                ft.Text("Startup Error", size=24, color=ft.Colors.ERROR),
-                ft.Text(str(error), size=14),
-                ft.Text(traceback.format_exc(), size=10, selectable=True),
-            ],
-            scroll=ft.ScrollMode.AUTO,
-            expand=True,
-        )
-    )
-    page.update()
-
-
 class DaynimalApp:
     """Main application class for Daynimal Flet app."""
 
@@ -246,6 +227,19 @@ class DaynimalApp:
             traceback.print_exc()
 
 
+def main():
+    """Main entry point for the Flet app."""
+
+    def app_main(page: ft.Page):
+        _install_asyncio_exception_handler()
+        try:
+            DaynimalApp(page)
+        except Exception as e:
+            _show_error(page, e)
+
+    ft.run(main=app_main)
+
+
 def _install_asyncio_exception_handler():
     """Print all unhandled async exceptions to the terminal.
 
@@ -258,33 +252,41 @@ def _install_asyncio_exception_handler():
     except RuntimeError:
         return
 
-    def handler(loop, context):
-        exc = context.get("exception")
-        if exc:
-            # ConnectionResetError is expected on Windows when the Flet
-            # window closes (Flutter disconnects before Python finishes).
-            if isinstance(exc, ConnectionResetError):
-                return
-            print("\n--- Unhandled Flet exception ---", file=sys.stderr, flush=True)
-            traceback.print_exception(
-                type(exc), exc, exc.__traceback__, file=sys.stderr
-            )
-            print("--------------------------------\n", file=sys.stderr, flush=True)
 
-    loop.set_exception_handler(handler)
+    loop.set_exception_handler(_asyncio_exception_handler)
 
 
-def main():
-    """Main entry point for the Flet app."""
+def _asyncio_exception_handler(loop, context):
+    exc = context.get("exception")
+    if exc:
+        # ConnectionResetError is expected on Windows when the Flet
+        # window closes (Flutter disconnects before Python finishes).
+        if isinstance(exc, ConnectionResetError):
+            return
+        print("\n--- Unhandled Flet exception ---", file=sys.stderr, flush=True)
+        traceback.print_exception(
+            type(exc), exc, exc.__traceback__, file=sys.stderr
+        )
+        print("--------------------------------\n", file=sys.stderr, flush=True)
 
-    def app_main(page: ft.Page):
-        _install_asyncio_exception_handler()
-        try:
-            DaynimalApp(page)
-        except Exception as e:
-            _show_error(page, e)
 
-    ft.run(main=app_main)
+def _show_error(page: ft.Page, error: Exception):
+    """Show error visually on the page (critical for mobile debugging)."""
+    import traceback
+
+    page.controls.clear()
+    page.add(
+        ft.Column(
+            [
+                ft.Text("Startup Error", size=24, color=ft.Colors.ERROR),
+                ft.Text(str(error), size=14),
+                ft.Text(traceback.format_exc(), size=10, selectable=True),
+            ],
+            scroll=ft.ScrollMode.AUTO,
+            expand=True,
+        )
+    )
+    page.update()
 
 
 if __name__ == "__main__":

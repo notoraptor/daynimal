@@ -383,3 +383,63 @@ def test_history_pagination_edge_cases(session: Session, sample_taxa):
     history_p100, total = repo.get_history(page=100, per_page=10)
     assert total == 5
     assert len(history_p100) == 0
+
+
+# =============================================================================
+# SECTION 3: remove_from_history + history_id propagation
+# =============================================================================
+
+
+def test_history_id_propagated(session: Session, sample_taxa):
+    """Vérifie que get_history propage history_id sur chaque AnimalInfo."""
+    repo = AnimalRepository(session=session)
+
+    entry = repo.add_to_history(taxon_id=1000, command="today")
+
+    history, _ = repo.get_history(page=1, per_page=10)
+
+    assert len(history) == 1
+    assert history[0].history_id == entry.id
+
+
+def test_remove_from_history_success(session: Session, sample_taxa):
+    """Vérifie que remove_from_history supprime l'entrée et retourne True."""
+    repo = AnimalRepository(session=session)
+
+    entry = repo.add_to_history(taxon_id=1000, command="today")
+    assert repo.get_history_count() == 1
+
+    result = repo.remove_from_history(entry.id)
+
+    assert result is True
+    assert repo.get_history_count() == 0
+
+
+def test_remove_from_history_not_found(session: Session, sample_taxa):
+    """Vérifie que remove_from_history retourne False pour un ID inexistant."""
+    repo = AnimalRepository(session=session)
+
+    result = repo.remove_from_history(99999)
+
+    assert result is False
+
+
+def test_remove_from_history_correct_entry(session: Session, sample_taxa):
+    """Vérifie que seule l'entrée ciblée est supprimée."""
+    repo = AnimalRepository(session=session)
+
+    repo.add_to_history(taxon_id=1000, command="today")
+    entry2 = repo.add_to_history(taxon_id=1001, command="random")
+    repo.add_to_history(taxon_id=1002, command="info")
+
+    # Delete the middle entry
+    result = repo.remove_from_history(entry2.id)
+
+    assert result is True
+    assert repo.get_history_count() == 2
+
+    history, _ = repo.get_history(page=1, per_page=10)
+    taxon_ids = [animal.taxon.taxon_id for animal in history]
+    assert 1000 in taxon_ids
+    assert 1001 not in taxon_ids
+    assert 1002 in taxon_ids

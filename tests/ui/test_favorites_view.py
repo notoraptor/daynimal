@@ -6,7 +6,7 @@ Stratégie: identique à HistoryView — on mock AppState.repository.get_favorit
 et ft.Page. On vérifie la structure de l'UI et les interactions.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch
 
 import flet as ft
 import pytest
@@ -112,7 +112,7 @@ class TestFavoritesViewLoadFavorites:
         assert isinstance(container, ft.Container)
 
     @pytest.mark.asyncio
-    @patch("daynimal.ui.views.favorites_view.create_favorite_card")
+    @patch("daynimal.ui.views.favorites_view.create_favorite_card_with_delete")
     @patch("daynimal.ui.views.favorites_view.asyncio.create_task")
     async def test_with_items_creates_cards(
         self, mock_create_task, mock_create_card, mock_page, mock_app_state
@@ -132,7 +132,7 @@ class TestFavoritesViewLoadFavorites:
         assert mock_create_card.call_count == 2
 
     @pytest.mark.asyncio
-    @patch("daynimal.ui.views.favorites_view.create_favorite_card")
+    @patch("daynimal.ui.views.favorites_view.create_favorite_card_with_delete")
     @patch("daynimal.ui.views.favorites_view.asyncio.create_task")
     async def test_shows_count_text(
         self, mock_create_task, mock_create_card, mock_page, mock_app_state
@@ -176,7 +176,7 @@ class TestFavoritesViewLoadFavorites:
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.favorites_view.PaginationBar")
-    @patch("daynimal.ui.views.favorites_view.create_favorite_card")
+    @patch("daynimal.ui.views.favorites_view.create_favorite_card_with_delete")
     @patch("daynimal.ui.views.favorites_view.asyncio.create_task")
     async def test_creates_pagination_bar(
         self,
@@ -259,3 +259,70 @@ class TestFavoritesViewInteraction:
 
         # Should not raise
         view._on_item_click(42)
+
+
+# =============================================================================
+# SECTION 4 : Suppression de favoris
+# =============================================================================
+
+
+class TestFavoritesViewDelete:
+    """Tests pour _on_delete_favorite et _delete_favorite_async."""
+
+    @patch("daynimal.ui.views.favorites_view.asyncio.create_task")
+    def test_on_delete_favorite_creates_task(
+        self, mock_create_task, mock_page, mock_app_state
+    ):
+        """Vérifie que _on_delete_favorite lance une tâche async."""
+        from daynimal.ui.views.favorites_view import FavoritesView
+
+        view = FavoritesView(mock_page, mock_app_state)
+
+        view._on_delete_favorite(42, "Canis lupus")
+
+        mock_create_task.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("daynimal.ui.views.favorites_view.asyncio.to_thread", new_callable=AsyncMock)
+    @patch("daynimal.ui.views.favorites_view.asyncio.create_task")
+    async def test_delete_favorite_async_success(
+        self, mock_create_task, mock_to_thread, mock_page, mock_app_state
+    ):
+        """Vérifie que _delete_favorite_async appelle remove_favorite,
+        recharge la liste et affiche un SnackBar avec le nom de l'animal."""
+        from daynimal.ui.views.favorites_view import FavoritesView
+
+        # First call: remove_favorite returns True
+        # Second call: load_favorites fetches empty list
+        mock_to_thread.side_effect = [True, ([], 0)]
+
+        view = FavoritesView(mock_page, mock_app_state)
+        view.build()
+
+        await view._delete_favorite_async(42, "Canis lupus")
+
+        # remove_favorite was called
+        assert mock_to_thread.call_count >= 1
+
+        # SnackBar was shown with animal name
+        mock_page.show_dialog.assert_called_once()
+        snackbar = mock_page.show_dialog.call_args[0][0]
+        assert "Canis lupus" in snackbar.content.value
+
+    @pytest.mark.asyncio
+    @patch("daynimal.ui.views.favorites_view.asyncio.to_thread", new_callable=AsyncMock)
+    @patch("daynimal.ui.views.favorites_view.asyncio.create_task")
+    async def test_delete_favorite_async_not_found(
+        self, mock_create_task, mock_to_thread, mock_page, mock_app_state
+    ):
+        """Vérifie que si remove_favorite retourne False, un SnackBar 'introuvable' est affiché."""
+        from daynimal.ui.views.favorites_view import FavoritesView
+
+        mock_to_thread.return_value = False
+
+        view = FavoritesView(mock_page, mock_app_state)
+        view.build()
+
+        await view._delete_favorite_async(999, "Unknown")
+
+        mock_page.show_dialog.assert_called_once()

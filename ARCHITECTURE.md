@@ -381,17 +381,21 @@ class DaynimalApp  # Main application class for Daynimal Flet app.
     # calls: self.cleanup, traceback.print_exc
 ```
 ```python
-def _show_error(page, error)  # Show error visually on the page (critical for mobile debugging).
-```
-- calls: `ft.Column`, `ft.Text`, `str`, `traceback.format_exc`
-```python
-def _install_asyncio_exception_handler()  # Print all unhandled async exceptions to the terminal.
-```
-- calls: `asyncio.get_running_loop`, `isinstance`, `print`, `traceback.print_exception`, `type`
-```python
 def main()  # Main entry point for the Flet app.
 ```
 - calls: `DaynimalApp`, `_install_asyncio_exception_handler`, `_show_error`, `ft.run`
+```python
+def _install_asyncio_exception_handler()  # Print all unhandled async exceptions to the terminal.
+```
+- calls: `asyncio.get_running_loop`
+```python
+def _asyncio_exception_handler(loop, context)
+```
+- calls: `isinstance`, `print`, `traceback.print_exception`, `type`
+```python
+def _show_error(page, error)  # Show error visually on the page (critical for mobile debugging).
+```
+- calls: `ft.Column`, `ft.Text`, `str`, `traceback.format_exc`
 
 ### Module: daynimal.attribution
 > Attribution management for legal compliance.
@@ -913,6 +917,8 @@ class AnimalRepository  # Repository for accessing animal information.
     # calls: self.session.query, self.session.query.count
     def clear_history(self)  # Clear all history entries.
     # calls: self.session.commit, self.session.query, self.session.query.count, self.session.query.delete
+    def remove_from_history(self, history_id)  # Remove a single entry from the history.
+    # calls: self.session.commit, self.session.delete, self.session.get
     def get_setting(self, key, default)  # Get a user setting by key.
     # calls: self.session.query, self.session.query.filter
     def set_setting(self, key, value)  # Set a user setting.
@@ -1282,6 +1288,14 @@ def create_favorite_card(animal, on_click)  # Create an animal card for Favorite
 ```
 - calls: `AnimalCard`
 ```python
+def create_history_card_with_delete(animal, on_click, viewed_at_str, on_delete)  # Create a history card with a delete button.
+```
+- calls: `_get_display_name`, `create_history_card`, `ft.IconButton`, `ft.Row`, `on_delete`
+```python
+def create_favorite_card_with_delete(animal, on_click, on_delete)  # Create a favorite card with a delete button.
+```
+- calls: `_get_display_name`, `create_favorite_card`, `ft.IconButton`, `ft.Row`, `on_delete`
+```python
 def create_search_card(animal, on_click)  # Create an animal card for Search view.
 ```
 - calls: `AnimalCard`
@@ -1445,12 +1459,20 @@ class FavoritesView(BaseView)  # View for displaying and managing favorite anima
     def build(self)  # Build the favorites view UI.
     # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, self.load_favorites, view_header
     async def load_favorites(self)  # Load favorites from repository.
-    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, create_favorite_card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, self.app_state.repository.get_favorites, self.page.update, str, traceback.print_exc
+    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, create_favorite_card_with_delete, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, self.app_state.repository.get_favorites, self.page.update, str, traceback.print_exc
     def _on_page_change(self, new_page)  # Handle page change from pagination bar.
     # calls: asyncio.create_task, self.load_favorites
     def _on_item_click(self, taxon_id)  # Handle click on a favorite item.
     # calls: self.on_animal_click, traceback.print_exc
+    def _on_delete_favorite(self, taxon_id, display_name)  # Handle delete button click on a favorite item.
+    # calls: asyncio.create_task, self._delete_favorite_async
+    async def _delete_favorite_async(self, taxon_id, display_name)  # Remove a favorite and refresh the list.
+    # calls: _truncate_name, asyncio.to_thread, ft.SnackBar, ft.Text, self.load_favorites, self.page.show_dialog
 ```
+```python
+def _truncate_name(name)  # Truncate a display name for SnackBar messages.
+```
+- calls: `len`
 
 ### Module: daynimal.ui.views.history_view
 > History view for displaying animal viewing history.
@@ -1461,12 +1483,20 @@ class HistoryView(BaseView)  # View for displaying and managing animal viewing h
     def build(self)  # Build the history view UI.
     # calls: asyncio.create_task, ft.Column, ft.Container, ft.Divider, self.load_history, view_header
     async def load_history(self)  # Load history from repository.
-    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, create_history_card, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, self.app_state.repository.get_history, self.page.update, str, traceback.print_exc
+    # calls: PaginationBar, PaginationBar.build, asyncio.sleep, asyncio.to_thread, create_history_card_with_delete, ft.Column, ft.Container, ft.Icon, ft.ProgressRing, ft.Text, self.app_state.repository.get_history, self.page.update, str, traceback.print_exc
     def _on_page_change(self, new_page)  # Handle page change from pagination bar.
     # calls: asyncio.create_task, self.load_history
     def _on_item_click(self, taxon_id)  # Handle click on a history item.
     # calls: self.on_animal_click, traceback.print_exc
+    def _on_delete_history(self, history_id, display_name)  # Handle delete button click on a history item.
+    # calls: asyncio.create_task, self._delete_history_async
+    async def _delete_history_async(self, history_id, display_name)  # Delete a history entry and refresh the list.
+    # calls: _truncate_name, asyncio.to_thread, ft.SnackBar, ft.Text, self.load_history, self.page.show_dialog
 ```
+```python
+def _truncate_name(name)  # Truncate a display name for SnackBar messages.
+```
+- calls: `len`
 
 ### Module: daynimal.ui.views.search_view
 > Search view for Daynimal app.

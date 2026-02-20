@@ -7,7 +7,7 @@ from typing import Callable
 
 import flet as ft
 
-from daynimal.ui.components.animal_card import create_history_card
+from daynimal.ui.components.animal_card import create_history_card_with_delete
 from daynimal.ui.components.pagination import PaginationBar
 from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
@@ -16,6 +16,14 @@ from daynimal.ui.views.base import BaseView
 logger = logging.getLogger("daynimal")
 
 PER_PAGE = 20
+_MAX_NAME_LEN = 30
+
+
+def _truncate_name(name: str) -> str:
+    """Truncate a display name for SnackBar messages."""
+    if len(name) > _MAX_NAME_LEN:
+        return name[:_MAX_NAME_LEN] + "..."
+    return name
 
 
 class HistoryView(BaseView):
@@ -129,7 +137,9 @@ class HistoryView(BaseView):
 
                 for item in history_items:
                     viewed_at = item.viewed_at.strftime("%d/%m/%Y %H:%M")
-                    card = create_history_card(item, self._on_item_click, viewed_at)
+                    card = create_history_card_with_delete(
+                        item, self._on_item_click, viewed_at, self._on_delete_history
+                    )
                     controls.append(card)
 
                 self.history_list.controls = controls
@@ -187,3 +197,39 @@ class HistoryView(BaseView):
         except Exception as error:
             logger.error(f"Error in on_history_item_click: {error}")
             traceback.print_exc()
+
+    def _on_delete_history(self, history_id: int, display_name: str):
+        """Handle delete button click on a history item."""
+        asyncio.create_task(self._delete_history_async(history_id, display_name))
+
+    async def _delete_history_async(self, history_id: int, display_name: str):
+        """Delete a history entry and refresh the list."""
+        try:
+            removed = await asyncio.to_thread(
+                self.app_state.repository.remove_from_history, history_id
+            )
+            if removed:
+                await self.load_history()
+                label = _truncate_name(display_name)
+                self.page.show_dialog(
+                    ft.SnackBar(
+                        ft.Text(f"Supprimé de l'historique : {label}"),
+                        show_close_icon=True,
+                    )
+                )
+            else:
+                self.page.show_dialog(
+                    ft.SnackBar(
+                        ft.Text("Entrée introuvable"),
+                        show_close_icon=True,
+                    )
+                )
+        except Exception as error:
+            logger.error(f"Error deleting history entry {history_id}: {error}")
+            self.page.show_dialog(
+                ft.SnackBar(
+                    ft.Text("Erreur lors de la suppression"),
+                    bgcolor=ft.Colors.ERROR,
+                    show_close_icon=True,
+                )
+            )

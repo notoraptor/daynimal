@@ -964,6 +964,7 @@ class AnimalRepository:
                 # Attach history metadata
                 animal.viewed_at = entry.viewed_at
                 animal.command = entry.command
+                animal.history_id = entry.id
                 results.append(animal)
             except Exception as e:
                 # Log and skip corrupted entries
@@ -987,6 +988,25 @@ class AnimalRepository:
         self.session.query(AnimalHistoryModel).delete()
         self.session.commit()
         return count
+
+    def remove_from_history(self, history_id: int) -> bool:
+        """
+        Remove a single entry from the history.
+
+        Args:
+            history_id: ID of the history entry to remove
+
+        Returns:
+            True if removed, False if not found
+        """
+        entry = self.session.get(AnimalHistoryModel, history_id)
+
+        if not entry:
+            return False
+
+        self.session.delete(entry)
+        self.session.commit()
+        return True
 
     # --- Settings ---
 

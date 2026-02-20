@@ -7,7 +7,7 @@ from typing import Callable
 
 import flet as ft
 
-from daynimal.ui.components.animal_card import create_favorite_card
+from daynimal.ui.components.animal_card import create_favorite_card_with_delete
 from daynimal.ui.components.pagination import PaginationBar
 from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
@@ -16,6 +16,14 @@ from daynimal.ui.views.base import BaseView
 logger = logging.getLogger("daynimal")
 
 PER_PAGE = 20
+_MAX_NAME_LEN = 30
+
+
+def _truncate_name(name: str) -> str:
+    """Truncate a display name for SnackBar messages."""
+    if len(name) > _MAX_NAME_LEN:
+        return name[:_MAX_NAME_LEN] + "..."
+    return name
 
 
 class FavoritesView(BaseView):
@@ -52,9 +60,10 @@ class FavoritesView(BaseView):
             controls=[
                 header,
                 ft.Divider(),
-                ft.Container(content=self.favorites_list, padding=20),
+                ft.Container(content=self.favorites_list, padding=20, expand=True),
                 self.pagination_container,
-            ]
+            ],
+            expand=True,
         )
 
         # Load favorites asynchronously
@@ -113,6 +122,8 @@ class FavoritesView(BaseView):
                             spacing=10,
                         ),
                         padding=40,
+                        alignment=ft.Alignment.CENTER,
+                        expand=True,
                     )
                 ]
             else:
@@ -122,7 +133,9 @@ class FavoritesView(BaseView):
                 ]
 
                 for item in favorites_items:
-                    card = create_favorite_card(item, self._on_item_click)
+                    card = create_favorite_card_with_delete(
+                        item, self._on_item_click, self._on_delete_favorite
+                    )
                     controls.append(card)
 
                 self.favorites_list.controls = controls
@@ -180,3 +193,39 @@ class FavoritesView(BaseView):
         except Exception as error:
             logger.error(f"Error in on_favorite_item_click: {error}")
             traceback.print_exc()
+
+    def _on_delete_favorite(self, taxon_id: int, display_name: str):
+        """Handle delete button click on a favorite item."""
+        asyncio.create_task(self._delete_favorite_async(taxon_id, display_name))
+
+    async def _delete_favorite_async(self, taxon_id: int, display_name: str):
+        """Remove a favorite and refresh the list."""
+        try:
+            removed = await asyncio.to_thread(
+                self.app_state.repository.remove_favorite, taxon_id
+            )
+            if removed:
+                await self.load_favorites()
+                label = _truncate_name(display_name)
+                self.page.show_dialog(
+                    ft.SnackBar(
+                        ft.Text(f"Retiré des favoris : {label}"),
+                        show_close_icon=True,
+                    )
+                )
+            else:
+                self.page.show_dialog(
+                    ft.SnackBar(
+                        ft.Text("Favori introuvable"),
+                        show_close_icon=True,
+                    )
+                )
+        except Exception as error:
+            logger.error(f"Error removing favorite {taxon_id}: {error}")
+            self.page.show_dialog(
+                ft.SnackBar(
+                    ft.Text("Erreur lors de la suppression"),
+                    bgcolor=ft.Colors.ERROR,
+                    show_close_icon=True,
+                )
+            )

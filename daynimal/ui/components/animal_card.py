@@ -164,6 +164,76 @@ def create_favorite_card(
     )
 
 
+def create_history_card_with_delete(
+    animal: AnimalInfo,
+    on_click: Callable[[int], None],
+    viewed_at_str: str,
+    on_delete: Callable[[int, str], None],
+) -> ft.Row:
+    """Create a history card with a delete button.
+
+    Args:
+        animal: The animal to display.
+        on_click: Callback when card is clicked. Receives taxon_id.
+        viewed_at_str: Formatted timestamp string.
+        on_delete: Callback when delete is clicked. Receives (history_id, display_name).
+
+    Returns:
+        ft.Row containing the AnimalCard (expand) and a delete IconButton.
+    """
+    card = create_history_card(animal, on_click, viewed_at_str)
+    card.expand = True
+    history_id = animal.history_id
+    display_name = _get_display_name(animal.taxon)
+
+    delete_btn = ft.IconButton(
+        icon=ft.Icons.DELETE_OUTLINE,
+        icon_color=ft.Colors.GREY_500,
+        tooltip="Supprimer de l'historique",
+        on_click=lambda e: on_delete(history_id, display_name),
+    )
+
+    return ft.Row(
+        controls=[card, delete_btn],
+        spacing=0,
+        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+    )
+
+
+def create_favorite_card_with_delete(
+    animal: AnimalInfo,
+    on_click: Callable[[int], None],
+    on_delete: Callable[[int, str], None],
+) -> ft.Row:
+    """Create a favorite card with a delete button.
+
+    Args:
+        animal: The animal to display.
+        on_click: Callback when card is clicked. Receives taxon_id.
+        on_delete: Callback when delete is clicked. Receives (taxon_id, display_name).
+
+    Returns:
+        ft.Row containing the AnimalCard (expand) and a delete IconButton.
+    """
+    card = create_favorite_card(animal, on_click)
+    card.expand = True
+    taxon_id = animal.taxon.taxon_id
+    display_name = _get_display_name(animal.taxon)
+
+    delete_btn = ft.IconButton(
+        icon=ft.Icons.DELETE_OUTLINE,
+        icon_color=ft.Colors.GREY_500,
+        tooltip="Retirer des favoris",
+        on_click=lambda e: on_delete(taxon_id, display_name),
+    )
+
+    return ft.Row(
+        controls=[card, delete_btn],
+        spacing=0,
+        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+    )
+
+
 def create_search_card(
     animal: AnimalInfo, on_click: Callable[[int], None]
 ) -> AnimalCard:

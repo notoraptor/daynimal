@@ -293,12 +293,16 @@ class AppController:
                 # Remove from favorites
                 success = repo.remove_favorite(taxon_id)
                 if success:
-                    self.page.show_dialog(ft.SnackBar(ft.Text("Retiré des favoris")))
+                    self.page.show_dialog(
+                        ft.SnackBar(ft.Text("Retiré des favoris"), show_close_icon=True)
+                    )
             else:
                 # Add to favorites
                 success = repo.add_favorite(taxon_id)
                 if success:
-                    self.page.show_dialog(ft.SnackBar(ft.Text("Ajouté aux favoris")))
+                    self.page.show_dialog(
+                        ft.SnackBar(ft.Text("Ajouté aux favoris"), show_close_icon=True)
+                    )
 
         except Exception as error:
             logger.error(f"Error in on_favorite_toggle: {error}")
@@ -306,7 +310,11 @@ class AppController:
 
             # Show error snackbar
             self.page.show_dialog(
-                ft.SnackBar(ft.Text(f"Erreur: {str(error)}"), bgcolor=ft.Colors.ERROR)
+                ft.SnackBar(
+                    ft.Text(f"Erreur: {str(error)}"),
+                    bgcolor=ft.Colors.ERROR,
+                    show_close_icon=True,
+                )
             )
 
     def _update_offline_banner(self):

@@ -161,7 +161,7 @@ class TestHistoryViewLoadHistory:
         assert "Consultez" in desc_text.value
 
     @pytest.mark.asyncio
-    @patch("daynimal.ui.views.history_view.create_history_card")
+    @patch("daynimal.ui.views.history_view.create_history_card_with_delete")
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
     async def test_with_items_creates_cards(
         self, mock_to_thread, mock_create_card, mock_page, mock_app_state
@@ -178,8 +178,8 @@ class TestHistoryViewLoadHistory:
         ]
 
         mock_to_thread.return_value = (animals, 3)
-        mock_create_card.side_effect = lambda animal, on_click, viewed_at: MagicMock(
-            spec=ft.Card
+        mock_create_card.side_effect = (
+            lambda animal, on_click, viewed_at, on_delete: MagicMock(spec=ft.Card)
         )
 
         view = HistoryView(page=mock_page, app_state=mock_app_state)
@@ -193,7 +193,7 @@ class TestHistoryViewLoadHistory:
         assert mock_create_card.call_count == 3
 
     @pytest.mark.asyncio
-    @patch("daynimal.ui.views.history_view.create_history_card")
+    @patch("daynimal.ui.views.history_view.create_history_card_with_delete")
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
     async def test_formats_timestamp(
         self, mock_to_thread, mock_create_card, mock_page, mock_app_state
@@ -219,7 +219,7 @@ class TestHistoryViewLoadHistory:
         assert viewed_at_str == "10/02/2026 14:30"
 
     @pytest.mark.asyncio
-    @patch("daynimal.ui.views.history_view.create_history_card")
+    @patch("daynimal.ui.views.history_view.create_history_card_with_delete")
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
     async def test_shows_count_text(
         self, mock_to_thread, mock_create_card, mock_page, mock_app_state
@@ -287,7 +287,7 @@ class TestHistoryViewLoadHistory:
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.PaginationBar")
-    @patch("daynimal.ui.views.history_view.create_history_card")
+    @patch("daynimal.ui.views.history_view.create_history_card_with_delete")
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
     async def test_creates_pagination_bar(
         self,
@@ -402,3 +402,68 @@ class TestHistoryViewInteraction:
 
         # Error was logged
         mock_logger.error.assert_called_once()
+
+
+# =============================================================================
+# SECTION 4 : Suppression d'historique
+# =============================================================================
+
+
+class TestHistoryViewDelete:
+    """Tests pour _on_delete_history et _delete_history_async."""
+
+    @patch("daynimal.ui.views.history_view.asyncio.create_task")
+    def test_on_delete_history_creates_task(
+        self, mock_create_task, mock_page, mock_app_state
+    ):
+        """Vérifie que _on_delete_history lance une tâche async."""
+        from daynimal.ui.views.history_view import HistoryView
+
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
+
+        view._on_delete_history(42, "Canis lupus")
+
+        mock_create_task.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
+    async def test_delete_history_async_success(
+        self, mock_to_thread, mock_page, mock_app_state
+    ):
+        """Vérifie que _delete_history_async appelle remove_from_history,
+        recharge la liste et affiche un SnackBar avec le nom de l'animal."""
+        from daynimal.ui.views.history_view import HistoryView
+
+        # First call: remove_from_history returns True
+        # Second call: load_history fetches empty list
+        mock_to_thread.side_effect = [True, ([], 0)]
+
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
+
+        await view._delete_history_async(42, "Canis lupus")
+
+        # remove_from_history was called
+        assert mock_to_thread.call_count >= 1
+        first_call_args = mock_to_thread.call_args_list[0]
+        assert first_call_args[0][1] == 42  # history_id
+
+        # SnackBar was shown with animal name
+        mock_page.show_dialog.assert_called_once()
+        snackbar = mock_page.show_dialog.call_args[0][0]
+        assert "Canis lupus" in snackbar.content.value
+
+    @pytest.mark.asyncio
+    @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
+    async def test_delete_history_async_not_found(
+        self, mock_to_thread, mock_page, mock_app_state
+    ):
+        """Vérifie que si remove_from_history retourne False, un SnackBar 'introuvable' est affiché."""
+        from daynimal.ui.views.history_view import HistoryView
+
+        mock_to_thread.return_value = False
+
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
+
+        await view._delete_history_async(999, "Unknown")
+
+        mock_page.show_dialog.assert_called_once()

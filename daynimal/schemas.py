@@ -299,6 +299,7 @@ class AnimalInfo:
     # History metadata (populated when retrieved from history)
     viewed_at: datetime | None = None
     command: str | None = None
+    history_id: int | None = None
 
     @property
     def display_name(self) -> str:
