@@ -80,7 +80,11 @@ class AppController:
 
         self.stats_view = StatsView(page=page, app_state=self.state)
 
-        self.settings_view = SettingsView(page=page, app_state=self.state)
+        self.settings_view = SettingsView(
+            page=page,
+            app_state=self.state,
+            on_offline_change=self._update_offline_banner,
+        )
 
         # Offline banner
         self.offline_banner = ft.Container(
@@ -318,8 +322,44 @@ class AppController:
             )
 
     def _update_offline_banner(self):
-        """Update offline banner visibility based on connectivity state."""
-        self.offline_banner.visible = not self.state.is_online
+        """Update offline banner visibility and content based on connectivity state."""
+        connectivity = self.state.repository.connectivity
+        force_offline = connectivity.force_offline
+        is_online = connectivity.is_online
+
+        if force_offline:
+            # Voluntary offline mode — no retry button
+            banner_row = self.offline_banner.content
+            banner_row.controls = [
+                ft.Icon(ft.Icons.WIFI_OFF, color=ft.Colors.WHITE, size=18),
+                ft.Text(
+                    "Mode hors ligne activé",
+                    color=ft.Colors.WHITE,
+                    size=13,
+                ),
+            ]
+            self.offline_banner.visible = True
+        elif not is_online:
+            # Connection lost — show retry button
+            banner_row = self.offline_banner.content
+            banner_row.controls = [
+                ft.Icon(ft.Icons.WIFI_OFF, color=ft.Colors.WHITE, size=18),
+                ft.Text(
+                    "Mode hors ligne — données en cache uniquement",
+                    color=ft.Colors.WHITE,
+                    size=13,
+                ),
+                ft.Button(
+                    "Réessayer",
+                    on_click=self._retry_connection,
+                    style=ft.ButtonStyle(color=ft.Colors.WHITE),
+                ),
+            ]
+            self.offline_banner.visible = True
+        else:
+            # Online — hide banner
+            self.offline_banner.visible = False
+
         self.page.update()
 
     async def _retry_connection(self, e=None):

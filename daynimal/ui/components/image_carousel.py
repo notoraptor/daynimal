@@ -25,6 +25,7 @@ class ImageCarousel:
         animal_display_name: str = "",
         animal_taxon_id: int = 0,
         image_cache: "ImageCacheService | None" = None,
+        is_dark: bool = False,
     ):
         """
         Initialize ImageCarousel.
@@ -43,6 +44,7 @@ class ImageCarousel:
         self.animal_display_name = animal_display_name
         self.animal_taxon_id = animal_taxon_id
         self.image_cache = image_cache
+        self.is_dark = is_dark
 
     def build(self) -> ft.Control:
         """Build the carousel UI."""
@@ -85,6 +87,10 @@ class ImageCarousel:
                     fit="contain",
                     border_radius=10,
                     error_content=self._build_error_content(current_image),
+                    color=ft.Colors.WHITE
+                    if current_image.image_source == ImageSource.PHYLOPIC
+                    and self.is_dark
+                    else None,
                 ),
                 # Navigation controls (only show if more than 1 image)
                 (

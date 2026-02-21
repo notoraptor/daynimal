@@ -209,25 +209,6 @@ class TodayView(BaseView):
             on_click=self._on_favorite_toggle,
         )
 
-        controls.insert(
-            first_divider_index,
-            ft.Container(
-                content=ft.Row(
-                    controls=[
-                        favorite_button,
-                        ft.Text(
-                            "Ajouter aux favoris"
-                            if not is_favorite
-                            else "Retirer des favoris",
-                            size=14,
-                        ),
-                    ],
-                    spacing=5,
-                ),
-                padding=ft.Padding(top=10, bottom=10, left=0, right=0),
-            ),
-        )
-
         # Share buttons row
         share_buttons = []
 
@@ -254,16 +235,47 @@ class TodayView(BaseView):
         )
 
         controls.insert(
-            first_divider_index + 1,
+            first_divider_index,
             ft.Container(
                 content=ft.Row(
                     controls=[
-                        ft.Text("Partager :", size=14, weight=ft.FontWeight.BOLD),
-                        *share_buttons,
+                        ft.Container(
+                            content=ft.Row(
+                                controls=[
+                                    favorite_button,
+                                    ft.Container(
+                                        content=ft.Text("Favori", size=14),
+                                        data=animal.taxon.taxon_id,
+                                        on_click=self._on_favorite_toggle,
+                                        ink=True,
+                                    ),
+                                ],
+                                spacing=5,
+                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            ),
+                            bgcolor=ft.Colors.with_opacity(0.2, ft.Colors.GREY),
+                            border_radius=10,
+                            padding=ft.Padding(right=15),
+                        ),
+                        ft.Container(
+                            content=ft.Row(
+                                controls=[
+                                    ft.Text("Partager :", size=14),
+                                    *share_buttons,
+                                ],
+                                spacing=5,
+                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            ),
+                            bgcolor=ft.Colors.with_opacity(0.2, ft.Colors.GREY),
+                            border_radius=10,
+                            padding=ft.Padding(left=15),
+                        ),
                     ],
                     spacing=5,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    height=40,
                 ),
-                padding=ft.Padding(top=0, bottom=10, left=0, right=0),
+                padding=ft.Padding(top=10, bottom=10, left=0, right=0),
             ),
         )
 
@@ -285,13 +297,19 @@ class TodayView(BaseView):
                             image_src = str(local_path)
                             break
 
+            is_dark = self.page.theme_mode == ft.ThemeMode.DARK
+            phylopic_color = ft.Colors.WHITE if is_dark else None
+
             image_controls: list[ft.Control] = [
                 ft.Image(
                     src=image_src,
                     width=400,
                     height=300,
-                    fit="contain",
+                    fit=ft.BoxFit.CONTAIN,
                     border_radius=10,
+                    color=phylopic_color
+                    if first_image.image_source == ImageSource.PHYLOPIC
+                    else None,
                 )
             ]
 

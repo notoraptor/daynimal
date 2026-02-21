@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import flet as ft
 
-from daynimal.schemas import CommonsImage
+from daynimal.schemas import CommonsImage, ImageSource
 
 if TYPE_CHECKING:
     from daynimal.image_cache import ImageCacheService
@@ -128,7 +128,15 @@ class ImageGalleryDialog:
                 color=ft.Colors.BLUE,
             ),
             ft.Image(
-                src=image_src, width=380, height=280, fit="contain", border_radius=10
+                src=image_src,
+                width=380,
+                height=280,
+                fit="contain",
+                border_radius=10,
+                color=ft.Colors.WHITE
+                if current_image.image_source == ImageSource.PHYLOPIC
+                and self.page.theme_mode == ft.ThemeMode.DARK
+                else None,
             ),
         ]
 

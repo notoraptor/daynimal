@@ -14,7 +14,7 @@
 | `page.close_dialog()`                      | `page.pop_dialog()`                              |
 | `ft.app(target=main)`                      | `ft.run(main=main)`                              |
 | `page.update_async()`                      | `page.update()`                                  |
-| `ft.ImageFit.CONTAIN`                      | `"contain"` (string)                             |
+| `ft.ImageFit.CONTAIN`                      | `ft.BoxFit.CONTAIN` (enum)                       |
 | `ft.colors.GREY_700` (lowercase)           | `ft.Colors.GREY_700` (Enum majuscule)            |
 | `ft.icons.TODAY` (lowercase)               | `ft.Icons.CALENDAR_TODAY` (Enum majuscule)       |
 | `ft.ElevatedButton("text")`                | `ft.Button("text")`                              |
@@ -230,7 +230,7 @@ ft.Image(
     src="https://example.com/image.jpg",  # URL, chemin local, ou base64
     width=400,
     height=300,
-    fit="contain",           # string, pas enum : "contain", "cover", "fill", etc.
+    fit=ft.BoxFit.CONTAIN,   # enum : CONTAIN, COVER, FILL, FIT_WIDTH, FIT_HEIGHT, etc.
     border_radius=10,
     error_content=ft.Container(
         content=ft.Column([

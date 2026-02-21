@@ -52,6 +52,7 @@ def mock_repository():
     repo.set_setting = MagicMock()
     repo.connectivity = MagicMock()
     repo.connectivity.is_online = True
+    repo.connectivity.force_offline = False
     repo.image_cache = MagicMock()
     repo.image_cache.get_local_path = MagicMock(return_value=None)
     repo.close = MagicMock()
@@ -623,9 +624,11 @@ class TestOfflineBanner:
     """Tests pour _update_offline_banner et _retry_connection."""
 
     def test_update_offline_banner_online(self, controller, mock_page):
-        """Vérifie que quand state.is_online=True, le bandeau offline
-        est masqué (visible=False)."""
-        controller.state.is_online = True
+        """Vérifie que quand on est en ligne (pas force_offline, is_online=True),
+        le bandeau offline est masqué (visible=False)."""
+        connectivity = controller.state.repository.connectivity
+        connectivity.force_offline = False
+        connectivity.is_online = True
         mock_page.update.reset_mock()
 
         controller._update_offline_banner()
@@ -634,14 +637,41 @@ class TestOfflineBanner:
         mock_page.update.assert_called()
 
     def test_update_offline_banner_offline(self, controller, mock_page):
-        """Vérifie que quand state.is_online=False, le bandeau offline
-        est visible (visible=True)."""
-        controller.state.is_online = False
+        """Vérifie que quand is_online=False (perte de connexion),
+        le bandeau est visible avec le bouton Réessayer."""
+        connectivity = controller.state.repository.connectivity
+        connectivity.force_offline = False
+        connectivity.is_online = False
         mock_page.update.reset_mock()
 
         controller._update_offline_banner()
 
         assert controller.offline_banner.visible is True
+        # Le bandeau doit contenir un bouton "Réessayer"
+        banner_row = controller.offline_banner.content
+        has_retry = any(
+            isinstance(c, ft.Button) for c in banner_row.controls
+        )
+        assert has_retry
+        mock_page.update.assert_called()
+
+    def test_update_offline_banner_force_offline(self, controller, mock_page):
+        """Vérifie que quand force_offline=True, le bandeau s'affiche
+        sans bouton Réessayer."""
+        connectivity = controller.state.repository.connectivity
+        connectivity.force_offline = True
+        connectivity.is_online = False
+        mock_page.update.reset_mock()
+
+        controller._update_offline_banner()
+
+        assert controller.offline_banner.visible is True
+        # Le bandeau ne doit PAS contenir de bouton "Réessayer"
+        banner_row = controller.offline_banner.content
+        has_retry = any(
+            isinstance(c, ft.Button) for c in banner_row.controls
+        )
+        assert not has_retry
         mock_page.update.assert_called()
 
     @pytest.mark.asyncio

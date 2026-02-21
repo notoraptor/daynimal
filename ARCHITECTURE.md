@@ -1258,8 +1258,8 @@ class AppController  # Main application controller.
     # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, self._update_offline_banner, self.page.update, self.show_today_view, self.today_view._display_animal, str, traceback.print_exc
     def on_favorite_toggle(self, taxon_id, is_favorite)  # Handle favorite toggle from any view.
     # calls: ft.SnackBar, ft.Text, self.page.show_dialog, str, traceback.print_exc
-    def _update_offline_banner(self)  # Update offline banner visibility based on connectivity state.
-    # calls: self.page.update
+    def _update_offline_banner(self)  # Update offline banner visibility and content based on connectivity state.
+    # calls: ft.Button, ft.ButtonStyle, ft.Icon, ft.Text, self.page.update
     async def _retry_connection(self, e)  # Retry network connection and reload current animal if back online.
     # calls: asyncio.to_thread, self._load_and_display_animal, self._update_offline_banner
     def cleanup(self)  # Clean up resources.
@@ -1321,7 +1321,7 @@ class AnimalDisplay  # Component for displaying detailed animal information.
 > Image carousel component for displaying animal images with navigation.
 ```python
 class ImageCarousel  # Image carousel with navigation controls.
-    def __init__(self, images, current_index, on_index_change, animal_display_name, animal_taxon_id, image_cache)  # Initialize ImageCarousel.
+    def __init__(self, images, current_index, on_index_change, animal_display_name, animal_taxon_id, image_cache, is_dark)  # Initialize ImageCarousel.
     def build(self)  # Build the carousel UI.
     # calls: ft.Column, ft.Container, ft.IconButton, ft.Image, ft.Padding, ft.Row, ft.Text, len, self._build_empty_state, self._build_error_content, self.image_cache.get_local_path, str
     def _build_empty_state(self)  # Build the empty state UI when no images available.
@@ -1524,7 +1524,7 @@ class SearchView(BaseView)  # Search view with search field and results list.
 > Settings view for app configuration and credits.
 ```python
 class SettingsView(BaseView)  # View for app settings, preferences, and credits.
-    def __init__(self, page, app_state)  # Initialize SettingsView.
+    def __init__(self, page, app_state, on_offline_change)  # Initialize SettingsView.
     # calls: ft.Column, super, super.__init__
     def build(self)  # Build the settings view UI.
     # calls: asyncio.create_task, self._load_settings
@@ -1533,7 +1533,7 @@ class SettingsView(BaseView)  # View for app settings, preferences, and credits.
     def _on_clear_cache(self, e)  # Handle clear cache button click.
     # calls: asyncio.create_task, self._load_settings, self.app_state.image_cache.clear, traceback.print_exc
     def _on_offline_toggle(self, e)  # Handle forced offline mode toggle.
-    # calls: traceback.print_exc
+    # calls: self.on_offline_change, traceback.print_exc
     def _on_theme_toggle(self, e)  # Handle theme toggle switch change.
     # calls: self.app_state.repository.set_setting, self.page.update, traceback.print_exc
     def _on_notifications_toggle(self, e)  # Handle notification toggle switch change.
@@ -1596,7 +1596,7 @@ class TodayView(BaseView)  # View for displaying the animal of the day or random
     async def _load_animal_for_today_view(self, mode)  # Load and display an animal in the Today view.
     # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, self._display_animal, self.on_load_complete, self.page.update, str, traceback.print_exc
     def _display_animal(self, animal)  # Display animal information in the Today view.
-    # calls: AnimalDisplay, ft.Button, ft.Column, ft.Container, ft.Divider, ft.Icon, ft.IconButton, ft.Image, ft.Padding, ft.Row, ft.Text, len, self._open_gallery, self.app_state.image_cache.get_local_path, self.app_state.repository.is_favorite, self.page.update, str
+    # calls: AnimalDisplay, ft.Button, ft.Colors.with_opacity, ft.Column, ft.Container, ft.Divider, ft.Icon, ft.IconButton, ft.Image, ft.Padding, ft.Row, ft.Text, len, self._open_gallery, self.app_state.image_cache.get_local_path, self.app_state.repository.is_favorite, self.page.update, str
     def _on_favorite_toggle(self, e)  # Handle favorite button toggle.
     # calls: self._display_animal, self.app_state.repository.is_favorite, self.on_favorite_toggle_callback
     def _open_gallery(self, images, animal)  # Open the image gallery dialog.

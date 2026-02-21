@@ -70,9 +70,14 @@ class AnimalDisplay:
         controls.extend(self._build_wikipedia_description())
 
         # Attribution
+        sources = ["GBIF (CC-BY 4.0)"]
+        if self.animal.wikidata:
+            sources.append("Wikidata (CC0)")
+        if self.animal.wikipedia:
+            sources.append("Wikipedia (CC-BY-SA 4.0)")
         controls.append(
             ft.Text(
-                "Données: GBIF Backbone Taxonomy (CC-BY 4.0)",
+                f"Données : {' · '.join(sources)}",
                 size=12,
                 color=ft.Colors.GREY_500,
                 italic=True,
@@ -143,10 +148,6 @@ class AnimalDisplay:
         controls = []
 
         if self.animal.wikidata:
-            controls.append(
-                ft.Text("Informations Wikidata", size=20, weight=ft.FontWeight.BOLD)
-            )
-
             if self.animal.wikidata.iucn_status:
                 status = (
                     self.animal.wikidata.iucn_status.value
@@ -172,7 +173,12 @@ class AnimalDisplay:
                     )
                 )
 
-            controls.append(ft.Divider())
+        if controls:
+            controls = (
+                [ft.Text("Informations Wikidata", size=20, weight=ft.FontWeight.BOLD)]
+                + controls
+                + [ft.Divider()]
+            )
 
         return controls
 

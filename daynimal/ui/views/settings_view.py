@@ -16,15 +16,22 @@ logger = logging.getLogger("daynimal")
 class SettingsView(BaseView):
     """View for app settings, preferences, and credits."""
 
-    def __init__(self, page: ft.Page, app_state: AppState | None = None):
+    def __init__(
+        self,
+        page: ft.Page,
+        app_state: AppState | None = None,
+        on_offline_change: callable = None,
+    ):
         """
         Initialize SettingsView.
 
         Args:
             page: Flet page instance
             app_state: Shared application state
+            on_offline_change: Callback when offline mode is toggled
         """
         super().__init__(page, app_state)
+        self.on_offline_change = on_offline_change
         self.settings_container = ft.Column(controls=[])
 
     def build(self) -> ft.Control:
@@ -310,6 +317,9 @@ class SettingsView(BaseView):
             repo.connectivity.force_offline = is_forced
 
             logger.info(f"Force offline mode: {'enabled' if is_forced else 'disabled'}")
+
+            if self.on_offline_change:
+                self.on_offline_change()
 
         except Exception as error:
             logger.error(f"Error in on_offline_toggle: {error}")
