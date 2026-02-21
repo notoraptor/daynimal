@@ -51,6 +51,7 @@ class DaynimalApp:
         if not is_mobile():
             self.page.window.width = 420
             self.page.window.height = 820
+            self.page.run_task(self.page.window.center)
 
         logger.info("DaynimalApp initialized")
 
