@@ -214,6 +214,43 @@ def build_canonical_to_taxon_ids(taxa_tsv: Path) -> dict[str, int]:
     return mapping
 
 
+def _split_vernacular_names(text: str) -> list[str]:
+    """Split a comma-separated list of vernacular names, respecting parentheses.
+
+    TAXREF stores multiple vernacular names in a single NOM_VERN field separated
+    by commas.  Commas inside parentheses are part of the name and must NOT be
+    used as separators (e.g. "Rapaces nocturnes (Chouettes, Hiboux)").
+
+    Args:
+        text: Raw NOM_VERN value from TAXREF.
+
+    Returns:
+        List of individual vernacular names, stripped and non-empty.
+    """
+    names: list[str] = []
+    current: list[str] = []
+    depth = 0
+    for ch in text:
+        if ch == "(":
+            depth += 1
+            current.append(ch)
+        elif ch == ")":
+            depth = max(depth - 1, 0)
+            current.append(ch)
+        elif ch == "," and depth == 0:
+            name = "".join(current).strip()
+            if name:
+                names.append(name)
+            current = []
+        else:
+            current.append(ch)
+    # Last segment
+    name = "".join(current).strip()
+    if name:
+        names.append(name)
+    return names
+
+
 def parse_taxref_french_names(taxref_path: Path) -> list[dict]:
     """
     Parse TAXREF file and extract unique French vernacular names for Animalia.
@@ -230,8 +267,8 @@ def parse_taxref_french_names(taxref_path: Path) -> list[dict]:
             if row.get("REGNE") != "Animalia":
                 continue
 
-            french_name = row.get("NOM_VERN", "").strip()
-            if not french_name:
+            raw_names = row.get("NOM_VERN", "").strip()
+            if not raw_names:
                 continue
 
             scientific_name = row.get("LB_NOM", "").strip()
@@ -240,12 +277,15 @@ def parse_taxref_french_names(taxref_path: Path) -> list[dict]:
 
             canonical = extract_canonical_name(scientific_name)
 
-            key = (canonical.lower(), french_name.lower())
-            if key in seen:
-                continue
+            for french_name in _split_vernacular_names(raw_names):
+                key = (canonical.lower(), french_name.lower())
+                if key in seen:
+                    continue
 
-            seen.add(key)
-            entries.append({"canonical_name": canonical, "french_name": french_name})
+                seen.add(key)
+                entries.append(
+                    {"canonical_name": canonical, "french_name": french_name}
+                )
 
     print(f"Found {len(entries):,} unique TAXREF French name entries.")
     return entries

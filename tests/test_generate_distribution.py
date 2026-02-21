@@ -18,6 +18,7 @@ from unittest.mock import patch
 import pytest
 
 from daynimal.db.generate_distribution import (
+    _split_vernacular_names,
     extract_and_filter_taxa,
     extract_and_filter_vernacular,
     build_canonical_to_taxon_ids,
@@ -630,6 +631,43 @@ class TestBuildCanonicalToTaxonIds:
 
 
 # =============================================================================
+# SECTION 3b : _split_vernacular_names
+# =============================================================================
+
+
+class TestSplitVernacularNames:
+    """Tests pour _split_vernacular_names(text)."""
+
+    def test_single_name(self):
+        assert _split_vernacular_names("Loup gris") == ["Loup gris"]
+
+    def test_multiple_names(self):
+        assert _split_vernacular_names("Loup gris, Loup commun, Loup") == [
+            "Loup gris",
+            "Loup commun",
+            "Loup",
+        ]
+
+    def test_respects_parentheses(self):
+        result = _split_vernacular_names(
+            "Rapaces nocturnes (Chouettes, Hiboux), Strigiformes"
+        )
+        assert result == ["Rapaces nocturnes (Chouettes, Hiboux)", "Strigiformes"]
+
+    def test_strips_whitespace(self):
+        assert _split_vernacular_names("  Loup gris ,  Loup commun  ") == [
+            "Loup gris",
+            "Loup commun",
+        ]
+
+    def test_empty_string(self):
+        assert _split_vernacular_names("") == []
+
+    def test_trailing_comma(self):
+        assert _split_vernacular_names("Loup gris,") == ["Loup gris"]
+
+
+# =============================================================================
 # SECTION 4 : parse_taxref_french_names
 # =============================================================================
 
@@ -714,8 +752,7 @@ class TestParseTaxrefFrenchNames:
 
     def test_splits_comma_separated_names(self, tmp_path):
         """Verifie que si NOM_VERN contient des noms separes par des virgules
-        (ex: 'Loup gris, Loup commun'), le nom complet est conserve
-        (pas de decoupage par virgule dans le code source)."""
+        (ex: 'Loup gris, Loup commun'), chaque nom donne une entree distincte."""
         taxref_path = tmp_path / "TAXREF.txt"
         rows = [
             {
@@ -728,10 +765,28 @@ class TestParseTaxrefFrenchNames:
 
         entries = parse_taxref_french_names(taxref_path)
 
-        assert len(entries) == 1
-        # The source code does: french_name = row.get("NOM_VERN", "").strip()
-        # No comma splitting is done. So the full string is kept.
-        assert entries[0]["french_name"] == "Loup gris, Loup commun"
+        assert len(entries) == 2
+        names = {e["french_name"] for e in entries}
+        assert names == {"Loup gris", "Loup commun"}
+
+    def test_splits_respects_parentheses(self, tmp_path):
+        """Verifie que les virgules a l'interieur de parentheses ne sont pas
+        utilisees comme separateurs de noms."""
+        taxref_path = tmp_path / "TAXREF.txt"
+        rows = [
+            {
+                "REGNE": "Animalia",
+                "NOM_VERN": "Rapaces nocturnes (Chouettes, Hiboux), Strigiformes",
+                "LB_NOM": "Strigiformes",
+            }
+        ]
+        _create_taxref_file(taxref_path, rows)
+
+        entries = parse_taxref_french_names(taxref_path)
+
+        assert len(entries) == 2
+        names = {e["french_name"] for e in entries}
+        assert names == {"Rapaces nocturnes (Chouettes, Hiboux)", "Strigiformes"}
 
 
 # =============================================================================

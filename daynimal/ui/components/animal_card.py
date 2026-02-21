@@ -79,7 +79,14 @@ class AnimalCard(ft.Card):
             )
         if metadata_text:
             metadata_controls.append(
-                ft.Text(metadata_text, size=12, color=ft.Colors.GREY_500)
+                ft.Text(
+                    metadata_text,
+                    size=12,
+                    color=ft.Colors.GREY_500,
+                    max_lines=1,
+                    overflow=ft.TextOverflow.ELLIPSIS,
+                    tooltip=metadata_text,
+                )
             )
 
         # Add spacer and arrow
@@ -95,10 +102,13 @@ class AnimalCard(ft.Card):
             content=ft.Column(
                 controls=[
                     # Primary name (vernacular if available, else canonical/scientific)
-                    ft.Row(
-                        controls=[
-                            ft.Text(display_name, size=18, weight=ft.FontWeight.BOLD)
-                        ]
+                    ft.Text(
+                        display_name,
+                        size=18,
+                        weight=ft.FontWeight.BOLD,
+                        max_lines=1,
+                        overflow=ft.TextOverflow.ELLIPSIS,
+                        tooltip=display_name,
                     ),
                     # Scientific name (always shown in italics)
                     ft.Text(
@@ -106,6 +116,9 @@ class AnimalCard(ft.Card):
                         size=14,
                         italic=True,
                         color=ft.Colors.BLUE,
+                        max_lines=1,
+                        overflow=ft.TextOverflow.ELLIPSIS,
+                        tooltip=animal.taxon.scientific_name,
                     ),
                     # Metadata row (timestamp, favorite, family, etc.)
                     ft.Row(controls=metadata_controls, spacing=5),

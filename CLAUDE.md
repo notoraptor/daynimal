@@ -209,6 +209,11 @@ On Windows/Git Bash, use `//sdcard/` (double slash) to prevent path conversion b
      - Managed through `FavoriteModel` with unique constraint on taxon_id
      - Full CRUD operations in `AnimalRepository`
 
+   - **PhyloPic Silhouettes**: Local CSV-based lookup for animal silhouettes (fallback when no photo)
+     - ~11,950 silhouette entries from PhyloPic, stored in `daynimal/resources/phylopic_metadata.csv`
+     - Independent from the DB pipeline (not part of setup/rebuild)
+     - See `docs/PHYLOPIC.md` for complete documentation
+
 2. **External API Layer** (`sources/`)
    - Abstract base class: `DataSource` (base.py)
    - Three implementations following same interface:
@@ -320,12 +325,14 @@ daynimal/
 └── notifications.py # Desktop notification service
 
 scripts/             # Build and release scripts
-└── prepare_release.py          # Compress TSV + generate manifest for GitHub Release
+├── prepare_release.py          # Compress TSV + generate manifest for GitHub Release
+└── download_phylopic.py        # Download PhyloPic silhouettes (see docs/PHYLOPIC.md)
 
 docs/                # Documentation
 ├── DISTRIBUTION_RELEASE.md     # Distribution release process
 ├── FLET_API_GUIDE.md           # Flet API reference
 ├── TAXREF.md                   # TAXREF integration guide
+├── PHYLOPIC.md                 # PhyloPic silhouettes guide
 └── MOBILE_DESKTOP_ROADMAP.md   # Development roadmap
 
 tests/

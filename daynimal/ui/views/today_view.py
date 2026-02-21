@@ -234,6 +234,16 @@ class TodayView(BaseView):
             )
         )
 
+        # Open GBIF button (always available — taxon_id is always present)
+        share_buttons.append(
+            ft.IconButton(
+                icon=ft.Icons.OPEN_IN_NEW,
+                icon_size=24,
+                tooltip="Ouvrir GBIF",
+                on_click=self._on_open_gbif,
+            )
+        )
+
         controls.insert(
             first_divider_index,
             ft.Container(
@@ -427,4 +437,11 @@ class TodayView(BaseView):
         url = self.current_animal.wikipedia.article_url
         # page.launch_url() is async internally but wrapped in a sync
         # @deprecated decorator — use the underlying UrlLauncher directly
+        self.page.run_task(ft.UrlLauncher().launch_url, url)
+
+    def _on_open_gbif(self, e):
+        """Open GBIF species page in default browser."""
+        if not self.current_animal:
+            return
+        url = f"https://www.gbif.org/species/{self.current_animal.taxon.taxon_id}"
         self.page.run_task(ft.UrlLauncher().launch_url, url)

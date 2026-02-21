@@ -8,7 +8,10 @@ and cmd_history edge cases.
 import io
 import sys
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import Mock, patch
+
+import pytest
 
 from daynimal import AnimalInfo, Taxon
 from daynimal.schemas import (
@@ -23,6 +26,7 @@ from daynimal.main import (
     cmd_random,
     cmd_history,
     cmd_setup,
+    cmd_rebuild,
     cmd_clear_cache,
     temporary_database,
     main,
@@ -310,8 +314,6 @@ class TestCmdSetup:
     )
     def test_setup_minimal_failure(self, mock_download, mock_resolve):
         """Vérifie que si download_and_setup_db échoue, SystemExit(1) est levé."""
-        import pytest
-
         with pytest.raises(SystemExit) as exc_info:
             cmd_setup(mode="minimal")
 
@@ -349,6 +351,180 @@ class TestCmdSetup:
         call_kwargs = mock_gen.call_args
         # taxref_path should be None when no_taxref=True
         assert call_kwargs[1].get("taxref_path") is None or call_kwargs[0][2] is None
+
+
+# =============================================================================
+# SECTION 5b : cmd_rebuild (main.py)
+# =============================================================================
+
+
+class TestCmdRebuild:
+    """Tests pour cmd_rebuild(mode)."""
+
+    def test_rebuild_no_backbone_zip(self, tmp_path, monkeypatch):
+        """Vérifie que cmd_rebuild échoue si backbone.zip n'existe pas."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "data").mkdir()
+        # No backbone.zip created
+
+        with pytest.raises(SystemExit) as exc_info:
+            cmd_rebuild(mode="full")
+
+        assert exc_info.value.code == 1
+
+    @patch("daynimal.db.init_fts.init_fts")
+    @patch("daynimal.db.build_db.build_database")
+    @patch("daynimal.db.generate_distribution.generate_distribution")
+    @patch("daynimal.db.first_launch.save_db_config")
+    def test_rebuild_full_mode(
+        self, mock_save, mock_gen, mock_build, mock_fts, tmp_path, monkeypatch, capsys
+    ):
+        """Vérifie que cmd_rebuild(mode='full') appelle les 3 étapes avec bons fichiers."""
+        monkeypatch.chdir(tmp_path)
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        (data_dir / "backbone.zip").touch()
+
+        cmd_rebuild(mode="full")
+
+        mock_gen.assert_called_once()
+        gen_kwargs = mock_gen.call_args[1]
+        assert gen_kwargs["mode"] == "full"
+        assert gen_kwargs["backbone_path"] == Path("data/backbone.zip")
+        assert gen_kwargs["taxref_path"] is None  # No TAXREF file
+
+        mock_build.assert_called_once()
+        build_args = mock_build.call_args[0]
+        assert str(build_args[0]).endswith("animalia_taxa.tsv")
+        assert str(build_args[1]).endswith("animalia_vernacular.tsv")
+
+        mock_fts.assert_called_once()
+
+    @patch("daynimal.db.init_fts.init_fts")
+    @patch("daynimal.db.build_db.build_database")
+    @patch("daynimal.db.generate_distribution.generate_distribution")
+    @patch("daynimal.db.first_launch.save_db_config")
+    def test_rebuild_minimal_mode(
+        self, mock_save, mock_gen, mock_build, mock_fts, tmp_path, monkeypatch, capsys
+    ):
+        """Vérifie que cmd_rebuild(mode='minimal') utilise les fichiers _minimal."""
+        monkeypatch.chdir(tmp_path)
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        (data_dir / "backbone.zip").touch()
+
+        cmd_rebuild(mode="minimal")
+
+        mock_gen.assert_called_once()
+        gen_kwargs = mock_gen.call_args[1]
+        assert gen_kwargs["mode"] == "minimal"
+
+        mock_build.assert_called_once()
+        build_args = mock_build.call_args[0]
+        assert str(build_args[0]).endswith("animalia_taxa_minimal.tsv")
+        assert str(build_args[1]).endswith("animalia_vernacular_minimal.tsv")
+
+    @patch("daynimal.db.init_fts.init_fts")
+    @patch("daynimal.db.build_db.build_database")
+    @patch("daynimal.db.generate_distribution.generate_distribution")
+    @patch("daynimal.db.first_launch.save_db_config")
+    def test_rebuild_with_taxref(
+        self, mock_save, mock_gen, mock_build, mock_fts, tmp_path, monkeypatch, capsys
+    ):
+        """Vérifie que cmd_rebuild détecte TAXREFv18.txt et le passe à generate_distribution."""
+        monkeypatch.chdir(tmp_path)
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        (data_dir / "backbone.zip").touch()
+        (data_dir / "TAXREFv18.txt").touch()
+
+        cmd_rebuild(mode="full")
+
+        gen_kwargs = mock_gen.call_args[1]
+        assert gen_kwargs["taxref_path"] == Path("data/TAXREFv18.txt")
+
+        captured = capsys.readouterr()
+        assert "TAXREF found" in captured.out
+
+    @patch("daynimal.db.init_fts.init_fts")
+    @patch("daynimal.db.build_db.build_database")
+    @patch("daynimal.db.generate_distribution.generate_distribution")
+    @patch("daynimal.db.first_launch.save_db_config")
+    def test_rebuild_always_saves_config(
+        self, mock_save, mock_gen, mock_build, mock_fts, tmp_path, monkeypatch
+    ):
+        """Vérifie que save_db_config est toujours appelé."""
+        monkeypatch.chdir(tmp_path)
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        (data_dir / "backbone.zip").touch()
+
+        cmd_rebuild(mode="full")
+
+        mock_save.assert_called_once()
+
+    @patch("daynimal.db.init_fts.init_fts")
+    @patch("daynimal.db.build_db.build_database")
+    @patch("daynimal.db.generate_distribution.generate_distribution")
+    @patch("daynimal.db.first_launch.save_db_config")
+    @patch("daynimal.db.session.get_engine")
+    def test_rebuild_clears_taxonomy_tables(
+        self,
+        mock_engine,
+        mock_save,
+        mock_gen,
+        mock_build,
+        mock_fts,
+        tmp_path,
+        monkeypatch,
+        capsys,
+    ):
+        """Vérifie que les tables taxonomiques sont vidées (pas la DB entière)."""
+        from unittest.mock import MagicMock
+
+        monkeypatch.chdir(tmp_path)
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        (data_dir / "backbone.zip").touch()
+        db_file = tmp_path / "daynimal.db"
+        db_file.touch()  # DB already exists
+
+        # Track SQL statements executed
+        mock_conn = MagicMock()
+        mock_engine.return_value.begin.return_value.__enter__ = lambda s: mock_conn
+        mock_engine.return_value.begin.return_value.__exit__ = MagicMock(
+            return_value=False
+        )
+
+        cmd_rebuild(mode="full")
+
+        # Verify taxonomy tables were cleared
+        executed_sql = [str(call[0][0]) for call in mock_conn.execute.call_args_list]
+        assert any("DELETE FROM taxa" in sql for sql in executed_sql)
+        assert any("DELETE FROM vernacular_names" in sql for sql in executed_sql)
+        assert any("DELETE FROM enrichment_cache" in sql for sql in executed_sql)
+
+        # DB file should still exist (not deleted)
+        assert db_file.exists()
+
+        captured = capsys.readouterr()
+        assert "preserving history, favorites, settings" in captured.out.lower()
+
+    @patch(
+        "daynimal.db.generate_distribution.generate_distribution",
+        side_effect=Exception("Parse error"),
+    )
+    def test_rebuild_failure(self, mock_gen, tmp_path, monkeypatch):
+        """Vérifie que si une étape échoue, SystemExit(1) est levé."""
+        monkeypatch.chdir(tmp_path)
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        (data_dir / "backbone.zip").touch()
+
+        with pytest.raises(SystemExit) as exc_info:
+            cmd_rebuild(mode="full")
+
+        assert exc_info.value.code == 1
 
 
 # =============================================================================
@@ -463,12 +639,24 @@ class TestMainRouting:
         main()
         mock_setup.assert_called_once_with(mode="minimal", no_taxref=False)
 
+    @patch("sys.argv", ["daynimal", "rebuild", "--mode", "minimal"])
+    @patch("daynimal.main.cmd_rebuild")
+    def test_rebuild_does_not_require_db(self, mock_rebuild):
+        """Vérifie que 'daynimal rebuild' fonctionne même sans DB."""
+        main()
+        mock_rebuild.assert_called_once_with(mode="minimal")
+
+    @patch("sys.argv", ["daynimal", "rebuild"])
+    @patch("daynimal.main.cmd_rebuild")
+    def test_rebuild_default_mode_is_full(self, mock_rebuild):
+        """Vérifie que 'daynimal rebuild' sans --mode utilise 'full'."""
+        main()
+        mock_rebuild.assert_called_once_with(mode="full")
+
     @patch("sys.argv", ["daynimal", "today"])
     @patch("daynimal.main.resolve_database", return_value=None)
     def test_missing_db_raises_system_exit(self, mock_resolve):
         """Vérifie que si resolve_database retourne None, SystemExit est levé."""
-        import pytest
-
         with pytest.raises(SystemExit) as exc_info:
             main()
 

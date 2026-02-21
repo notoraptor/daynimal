@@ -382,6 +382,94 @@ def _setup_full(no_taxref: bool = False):
         raise SystemExit(1)
 
 
+def cmd_rebuild(mode: str = "full"):
+    """Rebuild database from existing raw data (no download).
+
+    Requires data/backbone.zip to already exist. Optionally uses
+    data/TAXREFv18.txt if present.
+
+    Args:
+        mode: 'full' (all ranks) or 'minimal' (species with names only).
+    """
+    from pathlib import Path
+
+    from daynimal.db.build_db import build_database
+    from daynimal.db.first_launch import save_db_config
+    from daynimal.db.generate_distribution import generate_distribution
+    from daynimal.db.init_fts import init_fts
+
+    data_dir = Path("data")
+    backbone_zip = data_dir / "backbone.zip"
+
+    if not backbone_zip.exists():
+        print(f"Error: {backbone_zip} not found.")
+        print("Run 'daynimal setup --mode full' first to download raw data.")
+        raise SystemExit(1)
+
+    # Detect optional TAXREF
+    taxref_file = data_dir / "TAXREFv18.txt"
+    taxref_path = taxref_file if taxref_file.exists() else None
+    if taxref_path:
+        print(f"TAXREF found: {taxref_file}")
+    else:
+        print("TAXREF not found, rebuilding without French names from TAXREF.")
+
+    db_filename = "daynimal.db"
+    db_path = Path(db_filename)
+
+    try:
+        # Step 1: Generate distribution TSV files
+        print(f"\nGenerating distribution files (mode={mode})...\n")
+        generate_distribution(
+            mode=mode,
+            backbone_path=backbone_zip,
+            taxref_path=taxref_path,
+            output_dir=data_dir,
+        )
+
+        # Step 2: Clear taxonomy tables (preserve user data: history, favorites, settings)
+        if db_path.exists():
+            from sqlalchemy import text
+
+            from daynimal.config import settings
+            from daynimal.db.session import get_engine
+
+            print(
+                "Clearing taxonomy tables (preserving history, favorites, settings)..."
+            )
+            original_url = settings.database_url
+            settings.database_url = f"sqlite:///{db_filename}"
+            try:
+                engine = get_engine()
+                with engine.begin() as conn:
+                    conn.execute(text("DELETE FROM enrichment_cache"))
+                    conn.execute(text("DELETE FROM vernacular_names"))
+                    conn.execute(text("DELETE FROM taxa"))
+                engine.dispose()
+            finally:
+                settings.database_url = original_url
+
+        # Step 3: Build database from TSV files
+        suffix = "" if mode == "full" else "_minimal"
+        taxa_tsv = data_dir / f"animalia_taxa{suffix}.tsv"
+        vernacular_tsv = data_dir / f"animalia_vernacular{suffix}.tsv"
+        print("\nBuilding database...\n")
+        build_database(taxa_tsv, vernacular_tsv, db_filename)
+
+        # Step 4: Initialize FTS5
+        print("\nInitializing search index...\n")
+        init_fts(db_path=db_filename)
+
+        # Step 5: Save config
+        save_db_config(db_path)
+
+        print("\nRebuild complete!")
+
+    except Exception as e:
+        print(f"\nRebuild failed: {e}")
+        raise SystemExit(1)
+
+
 def cmd_history(page: int = 1, per_page: int = 10):
     """
     Show history of viewed animals.
@@ -535,6 +623,17 @@ def create_parser():
         help="Skip TAXREF French names download (full mode only)",
     )
 
+    # rebuild command
+    parser_rebuild = subparsers.add_parser(
+        "rebuild", help="Rebuild database from existing raw data (no download)"
+    )
+    parser_rebuild.add_argument(
+        "--mode",
+        choices=["full", "minimal"],
+        default="full",
+        help="'full' (default): all ranks. 'minimal': species with names only",
+    )
+
     # clear-cache command
     subparsers.add_parser(
         "clear-cache", help="Clear enrichment cache (re-fetch from APIs)"
@@ -571,9 +670,12 @@ def main():
         # Default to 'today' if no command specified
         command = args.command or "today"
 
-        # Setup command doesn't need an existing DB
-        if command == "setup":
-            cmd_setup(mode=args.mode, no_taxref=args.no_taxref)
+        # Setup and rebuild don't need an existing DB
+        if command in ("setup", "rebuild"):
+            if command == "setup":
+                cmd_setup(mode=args.mode, no_taxref=args.no_taxref)
+            else:
+                cmd_rebuild(mode=args.mode)
             return
 
         # All other commands require a database

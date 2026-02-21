@@ -62,11 +62,13 @@ def test_animal_card_displays_name():
     column = card.content.content
     assert isinstance(column, ft.Column)
 
-    # First control is a Row with the name
-    name_row = column.controls[0]
-    assert isinstance(name_row, ft.Row)
-    name_text = name_row.controls[0]
+    # First control is the name Text (with ellipsis and tooltip)
+    name_text = column.controls[0]
+    assert isinstance(name_text, ft.Text)
     assert name_text.value == "Panthera"
+    assert name_text.max_lines == 1
+    assert name_text.overflow == ft.TextOverflow.ELLIPSIS
+    assert name_text.tooltip == "Panthera"
 
 
 def test_animal_card_displays_scientific_name():
@@ -144,7 +146,7 @@ def test_create_search_card_with_vernacular():
     assert isinstance(card, AnimalCard)
     column = card.content.content
     # Primary name should be the first vernacular name
-    primary_text = column.controls[0].controls[0]
+    primary_text = column.controls[0]
     assert primary_text.value == "Lion"
     # Metadata should be the family name
     metadata_row = column.controls[2]
@@ -162,7 +164,7 @@ def test_create_search_card_without_vernacular():
 
     column = card.content.content
     # Primary name falls back to canonical name
-    primary_text = column.controls[0].controls[0]
+    primary_text = column.controls[0]
     assert primary_text.value == "Panthera"
     # Metadata is the family
     metadata_row = column.controls[2]
