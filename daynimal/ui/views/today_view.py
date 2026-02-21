@@ -240,40 +240,17 @@ class TodayView(BaseView):
                 content=ft.Row(
                     controls=[
                         ft.Container(
-                            content=ft.Row(
-                                controls=[
-                                    favorite_button,
-                                    ft.Container(
-                                        content=ft.Text("Favori", size=14),
-                                        data=animal.taxon.taxon_id,
-                                        on_click=self._on_favorite_toggle,
-                                        ink=True,
-                                    ),
-                                ],
-                                spacing=5,
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            ),
-                            bgcolor=ft.Colors.with_opacity(0.2, ft.Colors.GREY),
-                            border_radius=10,
-                            padding=ft.Padding(right=15),
+                            content=ft.Text("Favori:", size=14),
+                            data=animal.taxon.taxon_id,
+                            on_click=self._on_favorite_toggle,
+                            ink=True,
                         ),
-                        ft.Container(
-                            content=ft.Row(
-                                controls=[
-                                    ft.Text("Partager :", size=14),
-                                    *share_buttons,
-                                ],
-                                spacing=5,
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            ),
-                            bgcolor=ft.Colors.with_opacity(0.2, ft.Colors.GREY),
-                            border_radius=10,
-                            padding=ft.Padding(left=15),
-                        ),
+                        favorite_button,
+                        ft.Text("Partager:", size=14),
+                        *share_buttons,
                     ],
                     spacing=5,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                    height=40,
                 ),
                 padding=ft.Padding(top=10, bottom=10, left=0, right=0),
             ),

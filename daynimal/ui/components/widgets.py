@@ -109,7 +109,7 @@ def view_header(title: str) -> ft.Container:
             ],
             alignment=ft.MainAxisAlignment.CENTER,
         ),
-        padding=20,
+        padding=10,
     )
 
 

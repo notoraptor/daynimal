@@ -649,9 +649,7 @@ class TestOfflineBanner:
         assert controller.offline_banner.visible is True
         # Le bandeau doit contenir un bouton "Réessayer"
         banner_row = controller.offline_banner.content
-        has_retry = any(
-            isinstance(c, ft.Button) for c in banner_row.controls
-        )
+        has_retry = any(isinstance(c, ft.Button) for c in banner_row.controls)
         assert has_retry
         mock_page.update.assert_called()
 
@@ -668,9 +666,7 @@ class TestOfflineBanner:
         assert controller.offline_banner.visible is True
         # Le bandeau ne doit PAS contenir de bouton "Réessayer"
         banner_row = controller.offline_banner.content
-        has_retry = any(
-            isinstance(c, ft.Button) for c in banner_row.controls
-        )
+        has_retry = any(isinstance(c, ft.Button) for c in banner_row.controls)
         assert not has_retry
         mock_page.update.assert_called()
 

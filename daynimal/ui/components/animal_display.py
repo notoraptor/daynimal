@@ -2,7 +2,19 @@
 
 import flet as ft
 
-from daynimal.schemas import AnimalInfo
+from daynimal.schemas import AnimalInfo, ConservationStatus
+
+_IUCN_LABELS: dict[str, str] = {
+    ConservationStatus.EXTINCT.value: "Éteint",
+    ConservationStatus.EXTINCT_IN_WILD.value: "Éteint à l'état sauvage",
+    ConservationStatus.CRITICALLY_ENDANGERED.value: "En danger critique",
+    ConservationStatus.ENDANGERED.value: "En danger",
+    ConservationStatus.VULNERABLE.value: "Vulnérable",
+    ConservationStatus.NEAR_THREATENED.value: "Quasi menacé",
+    ConservationStatus.LEAST_CONCERN.value: "Préoccupation mineure",
+    ConservationStatus.DATA_DEFICIENT.value: "Données insuffisantes",
+    ConservationStatus.NOT_EVALUATED.value: "Non évalué",
+}
 
 
 class AnimalDisplay:
@@ -154,7 +166,13 @@ class AnimalDisplay:
                     if hasattr(self.animal.wikidata.iucn_status, "value")
                     else self.animal.wikidata.iucn_status
                 )
-                controls.append(ft.Text(f"  • Conservation: {status}", size=14))
+                label = _IUCN_LABELS.get(status, "")
+                display = (
+                    f"  • Conservation : {status} ({label})"
+                    if label
+                    else f"  • Conservation : {status}"
+                )
+                controls.append(ft.Text(display, size=14))
 
             if self.animal.wikidata.mass:
                 controls.append(

@@ -332,11 +332,7 @@ class AppController:
             banner_row = self.offline_banner.content
             banner_row.controls = [
                 ft.Icon(ft.Icons.WIFI_OFF, color=ft.Colors.WHITE, size=18),
-                ft.Text(
-                    "Mode hors ligne activé",
-                    color=ft.Colors.WHITE,
-                    size=13,
-                ),
+                ft.Text("Mode hors ligne activé", color=ft.Colors.WHITE, size=13),
             ]
             self.offline_banner.visible = True
         elif not is_online:

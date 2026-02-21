@@ -176,7 +176,7 @@ class TestDaynimalAppInit:
 
         with (
             patch.object(DaynimalApp, "build"),
-            patch("daynimal.config.is_mobile", return_value=is_mobile_val),
+            patch("daynimal.app.is_mobile", return_value=is_mobile_val),
         ):
             app = DaynimalApp(page)
         return app
@@ -236,7 +236,7 @@ class TestDaynimalAppBuild:
 
         with (
             patch.object(DaynimalApp, "build"),
-            patch("daynimal.config.is_mobile", return_value=False),
+            patch("daynimal.app.is_mobile", return_value=False),
         ):
             app = DaynimalApp(page)
 
@@ -269,14 +269,13 @@ class TestDaynimalAppBuild:
         mock_setup_view_instance.build.return_value = MagicMock()
 
         with (
-            patch("daynimal.db.first_launch.resolve_database", return_value=None),
-            patch("daynimal.config.is_mobile", return_value=True),
+            patch("daynimal.app.resolve_database", return_value=None),
+            patch("daynimal.app.is_mobile", return_value=True),
             patch.object(app, "_load_theme"),
             patch(
-                "daynimal.ui.views.setup_view.SetupView",
-                return_value=mock_setup_view_instance,
+                "daynimal.app.SetupView", return_value=mock_setup_view_instance
             ) as mock_setup_cls,
-            patch("daynimal.ui.state.AppState"),
+            patch("daynimal.app.AppState"),
         ):
             app.build()
             mock_setup_cls.assert_called_once()
@@ -289,8 +288,8 @@ class TestDaynimalAppBuild:
         app = self._make_app_no_build(page)
 
         with (
-            patch("daynimal.db.first_launch.resolve_database", return_value=None),
-            patch("daynimal.config.is_mobile", return_value=False),
+            patch("daynimal.app.resolve_database", return_value=None),
+            patch("daynimal.app.is_mobile", return_value=False),
             patch.object(app, "_load_theme"),
             patch.object(app, "_build_desktop_no_db_screen") as mock_no_db_screen,
         ):
@@ -315,7 +314,7 @@ class TestLoadTheme:
 
         with (
             patch.object(DaynimalApp, "build"),
-            patch("daynimal.config.is_mobile", return_value=False),
+            patch("daynimal.app.is_mobile", return_value=False),
         ):
             app = DaynimalApp(page)
         return app
@@ -333,7 +332,7 @@ class TestLoadTheme:
         mock_repo.__enter__ = MagicMock(return_value=mock_repo)
         mock_repo.__exit__ = MagicMock(return_value=False)
 
-        with patch("daynimal.repository.AnimalRepository", return_value=mock_repo):
+        with patch("daynimal.app.AnimalRepository", return_value=mock_repo):
             app._load_theme()
 
         assert page.theme_mode == ft.ThemeMode.DARK
@@ -350,7 +349,7 @@ class TestLoadTheme:
         mock_repo.__enter__ = MagicMock(return_value=mock_repo)
         mock_repo.__exit__ = MagicMock(return_value=False)
 
-        with patch("daynimal.repository.AnimalRepository", return_value=mock_repo):
+        with patch("daynimal.app.AnimalRepository", return_value=mock_repo):
             app._load_theme()
 
         assert page.theme_mode == ft.ThemeMode.LIGHT
@@ -383,7 +382,7 @@ class TestLoadTheme:
         mock_repo.__enter__ = MagicMock(return_value=mock_repo)
         mock_repo.__exit__ = MagicMock(return_value=False)
 
-        with patch("daynimal.repository.AnimalRepository", return_value=mock_repo):
+        with patch("daynimal.app.AnimalRepository", return_value=mock_repo):
             app._load_theme()
 
         assert page.theme_mode == ft.ThemeMode.LIGHT
@@ -406,7 +405,7 @@ class TestDaynimalAppCleanup:
 
         with (
             patch.object(DaynimalApp, "build"),
-            patch("daynimal.config.is_mobile", return_value=False),
+            patch("daynimal.app.is_mobile", return_value=False),
         ):
             app = DaynimalApp(page)
         return app
@@ -461,7 +460,7 @@ class TestDaynimalAppLifecycle:
 
         with (
             patch.object(DaynimalApp, "build"),
-            patch("daynimal.config.is_mobile", return_value=False),
+            patch("daynimal.app.is_mobile", return_value=False),
         ):
             app = DaynimalApp(page)
         return app
@@ -511,7 +510,7 @@ class TestDaynimalAppSetup:
 
         with (
             patch.object(DaynimalApp, "build"),
-            patch("daynimal.config.is_mobile", return_value=False),
+            patch("daynimal.app.is_mobile", return_value=False),
         ):
             app = DaynimalApp(page)
         return app
@@ -523,7 +522,7 @@ class TestDaynimalAppSetup:
         app = self._make_app_no_build(page)
 
         with (
-            patch("daynimal.db.first_launch.resolve_database") as mock_resolve,
+            patch("daynimal.app.resolve_database") as mock_resolve,
             patch.object(app, "_build_main_app") as mock_build_main,
         ):
             app._on_setup_complete()

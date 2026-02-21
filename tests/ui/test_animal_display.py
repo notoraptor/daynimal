@@ -297,7 +297,7 @@ class TestBuildWikidataInfo:
 
         texts = _text_values(controls)
         assert any("Conservation" in t for t in texts if t)
-        assert any("LC" in t for t in texts if t)
+        assert any("LC" in t and "Préoccupation mineure" in t for t in texts if t)
 
     def test_mass_displayed(self, full_animal):
         """Vérifie que la masse est affichée."""
@@ -331,7 +331,7 @@ class TestBuildWikidataInfo:
         assert controls == []
 
     def test_wikidata_with_no_properties(self):
-        """Vérifie que si wikidata n'a aucune propriété, la section est quand même affichée."""
+        """Vérifie que si wikidata n'a aucune propriété, la section est vide (pas de header inutile)."""
         taxon = Taxon(
             taxon_id=1, scientific_name="Test", canonical_name="Test", rank="species"
         )
@@ -340,9 +340,7 @@ class TestBuildWikidataInfo:
         display = AnimalDisplay(animal)
 
         controls = display._build_wikidata_info()
-        texts = _text_values(controls)
-        # Header "Informations Wikidata" should be present even without properties
-        assert any("Wikidata" in t for t in texts if t)
+        assert controls == []
 
 
 # =============================================================================
