@@ -5,7 +5,6 @@ This module tests the query and retrieval methods of AnimalRepository,
 including get_by_id, get_by_name, search (FTS5 and fallback), and random selection.
 """
 
-from datetime import datetime
 from unittest.mock import patch
 
 from daynimal.repository import AnimalRepository
@@ -346,27 +345,7 @@ def test_get_random_fallback_to_any(populated_session):
 
 
 # =============================================================================
-# SECTION 6: get_animal_of_the_day() (1 test)
-# =============================================================================
-
-
-def test_get_animal_of_the_day_deterministic(populated_session):
-    """Même date → même animal."""
-    repo = AnimalRepository(session=populated_session)
-
-    test_date = datetime(2025, 6, 15)
-
-    with patch.object(repo, "_enrich"):
-        animal1 = repo.get_animal_of_the_day(date=test_date)
-        animal2 = repo.get_animal_of_the_day(date=test_date)
-
-        assert animal1 is not None
-        assert animal2 is not None
-        assert animal1.taxon.taxon_id == animal2.taxon.taxon_id
-
-
-# =============================================================================
-# SECTION 7: _get_random_by_id_range() (5 tests)
+# SECTION 6: _get_random_by_id_range() (5 tests)
 # =============================================================================
 
 

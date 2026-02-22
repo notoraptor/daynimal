@@ -97,10 +97,10 @@ uv run ruff check --fix .
 
 **CLI Mode:**
 ```bash
-# Show today's animal
+# Show a random animal (default command)
 uv run daynimal
 
-# Show random animal
+# Show random animal (explicit)
 uv run daynimal random
 
 # Search for animals
@@ -233,7 +233,6 @@ On Windows/Git Bash, use `//sdcard/` (double slash) to prevent path conversion b
      - `get_by_id()`, `get_by_name()`: Fetch and enrich single animal
      - `search()`: Search by scientific or vernacular names (uses FTS5 if available)
      - `get_random()`: Random animal (preferring unenriched for discovery)
-     - `get_animal_of_the_day()`: Deterministic selection based on date seed
      - `add_to_history()`: Record animal view with command metadata
      - `get_history()`: Retrieve paginated history
      - `clear_history()`: Delete all history entries
@@ -284,7 +283,6 @@ UI tests are in `tests/ui/` and use `pytest-asyncio` for async testing. They tes
 - **Class Field**: Python reserved keyword handled as `class_` in models, `class` in DB
 - **Enrichment**: Always happens through `AnimalRepository._enrich()`, never directly from APIs
 - **DB Pipeline**: Two-step process: `generate-distribution` creates TSV files, `build-db` imports them into SQLite
-- **Date-based Selection**: `get_animal_of_the_day()` uses date as seed for deterministic but varied selection
 - **Context Managers**: Repository, APIs, and DB sessions all support `with` statement
 - **FTS5 Search**: `search()` uses FTS5 if available, gracefully falls back to LIKE queries otherwise
   - After importing data, run `uv run init-fts` to enable fast search

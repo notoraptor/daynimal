@@ -474,68 +474,6 @@ class AnimalRepository:
         # Fallback: just get the first one matching filters
         return query.first()
 
-    def get_animal_of_the_day(self, date: datetime | None = None) -> AnimalInfo | None:
-        """
-        Get a consistent "animal of the day" based on the date.
-
-        Uses the date as a seed for deterministic selection using ID-based approach,
-        so the same date always returns the same animal. This is optimized for
-        large datasets by avoiding COUNT(), OFFSET, and filtered MIN/MAX operations.
-
-        Args:
-            date: Date to use for selection (default: today)
-        """
-        import random
-
-        if date is None:
-            date = datetime.now()
-
-        # Use date as seed for consistent selection
-        day_seed = date.year * 10000 + date.month * 100 + date.day
-
-        # Get ID range from entire table (fast - uses primary key index)
-        # Don't filter by rank/is_synonym here to avoid slow full table scan
-        id_range = self.session.query(
-            func.min(TaxonModel.taxon_id), func.max(TaxonModel.taxon_id)
-        ).first()
-
-        min_id, max_id = id_range
-
-        if min_id is None or max_id is None:
-            return None
-
-        # Use date seed to generate deterministic random ID
-        rng = random.Random(day_seed)
-        target_id = rng.randint(min_id, max_id)
-
-        # Find closest taxon with id >= target_id matching filters
-        taxon_model = (
-            self.session.query(TaxonModel)
-            .filter(TaxonModel.rank == "species")
-            .filter(TaxonModel.is_synonym.is_(False))
-            .filter(TaxonModel.taxon_id >= target_id)
-            .first()
-        )
-
-        # If no taxon found (target_id was beyond last valid ID), wrap around
-        if not taxon_model:
-            taxon_model = (
-                self.session.query(TaxonModel)
-                .filter(TaxonModel.rank == "species")
-                .filter(TaxonModel.is_synonym.is_(False))
-                .order_by(TaxonModel.taxon_id)
-                .first()
-            )
-
-        if not taxon_model:
-            return None
-
-        taxon = self._model_to_taxon(taxon_model)
-        animal = AnimalInfo(taxon=taxon)
-        self._enrich(animal, taxon_model)
-
-        return animal
-
     # --- Enrichment methods ---
 
     def _enrich(self, animal: AnimalInfo, taxon_model: TaxonModel) -> None:

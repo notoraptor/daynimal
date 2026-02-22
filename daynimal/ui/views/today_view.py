@@ -1,4 +1,4 @@
-"""Today view for displaying the animal of the day or random animals."""
+"""Discovery view for displaying random animals."""
 
 import asyncio
 import logging
@@ -18,7 +18,7 @@ logger = logging.getLogger("daynimal")
 
 
 class TodayView(BaseView):
-    """View for displaying the animal of the day or random animals."""
+    """View for discovering random animals."""
 
     def __init__(
         self,
@@ -44,16 +44,9 @@ class TodayView(BaseView):
     def build(self) -> ft.Control:
         """Build the today view UI."""
         # Header
-        header = view_header("🦁 Animal du jour")
+        header = view_header("🦁 Découverte")
 
         # Buttons
-        today_button = ft.Button(
-            "Animal du jour",
-            icon=ft.Icons.CALENDAR_TODAY,
-            on_click=self._load_today_animal,
-            style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=ft.Colors.PRIMARY),
-        )
-
         random_button = ft.Button(
             "Animal aléatoire",
             icon=ft.Icons.SHUFFLE,
@@ -62,9 +55,7 @@ class TodayView(BaseView):
         )
 
         button_row = ft.Row(
-            controls=[today_button, random_button],
-            alignment=ft.MainAxisAlignment.CENTER,
-            spacing=10,
+            controls=[random_button], alignment=ft.MainAxisAlignment.CENTER, spacing=10
         )
 
         # Restore previous animal if available
@@ -91,7 +82,7 @@ class TodayView(BaseView):
                                 text_align=ft.TextAlign.CENTER,
                             ),
                             ft.Text(
-                                "Cliquez sur 'Animal du jour' pour commencer",
+                                "Cliquez sur 'Animal aléatoire' pour découvrir",
                                 size=14,
                                 color=ft.Colors.BLUE,
                                 text_align=ft.TextAlign.CENTER,
@@ -122,23 +113,14 @@ class TodayView(BaseView):
 
         return content
 
-    async def _load_today_animal(self, e):
-        """Load today's animal."""
-        await self._load_animal_for_today_view("today")
-
     async def _load_random_animal(self, e):
         """Load a random animal."""
-        await self._load_animal_for_today_view("random")
-
-    async def _load_animal_for_today_view(self, mode: str):
-        """Load and display an animal in the Today view."""
-        logger.info(f"Loading animal ({mode})...")
+        logger.info("Loading random animal...")
 
         # Show loading message
-        subtitle = (
-            f"Récupération de l'animal {'du jour' if mode == 'today' else 'aléatoire'}"
-        )
-        self.today_animal_container.controls = [LoadingWidget(subtitle=subtitle)]
+        self.today_animal_container.controls = [
+            LoadingWidget(subtitle="Récupération de l'animal aléatoire")
+        ]
         self.page.update()
 
         # Small delay to ensure UI updates
@@ -148,18 +130,14 @@ class TodayView(BaseView):
             # Fetch animal from repository in a separate thread
             def fetch_animal():
                 repo = self.app_state.repository
-                if mode == "today":
-                    animal = repo.get_animal_of_the_day()
-                    repo.add_to_history(animal.taxon.taxon_id, command="today")
-                else:  # random
-                    animal = repo.get_random()
-                    repo.add_to_history(animal.taxon.taxon_id, command="random")
+                animal = repo.get_random()
+                repo.add_to_history(animal.taxon.taxon_id, command="random")
                 return animal
 
             animal = await asyncio.to_thread(fetch_animal)
             self.current_animal = animal
 
-            logger.info(f"Loading animal ({mode}): {animal.display_name}")
+            logger.info(f"Loading random animal: {animal.display_name}")
 
             # Display animal in Today view
             self._display_animal(animal)
@@ -169,7 +147,7 @@ class TodayView(BaseView):
                 self.on_load_complete()
 
         except Exception as error:
-            logger.error(f"Error in load_animal_for_today_view ({mode}): {error}")
+            logger.error(f"Error in _load_random_animal: {error}")
             traceback.print_exc()
 
             # Show error

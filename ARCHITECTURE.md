@@ -13,7 +13,7 @@
 - `daynimal.connectivity` — Network connectivity detection for offline mode.
 - `daynimal.image_cache` — Image cache service for downloading and serving images locally.
 - `daynimal.main` — Daynimal CLI - Daily Animal Discovery
-- `daynimal.notifications` — Notification service for daily animal reminders.
+- `daynimal.notifications` — Notification service for periodic animal reminders.
 - `daynimal.repository` — Animal Repository - aggregates data from local DB and external APIs.
 - `daynimal.schemas`
 
@@ -70,7 +70,7 @@
 - `daynimal.ui.views.settings_view` — Settings view for app configuration and credits.
 - `daynimal.ui.views.setup_view` — Setup view for first-launch database installation.
 - `daynimal.ui.views.stats_view` — Statistics view for displaying database statistics.
-- `daynimal.ui.views.today_view` — Today view for displaying the animal of the day or random animals.
+- `daynimal.ui.views.today_view` — Discovery view for displaying random animals.
 
 ### root
 - `generate_architecture`
@@ -150,6 +150,7 @@
 - depends on `daynimal.db.generate_distribution`
 - depends on `daynimal.db.init_fts`
 - depends on `daynimal.db.models`
+- depends on `daynimal.db.session`
 - depends on `daynimal.repository`
 
 ### daynimal.notifications
@@ -298,9 +299,9 @@
 - asyncio (used 12 times)
 - typing (used 12 times)
 - pathlib (used 11 times)
-- sqlalchemy (used 9 times)
+- sqlalchemy (used 10 times)
+- datetime (used 8 times)
 - httpx (used 8 times)
-- datetime (used 7 times)
 - traceback (used 7 times)
 - argparse (used 6 times)
 - csv (used 4 times)
@@ -322,9 +323,10 @@
 - ast (used 1 times)
 - concurrent (used 1 times)
 - contextlib (used 1 times)
+- desktop_notifier (used 1 times)
 - enum (used 1 times)
+- functools (used 1 times)
 - math (used 1 times)
-- plyer (used 1 times)
 - pydantic (used 1 times)
 - pydantic_settings (used 1 times)
 - random (used 1 times)
@@ -360,7 +362,7 @@ def main()
 ```python
 class DaynimalApp  # Main application class for Daynimal Flet app.
     def __init__(self, page)
-    # calls: hasattr, is_mobile, self.build
+    # calls: hasattr, is_mobile, self.build, self.page.run_task
     def build(self)  # Build the user interface.
     # calls: AppState, SetupView, is_mobile, resolve_database, self._build_desktop_no_db_screen, self._build_main_app, self._load_theme, self.page.add, self.page.update, self.setup_view.build
     def _build_desktop_no_db_screen(self)  # Show an informational screen when DB is missing on desktop.
@@ -613,9 +615,13 @@ def build_canonical_to_taxon_ids(taxa_tsv)  # Build a mapping from lowercase can
 ```
 - calls: `csv.reader`, `int`, `len`, `open`, `print`
 ```python
+def _split_vernacular_names(text)  # Split a comma-separated list of vernacular names, respecting parentheses.
+```
+- calls: `max`
+```python
 def parse_taxref_french_names(taxref_path)  # Parse TAXREF file and extract unique French vernacular names for Animalia.
 ```
-- calls: `csv.DictReader`, `extract_canonical_name`, `len`, `open`, `print`, `set`
+- calls: `_split_vernacular_names`, `csv.DictReader`, `extract_canonical_name`, `len`, `open`, `print`, `set`
 ```python
 def merge_taxref_into_vernacular(vernacular_tsv, taxref_entries, canonical_to_id)  # Append TAXREF French names to the vernacular TSV, avoiding duplicates.
 ```
@@ -764,10 +770,6 @@ def print_animal(animal)  # Pretty print animal information with REQUIRED attrib
 ```
 - calls: `hasattr`, `len`, `list`, `print`
 ```python
-def cmd_today()  # Show today's animal.
-```
-- calls: `AnimalRepository`, `print`, `print_animal`
-```python
 def cmd_random()  # Show a random animal.
 ```
 - calls: `AnimalRepository`, `print`, `print_animal`
@@ -800,6 +802,10 @@ def _setup_full(no_taxref)  # Build full database from GBIF backbone + optional 
 ```
 - calls: `Path`, `SystemExit`, `build_database`, `download_file`, `generate_distribution`, `init_fts`, `open`, `print`, `save_db_config`, `shutil.copyfileobj`, `zipfile.ZipFile`
 ```python
+def cmd_rebuild(mode)  # Rebuild database from existing raw data (no download).
+```
+- calls: `Path`, `SystemExit`, `build_database`, `generate_distribution`, `get_engine`, `init_fts`, `print`, `save_db_config`, `text`
+```python
 def cmd_history(page, per_page)  # Show history of viewed animals.
 ```
 - calls: `AnimalRepository`, `print`
@@ -814,30 +820,38 @@ def create_parser()  # Create and configure the argument parser.
 ```python
 def main()  # Main entry point.
 ```
-- calls: `SystemExit`, `cmd_clear_cache`, `cmd_credits`, `cmd_history`, `cmd_info`, `cmd_random`, `cmd_search`, `cmd_setup`, `cmd_stats`, `cmd_today`, `create_parser`, `print`, `resolve_database`, `temporary_database`
+- calls: `SystemExit`, `cmd_clear_cache`, `cmd_credits`, `cmd_history`, `cmd_info`, `cmd_random`, `cmd_rebuild`, `cmd_search`, `cmd_setup`, `cmd_stats`, `create_parser`, `print`, `resolve_database`, `temporary_database`
 
 ### Module: daynimal.notifications
-> Notification service for daily animal reminders.
+> Notification service for periodic animal reminders.
 ```python
-class NotificationService  # In-app notification service that sends a daily desktop notification.
-    def __init__(self, repository)
+class NotificationService  # In-app notification service that sends periodic desktop notifications.
+    def __init__(self, repository, on_clicked)
+    # calls: DesktopNotifier
     @property
     def enabled(self)  # Whether notifications are enabled.
     # calls: self.repository.get_setting
     @property
-    def notification_time(self)  # Configured notification time (HH:MM format).
-    # calls: self.repository.get_setting
-    def start(self)  # Start the periodic check loop.
-    # calls: asyncio.create_task, self._check_loop
-    def stop(self)  # Stop the periodic check loop.
+    def notification_start(self)  # Configured notification start datetime.
+    # calls: datetime.fromisoformat, datetime.now, datetime.now.replace, int, len, self.repository.get_setting
+    @property
+    def notification_period(self)  # Configured notification period in minutes. Default: 1440 (24h).
+    # calls: _parse_period, self.repository.get_setting
+    def _compute_next_notification(self, start, period_minutes)  # Compute the next notification time >= now.
+    # calls: datetime.now, int, timedelta
+    def start(self)  # Schedule next notification. Cancels any existing schedule.
+    # calls: asyncio.create_task, self._compute_next_notification, self._wait_and_notify, self.stop
+    def stop(self)  # Cancel scheduled notification.
     # calls: self._task.cancel
-    async def _check_loop(self)  # Periodically check if it's time to send a notification.
-    # calls: asyncio.sleep, self._send_notification, self._should_notify
-    def _should_notify(self)  # Check if a notification should be sent now.
-    # calls: datetime.now, datetime.now.strftime, int, self.notification_time.split, self.repository.get_setting
-    async def _send_notification(self)  # Send the daily animal notification.
-    # calls: asyncio.to_thread, datetime.now, datetime.now.strftime, self.repository.set_setting
+    async def _wait_and_notify(self, next_time, expected_start, expected_period)  # Sleep until next_time, verify settings unchanged, notify, schedule next.
+    # calls: asyncio.create_task, asyncio.sleep, asyncio.to_thread, datetime.now, self._send_notification, self._wait_and_notify, timedelta
+    async def _send_notification(self, animal)  # Send a notification for the given animal.
+    # calls: functools.partial, self._notifier.send
 ```
+```python
+def _parse_period(period_str)  # Parse a period string 'HH:MM' into total minutes.
+```
+- calls: `int`, `len`, `max`
 
 ### Module: daynimal.repository
 > Animal Repository - aggregates data from local DB and external APIs.
@@ -885,8 +899,6 @@ class AnimalRepository  # Repository for accessing animal information.
     # calls: AnimalInfo, self._enrich, self._get_random_by_id_range, self._model_to_taxon
     def _get_random_by_id_range(self, rank, is_enriched)  # Fast random selection by ID range.
     # calls: TaxonModel.is_enriched.is_, func.max, func.min, random.randint, range, self.session.query, self.session.query.filter, self.session.query.first
-    def get_animal_of_the_day(self, date)  # Get a consistent "animal of the day" based on the date.
-    # calls: AnimalInfo, TaxonModel.is_synonym.is_, datetime.now, func.max, func.min, random.Random, self._enrich, self._model_to_taxon, self.session.query, self.session.query.filter, self.session.query.first
     def _enrich(self, animal, taxon_model)  # Enrich animal with data from external APIs (parallelized).
     # calls: ThreadPoolExecutor, datetime.now, self._fetch_and_cache_images, self._get_cached_images, self._get_cached_wikidata, self._get_cached_wikipedia, self.session.commit
     def _get_cached_wikidata(self, taxon_id)  # Load cached Wikidata from database.
@@ -1233,11 +1245,11 @@ class AppController  # Main application controller.
     def __init__(self, page)  # Initialize AppController.
     # calls: AppState, FavoritesView, HistoryView, NotificationService, SearchView, SettingsView, StatsView, TodayView, asyncio.create_task, ft.Button, ft.ButtonStyle, ft.Column, ft.Container, ft.Icon, ft.NavigationBar, ft.NavigationBarDestination, ft.Padding, ft.Row, ft.Text, self.load_animal_from_favorite, self.load_animal_from_history, self.load_animal_from_search
     def build(self)  # Build the app UI.
-    # calls: ft.Column, self.notification_service.start, self.show_today_view
+    # calls: ft.Column, self.notification_service.start, self.page.run_task, self.show_discovery_view, self.state.repository.get_setting
     def on_nav_change(self, e)  # Handle navigation bar changes.
-    # calls: len, self.show_favorites_view, self.show_history_view, self.show_search_view, self.show_settings_view, self.show_stats_view, self.show_today_view
-    def show_today_view(self)  # Show the Today view.
-    # calls: self.page.update, self.today_view.build
+    # calls: len, self.show_discovery_view, self.show_favorites_view, self.show_history_view, self.show_search_view, self.show_settings_view, self.show_stats_view
+    def show_discovery_view(self)  # Show the Discovery view.
+    # calls: self.discovery_view.build, self.page.update
     def show_history_view(self)  # Show the History view.
     # calls: self.history_view.build, self.page.update
     def show_favorites_view(self)  # Show the Favorites view.
@@ -1255,13 +1267,15 @@ class AppController  # Main application controller.
     async def load_animal_from_search(self, taxon_id)  # Load an animal from search and display in Today view.
     # calls: self._load_and_display_animal
     async def _load_and_display_animal(self, taxon_id, source, enrich, add_to_history)  # Unified method to load and display an animal in Today view.
-    # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, self._update_offline_banner, self.page.update, self.show_today_view, self.today_view._display_animal, str, traceback.print_exc
+    # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, self._update_offline_banner, self.discovery_view._display_animal, self.page.update, self.show_discovery_view, str, traceback.print_exc
     def on_favorite_toggle(self, taxon_id, is_favorite)  # Handle favorite toggle from any view.
     # calls: ft.SnackBar, ft.Text, self.page.show_dialog, str, traceback.print_exc
     def _update_offline_banner(self)  # Update offline banner visibility and content based on connectivity state.
     # calls: ft.Button, ft.ButtonStyle, ft.Icon, ft.Text, self.page.update
     async def _retry_connection(self, e)  # Retry network connection and reload current animal if back online.
     # calls: asyncio.to_thread, self._load_and_display_animal, self._update_offline_banner
+    def _on_notification_clicked(self, animal)  # Handle notification click: bring window to front and show the notified animal.
+    # calls: self.page.run_task, self.show_discovery_view, self.state.repository.add_to_history
     def cleanup(self)  # Clean up resources.
     # calls: self.notification_service.stop, self.state.close_repository
 ```
@@ -1529,17 +1543,28 @@ class SettingsView(BaseView)  # View for app settings, preferences, and credits.
     def build(self)  # Build the settings view UI.
     # calls: asyncio.create_task, self._load_settings
     async def _load_settings(self)  # Load settings and build the UI.
-    # calls: asyncio.to_thread, ft.Button, ft.Column, ft.Container, ft.Divider, ft.Dropdown, ft.Icon, ft.Padding, ft.Row, ft.Switch, ft.Text, ft.dropdown.Option, range, self.app_state.image_cache.get_cache_size, self.page.update, str, traceback.print_exc, view_header
+    # calls: _format_notification_summary, asyncio.to_thread, datetime.fromisoformat, datetime.now, datetime.now.replace, ft.Button, ft.Column, ft.Container, ft.Divider, ft.Icon, ft.Padding, ft.Switch, ft.Text, int, len, self.app_state.image_cache.get_cache_size, self.page.update, str, traceback.print_exc, view_header
     def _on_clear_cache(self, e)  # Handle clear cache button click.
     # calls: asyncio.create_task, self._load_settings, self.app_state.image_cache.clear, traceback.print_exc
     def _on_offline_toggle(self, e)  # Handle forced offline mode toggle.
     # calls: self.on_offline_change, traceback.print_exc
+    def _on_auto_load_toggle(self, e)  # Handle auto-load on start toggle.
+    # calls: traceback.print_exc
     def _on_theme_toggle(self, e)  # Handle theme toggle switch change.
     # calls: self.app_state.repository.set_setting, self.page.update, traceback.print_exc
-    def _on_notifications_toggle(self, e)  # Handle notification toggle switch change.
-    # calls: getattr, traceback.print_exc
-    def _on_notification_time_change(self, e)  # Handle notification time dropdown change.
-    # calls: self.app_state.repository.set_setting, traceback.print_exc
+    def _open_notification_dialog(self, e)  # Open a dialog with the full notification configuration form.
+    # calls: datetime.fromisoformat, datetime.now, datetime.now.replace, ft.AlertDialog, ft.Button, ft.Column, ft.Container, ft.Dropdown, ft.Row, ft.Switch, ft.Text, ft.TextField, ft.dropdown.Option, int, len, range, self.page.show_dialog, str, traceback.print_exc
+    def _on_dlg_date_pick(self, e)  # Open DatePicker dialog for notification start date inside the dialog.
+    # calls: ft.DatePicker, self.page.show_dialog, traceback.print_exc
+    def _on_dlg_date_change(self, e)  # Handle date picker selection inside the notification dialog.
+    # calls: isinstance, self._dlg_start_date.strftime, self.page.update, traceback.print_exc
+    def _on_notif_dialog_save(self, e)  # Save all notification settings at once and close the dialog.
+    # calls: asyncio.create_task, getattr, int, self._dlg_start_date.isoformat, self._load_settings, self.page.pop_dialog, traceback.print_exc
+    def _on_notif_dialog_cancel(self, e)  # Close the notification dialog without saving.
+    # calls: self.page.pop_dialog
+```
+```python
+def _format_notification_summary(enabled, start, period_h, period_m)  # Format a human-readable notification summary.
 ```
 
 ### Module: daynimal.ui.views.setup_view
@@ -1582,21 +1607,17 @@ class StatsView(BaseView)  # View for displaying database statistics with respon
 ```
 
 ### Module: daynimal.ui.views.today_view
-> Today view for displaying the animal of the day or random animals.
+> Discovery view for displaying random animals.
 ```python
-class TodayView(BaseView)  # View for displaying the animal of the day or random animals.
+class TodayView(BaseView)  # View for discovering random animals.
     def __init__(self, page, app_state, on_favorite_toggle)  # Initialize TodayView.
     # calls: ft.Column, super, super.__init__
     def build(self)  # Build the today view UI.
     # calls: ft.Alignment, ft.Button, ft.ButtonStyle, ft.Column, ft.Container, ft.Divider, ft.Icon, ft.Padding, ft.Row, ft.Text, self._display_animal, view_header
-    async def _load_today_animal(self, e)  # Load today's animal.
-    # calls: self._load_animal_for_today_view
     async def _load_random_animal(self, e)  # Load a random animal.
-    # calls: self._load_animal_for_today_view
-    async def _load_animal_for_today_view(self, mode)  # Load and display an animal in the Today view.
     # calls: ErrorWidget, LoadingWidget, asyncio.sleep, asyncio.to_thread, self._display_animal, self.on_load_complete, self.page.update, str, traceback.print_exc
     def _display_animal(self, animal)  # Display animal information in the Today view.
-    # calls: AnimalDisplay, ft.Button, ft.Colors.with_opacity, ft.Column, ft.Container, ft.Divider, ft.Icon, ft.IconButton, ft.Image, ft.Padding, ft.Row, ft.Text, len, self._open_gallery, self.app_state.image_cache.get_local_path, self.app_state.repository.is_favorite, self.page.update, str
+    # calls: AnimalDisplay, ft.Button, ft.Column, ft.Container, ft.Divider, ft.Icon, ft.IconButton, ft.Image, ft.Padding, ft.Row, ft.Text, len, self._open_gallery, self.app_state.image_cache.get_local_path, self.app_state.repository.is_favorite, self.page.update, str
     def _on_favorite_toggle(self, e)  # Handle favorite button toggle.
     # calls: self._display_animal, self.app_state.repository.is_favorite, self.on_favorite_toggle_callback
     def _open_gallery(self, images, animal)  # Open the image gallery dialog.
@@ -1607,6 +1628,8 @@ class TodayView(BaseView)  # View for displaying the animal of the day or random
     async def _on_copy_text(self, e)  # Copy formatted animal text to clipboard.
     # calls: ft.Clipboard, ft.Clipboard.set, ft.SnackBar, ft.Text, self._build_share_text, self.page.show_dialog
     def _on_open_wikipedia(self, e)  # Open Wikipedia article in default browser.
+    # calls: ft.UrlLauncher, self.page.run_task
+    def _on_open_gbif(self, e)  # Open GBIF species page in default browser.
     # calls: ft.UrlLauncher, self.page.run_task
 ```
 

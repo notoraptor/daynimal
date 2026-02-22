@@ -37,10 +37,12 @@ class AppController:
 
         # Shared state
         self.state = AppState()
-        self.current_view_name = "today"
+        self.current_view_name = "discovery"
 
         # Notification service
-        self.notification_service = NotificationService(self.state.repository)
+        self.notification_service = NotificationService(
+            self.state.repository, on_clicked=self._on_notification_clicked
+        )
         self.state.notification_service = self.notification_service
 
         # Content container (scrollable so navbar stays fixed at bottom)
@@ -49,10 +51,10 @@ class AppController:
         )
 
         # Initialize views (repository shared via AppState)
-        self.today_view = TodayView(
+        self.discovery_view = TodayView(
             page=page, app_state=self.state, on_favorite_toggle=self.on_favorite_toggle
         )
-        self.today_view.on_load_complete = self._update_offline_banner
+        self.discovery_view.on_load_complete = self._update_offline_banner
 
         self.history_view = HistoryView(
             page=page,
@@ -113,7 +115,7 @@ class AppController:
         # Navigation bar
         self.nav_bar = ft.NavigationBar(
             destinations=[
-                ft.NavigationBarDestination(icon=ft.Icons.HOME, label="Aujourd'hui"),
+                ft.NavigationBarDestination(icon=ft.Icons.PETS, label="Découverte"),
                 ft.NavigationBarDestination(icon=ft.Icons.HISTORY, label="Historique"),
                 ft.NavigationBarDestination(icon=ft.Icons.FAVORITE, label="Favoris"),
                 ft.NavigationBarDestination(icon=ft.Icons.SEARCH, label="Recherche"),
@@ -137,10 +139,17 @@ class AppController:
         )
 
         # Show initial view
-        self.show_today_view()
+        self.show_discovery_view()
 
         # Start notification service
         self.notification_service.start()
+
+        # Auto-load a random animal on start if setting enabled
+        auto_load = (
+            self.state.repository.get_setting("auto_load_on_start", "true") == "true"
+        )
+        if auto_load:
+            self.page.run_task(self.discovery_view._load_random_animal, None)
 
         return layout
 
@@ -148,13 +157,20 @@ class AppController:
         """Handle navigation bar changes."""
         selected_index = e.control.selected_index
 
-        view_names = ["Today", "History", "Favorites", "Search", "Stats", "Settings"]
+        view_names = [
+            "Discovery",
+            "History",
+            "Favorites",
+            "Search",
+            "Stats",
+            "Settings",
+        ]
         if selected_index < len(view_names):
             logger.info(f"View changed to: {view_names[selected_index]}")
 
         # Update current view
         if selected_index == 0:
-            self.show_today_view()
+            self.show_discovery_view()
         elif selected_index == 1:
             self.show_history_view()
         elif selected_index == 2:
@@ -166,10 +182,10 @@ class AppController:
         elif selected_index == 5:
             self.show_settings_view()
 
-    def show_today_view(self):
-        """Show the Today view."""
-        self.current_view_name = "today"
-        self.content_container.controls = [self.today_view.build()]
+    def show_discovery_view(self):
+        """Show the Discovery view."""
+        self.current_view_name = "discovery"
+        self.content_container.controls = [self.discovery_view.build()]
         self.page.update()
 
     def show_history_view(self):
@@ -238,10 +254,10 @@ class AppController:
         """
         # Switch to Today view
         self.nav_bar.selected_index = 0
-        self.show_today_view()
+        self.show_discovery_view()
 
         # Show loading in today view
-        self.today_view.today_animal_container.controls = [
+        self.discovery_view.today_animal_container.controls = [
             LoadingWidget(subtitle="Chargement de l'animal...")
         ]
         self.page.update()
@@ -259,13 +275,13 @@ class AppController:
             self._update_offline_banner()
 
             if animal:
-                self.today_view.current_animal = animal
-                self.today_view.current_image_index = 0  # Reset carousel
+                self.discovery_view.current_animal = animal
+                self.discovery_view.current_image_index = 0  # Reset carousel
 
                 logger.info(f"Loading animal ({source}): {animal.display_name}")
 
                 # Display animal in Today view
-                self.today_view._display_animal(animal)
+                self.discovery_view._display_animal(animal)
 
                 # Add to history if requested
                 if add_to_history:
@@ -273,7 +289,7 @@ class AppController:
                     repo.add_to_history(taxon_id, command=source)
             else:
                 # Animal not found
-                self.today_view.today_animal_container.controls = [
+                self.discovery_view.today_animal_container.controls = [
                     ErrorWidget(title="Animal introuvable")
                 ]
                 self.page.update()
@@ -283,7 +299,7 @@ class AppController:
             traceback.print_exc()
 
             # Show error in UI
-            self.today_view.today_animal_container.controls = [
+            self.discovery_view.today_animal_container.controls = [
                 ErrorWidget(title="Erreur lors du chargement", details=str(error))
             ]
             self.page.update()
@@ -365,12 +381,26 @@ class AppController:
         await asyncio.to_thread(connectivity.check)
         self._update_offline_banner()
 
-        if was_offline and connectivity.is_online and self.today_view.current_animal:
+        if (
+            was_offline
+            and connectivity.is_online
+            and self.discovery_view.current_animal
+        ):
             # Reload current animal with enrichment
-            taxon_id = self.today_view.current_animal.taxon.taxon_id
+            taxon_id = self.discovery_view.current_animal.taxon.taxon_id
             await self._load_and_display_animal(
                 taxon_id=taxon_id, source="retry", enrich=True, add_to_history=False
             )
+
+    def _on_notification_clicked(self, animal):
+        """Handle notification click: bring window to front and show the notified animal."""
+        self.nav_bar.selected_index = 0
+        self.discovery_view.current_animal = animal
+        self.show_discovery_view()
+        self.state.repository.add_to_history(
+            animal.taxon.taxon_id, command="notification"
+        )
+        self.page.run_task(self.page.window.to_front)
 
     def cleanup(self):
         """Clean up resources."""

@@ -1,19 +1,21 @@
 """Tests pour daynimal/ui/views/settings_view.py -- Vue Parametres.
 
 Couvre: SettingsView (build, _load_settings, _on_theme_toggle,
-_on_offline_toggle, _on_notifications_toggle, _on_notification_time_change,
-_on_clear_cache).
+_on_offline_toggle, _open_notification_dialog, _on_notif_dialog_save,
+_on_notif_dialog_cancel, _on_clear_cache).
 
 Strategie: on mock AppState (repository + image_cache), NotificationService
 et ft.Page. On simule les evenements des controles (Switch.on_change,
-Dropdown.on_change, Button.on_click) et on verifie les appels au repository
+Button.on_click) et on verifie les appels au repository
 et les changements d'UI.
 """
 
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, call, patch, PropertyMock
 
 import flet as ft
 import pytest
+
+from daynimal.ui.views.settings_view import _format_notification_summary
 
 
 # =============================================================================
@@ -48,6 +50,11 @@ def _find_controls_of_type(control, control_type, results=None):
     if hasattr(control, "content") and control.content is not None:
         _find_controls_of_type(control.content, control_type, results)
 
+    # Check .actions (AlertDialog)
+    if hasattr(control, "actions") and control.actions:
+        for child in control.actions:
+            _find_controls_of_type(child, control_type, results)
+
     return results
 
 
@@ -69,6 +76,8 @@ def mock_page():
     page.theme_mode = ft.ThemeMode.LIGHT
     page.update = MagicMock()
     page.run_task = MagicMock()
+    page.show_dialog = MagicMock()
+    page.pop_dialog = MagicMock()
     page.width = 400
     page.height = 800
     return page
@@ -87,8 +96,10 @@ def mock_app_state():
         settings_map = {
             "theme_mode": "light",
             "force_offline": "false",
+            "auto_load_on_start": "true",
             "notifications_enabled": "false",
-            "notification_time": "08:00",
+            "notification_start": "2026-02-21T08:00",
+            "notification_period": "24:00",
         }
         return settings_map.get(key, default)
 
@@ -141,9 +152,7 @@ class TestSettingsViewBuild:
 
     @pytest.mark.asyncio
     async def test_load_settings_creates_theme_toggle(self, mock_page, mock_app_state):
-        """Verifie que _load_settings cree un ft.Switch pour le theme
-        sombre. La valeur initiale depend de get_setting('theme_mode'):
-        'dark' -> value=True, sinon False."""
+        """Verifie que _load_settings cree un ft.Switch pour le theme sombre."""
         view = _make_view(mock_page, mock_app_state)
 
         await view._load_settings()
@@ -153,7 +162,6 @@ class TestSettingsViewBuild:
             s for s in switches if s.label and "sombre" in s.label.lower()
         ]
         assert len(theme_switches) == 1
-        # Default theme_mode is "light", so the switch should be False
         assert theme_switches[0].value is False
 
     @pytest.mark.asyncio
@@ -169,7 +177,8 @@ class TestSettingsViewBuild:
             settings_map = {
                 "force_offline": "false",
                 "notifications_enabled": "false",
-                "notification_time": "08:00",
+                "notification_start": "2026-02-21T08:00",
+                "notification_period": "24:00",
             }
             return settings_map.get(key, default)
 
@@ -189,8 +198,7 @@ class TestSettingsViewBuild:
     async def test_load_settings_creates_offline_toggle(
         self, mock_page, mock_app_state
     ):
-        """Verifie que _load_settings cree un ft.Switch pour le mode
-        hors ligne force. La valeur depend de get_setting('force_offline')."""
+        """Verifie que _load_settings cree un ft.Switch pour le mode hors ligne."""
         view = _make_view(mock_page, mock_app_state)
 
         await view._load_settings()
@@ -200,44 +208,63 @@ class TestSettingsViewBuild:
             s for s in switches if s.label and "hors ligne" in s.label.lower()
         ]
         assert len(offline_switches) == 1
-        # Default force_offline is "false" -> value should be False
         assert offline_switches[0].value is False
 
     @pytest.mark.asyncio
     async def test_load_settings_creates_notification_controls(
         self, mock_page, mock_app_state
     ):
-        """Verifie que _load_settings cree un Switch pour les notifications
-        et un Dropdown pour l'heure de notification (options de 00:00 a 23:00)."""
+        """Verifie que _load_settings cree: ft.Text resume 'Desactivees'
+        + ft.Button 'Modifier'."""
         view = _make_view(mock_page, mock_app_state)
 
         await view._load_settings()
 
-        switches = _find_controls_of_type(view.settings_container, ft.Switch)
-        notif_switches = [
-            s for s in switches if s.label and "notification" in s.label.lower()
-        ]
-        assert len(notif_switches) == 1
-        assert notif_switches[0].value is False  # default "false"
+        # Summary text should say "Désactivées" (notifications disabled by default)
+        text_values = _find_text_values(view.settings_container)
+        assert any("Désactivées" in t for t in text_values)
 
-        dropdowns = _find_controls_of_type(view.settings_container, ft.Dropdown)
-        assert len(dropdowns) >= 1
-        # The dropdown should have 24 options (00:00 to 23:00)
-        dropdown = dropdowns[0]
-        assert len(dropdown.options) == 24
-        # Check some known values
-        option_texts = [opt.key for opt in dropdown.options]
-        assert "06:00" in option_texts
-        assert "08:00" in option_texts
-        assert "22:00" in option_texts
-        # Default notification time
-        assert dropdown.value == "08:00"
+        # "Modifier" button should exist
+        buttons = _find_controls_of_type(view.settings_container, ft.Button)
+        modifier_buttons = [
+            b
+            for b in buttons
+            if hasattr(b, "content")
+            and isinstance(b.content, str)
+            and "Modifier" in b.content
+        ]
+        assert len(modifier_buttons) == 1
+
+    @pytest.mark.asyncio
+    async def test_notification_summary_enabled(self, mock_page, mock_app_state):
+        """Verifie que le resume affiche les details quand notifications activees."""
+        repo = mock_app_state.repository
+
+        def get_setting_notif_on(key, default=None):
+            settings_map = {
+                "theme_mode": "light",
+                "force_offline": "false",
+                "notifications_enabled": "true",
+                "notification_start": "2026-02-21T08:00",
+                "notification_period": "24:00",
+            }
+            return settings_map.get(key, default)
+
+        repo.get_setting = MagicMock(side_effect=get_setting_notif_on)
+
+        view = _make_view(mock_page, mock_app_state)
+        await view._load_settings()
+
+        text_values = _find_text_values(view.settings_container)
+        summary_texts = [t for t in text_values if "Activées" in t]
+        assert len(summary_texts) == 1
+        assert "24h" in summary_texts[0]
+        assert "21/02/2026" in summary_texts[0]
+        assert "08:00" in summary_texts[0]
 
     @pytest.mark.asyncio
     async def test_load_settings_shows_cache_size(self, mock_page, mock_app_state):
-        """Verifie que _load_settings affiche la taille du cache d'images.
-        Mock: image_cache.get_cache_size retourne 5242880 (5 Mo).
-        Le texte doit afficher '5.0 Mo'."""
+        """Verifie que _load_settings affiche la taille du cache d'images."""
         view = _make_view(mock_page, mock_app_state)
 
         await view._load_settings()
@@ -248,26 +275,20 @@ class TestSettingsViewBuild:
 
     @pytest.mark.asyncio
     async def test_load_settings_shows_db_stats(self, mock_page, mock_app_state):
-        """Verifie que _load_settings affiche les statistiques de la DB
-        (nombre d'especes, etc.) depuis repository.get_stats()."""
+        """Verifie que _load_settings affiche les statistiques de la DB."""
         view = _make_view(mock_page, mock_app_state)
 
         await view._load_settings()
 
         text_values = _find_text_values(view.settings_container)
         all_text = " ".join(text_values)
-        # Check for species count (1 500 000 with spaces as separator)
         assert "1 500 000" in all_text
-        # Check for vernacular names
         assert "3 200 000" in all_text
-        # Check for enriched count
         assert "500" in all_text
 
     @pytest.mark.asyncio
     async def test_load_settings_error_shows_error(self, mock_page, mock_app_state):
-        """Verifie que si une exception est levee pendant le chargement,
-        un container d'erreur est affiche."""
-        # Make get_setting raise an exception
+        """Verifie qu'une exception affiche un container d'erreur."""
         mock_app_state.repository.get_setting = MagicMock(
             side_effect=RuntimeError("DB connection failed")
         )
@@ -276,7 +297,6 @@ class TestSettingsViewBuild:
 
         await view._load_settings()
 
-        # Should contain error icon and error text
         text_values = _find_text_values(view.settings_container)
         error_texts = [
             t for t in text_values if "Erreur" in t or "DB connection failed" in t
@@ -293,60 +313,36 @@ class TestThemeToggle:
     """Tests pour _on_theme_toggle."""
 
     def test_toggle_to_dark(self, mock_page, mock_app_state):
-        """Verifie que _on_theme_toggle avec e.control.value=True
-        appelle repo.set_setting('theme_mode', 'dark') et definit
-        page.theme_mode = ft.ThemeMode.DARK."""
         view = _make_view(mock_page, mock_app_state)
-
         event = MagicMock()
         event.control.value = True
-
         view._on_theme_toggle(event)
-
         mock_app_state.repository.set_setting.assert_called_with("theme_mode", "dark")
         assert mock_page.theme_mode == ft.ThemeMode.DARK
 
     def test_toggle_to_light(self, mock_page, mock_app_state):
-        """Verifie que _on_theme_toggle avec e.control.value=False
-        appelle repo.set_setting('theme_mode', 'light') et definit
-        page.theme_mode = ft.ThemeMode.LIGHT."""
         view = _make_view(mock_page, mock_app_state)
-
         event = MagicMock()
         event.control.value = False
-
         view._on_theme_toggle(event)
-
         mock_app_state.repository.set_setting.assert_called_with("theme_mode", "light")
         assert mock_page.theme_mode == ft.ThemeMode.LIGHT
 
     def test_calls_page_update(self, mock_page, mock_app_state):
-        """Verifie que page.update() est appele apres le changement de theme."""
         view = _make_view(mock_page, mock_app_state)
-
         event = MagicMock()
         event.control.value = True
-
         view._on_theme_toggle(event)
-
         mock_page.update.assert_called()
 
     def test_error_handled(self, mock_page, mock_app_state):
-        """Verifie que si set_setting leve une exception, elle est attrapee
-        et loguee sans propager."""
         view = _make_view(mock_page, mock_app_state)
-
         mock_app_state.repository.set_setting = MagicMock(
             side_effect=RuntimeError("DB write error")
         )
-
         event = MagicMock()
         event.control.value = True
-
-        # Should NOT raise
-        view._on_theme_toggle(event)
-
-        # The error should be logged (via module-level logger)
+        view._on_theme_toggle(event)  # Should NOT raise
 
 
 # =============================================================================
@@ -358,31 +354,20 @@ class TestOfflineToggle:
     """Tests pour _on_offline_toggle."""
 
     def test_enable_offline(self, mock_page, mock_app_state):
-        """Verifie que _on_offline_toggle avec value=True appelle
-        repo.set_setting('force_offline', 'true') et definit
-        repo.connectivity.force_offline = True."""
         view = _make_view(mock_page, mock_app_state)
-
         event = MagicMock()
         event.control.value = True
-
         view._on_offline_toggle(event)
-
         mock_app_state.repository.set_setting.assert_called_with(
             "force_offline", "true"
         )
         assert mock_app_state.repository.connectivity.force_offline is True
 
     def test_disable_offline(self, mock_page, mock_app_state):
-        """Verifie que value=False -> set_setting('force_offline', 'false')
-        et connectivity.force_offline = False."""
         view = _make_view(mock_page, mock_app_state)
-
         event = MagicMock()
         event.control.value = False
-
         view._on_offline_toggle(event)
-
         mock_app_state.repository.set_setting.assert_called_with(
             "force_offline", "false"
         )
@@ -390,68 +375,157 @@ class TestOfflineToggle:
 
 
 # =============================================================================
-# SECTION 4 : Notifications
+# SECTION 4 : Notifications dialog
 # =============================================================================
 
 
-class TestNotificationsSettings:
-    """Tests pour _on_notifications_toggle et _on_notification_time_change."""
+class TestNotificationsDialog:
+    """Tests pour _open_notification_dialog, _on_notif_dialog_save,
+    _on_notif_dialog_cancel."""
 
-    def test_enable_notifications(self, mock_page, mock_app_state):
-        """Verifie que _on_notifications_toggle avec value=True appelle
-        repo.set_setting('notifications_enabled', 'true') et demarre
-        le NotificationService."""
+    def test_open_notification_dialog(self, mock_page, mock_app_state):
+        """Verifie que _open_notification_dialog ouvre un AlertDialog
+        via page.show_dialog."""
         view = _make_view(mock_page, mock_app_state)
 
-        # Add a notification_service to app_state
+        event = MagicMock()
+        view._open_notification_dialog(event)
+
+        mock_page.show_dialog.assert_called_once()
+        dialog_arg = mock_page.show_dialog.call_args[0][0]
+        assert isinstance(dialog_arg, ft.AlertDialog)
+
+        # Dialog should contain a Switch, dropdowns, and text fields
+        switches = _find_controls_of_type(dialog_arg, ft.Switch)
+        assert len(switches) == 1
+
+        dropdowns = _find_controls_of_type(dialog_arg, ft.Dropdown)
+        assert len(dropdowns) == 2
+
+        text_fields = _find_controls_of_type(dialog_arg, ft.TextField)
+        assert len(text_fields) == 2
+
+        # Actions: Annuler + Sauvegarder
+        assert len(dialog_arg.actions) == 2
+
+    @patch("daynimal.ui.views.settings_view.asyncio.create_task")
+    def test_notification_dialog_save(
+        self, mock_create_task, mock_page, mock_app_state
+    ):
+        """Verifie que sauvegarder ecrit les 3 settings + start + pop_dialog."""
+        view = _make_view(mock_page, mock_app_state)
+
+        # Set up notification service mock
         notif_service = MagicMock()
         mock_app_state.notification_service = notif_service
 
+        # Open dialog first to create _dlg_* controls
         event = MagicMock()
-        event.control.value = True
+        view._open_notification_dialog(event)
 
-        view._on_notifications_toggle(event)
+        # Modify dialog values
+        view._dlg_enabled_switch.value = True
+        view._dlg_hour_dropdown.value = "09"
+        view._dlg_minute_dropdown.value = "30"
+        view._dlg_period_hours_field.value = "1"
+        view._dlg_period_minutes_field.value = "30"
 
-        mock_app_state.repository.set_setting.assert_called_with(
-            "notifications_enabled", "true"
-        )
+        # Save
+        mock_app_state.repository.set_setting.reset_mock()
+        view._on_notif_dialog_save(event)
+
+        # Verify all 3 settings were saved
+        set_calls = mock_app_state.repository.set_setting.call_args_list
+        assert call("notifications_enabled", "true") in set_calls
+        assert call("notification_start", "2026-02-21T09:30") in set_calls
+        assert call("notification_period", "1:30") in set_calls
+
+        # Verify service was started (since enabled=True)
         notif_service.start.assert_called_once()
 
-    def test_disable_notifications(self, mock_page, mock_app_state):
-        """Verifie que value=False -> set_setting('notifications_enabled', 'false')
-        et arrete le NotificationService."""
+        # Verify dialog was closed
+        mock_page.pop_dialog.assert_called_once()
+
+        # Verify _load_settings was triggered
+        mock_create_task.assert_called_once()
+
+    def test_notification_dialog_cancel(self, mock_page, mock_app_state):
+        """Verifie que annuler ferme le dialog sans sauvegarder."""
+        view = _make_view(mock_page, mock_app_state)
+
+        # Reset set_setting mock to track calls
+        mock_app_state.repository.set_setting.reset_mock()
+
+        event = MagicMock()
+        view._on_notif_dialog_cancel(event)
+
+        # No settings should be saved
+        mock_app_state.repository.set_setting.assert_not_called()
+
+        # Dialog should be closed
+        mock_page.pop_dialog.assert_called_once()
+
+    @patch("daynimal.ui.views.settings_view.asyncio.create_task")
+    def test_notification_dialog_save_disabled(
+        self, mock_create_task, mock_page, mock_app_state
+    ):
+        """Verifie que sauvegarder avec notifications desactivees appelle stop."""
         view = _make_view(mock_page, mock_app_state)
 
         notif_service = MagicMock()
         mock_app_state.notification_service = notif_service
 
         event = MagicMock()
-        event.control.value = False
+        view._open_notification_dialog(event)
 
-        view._on_notifications_toggle(event)
+        # Keep notifications disabled (default)
+        view._dlg_enabled_switch.value = False
 
-        mock_app_state.repository.set_setting.assert_called_with(
-            "notifications_enabled", "false"
-        )
+        mock_app_state.repository.set_setting.reset_mock()
+        view._on_notif_dialog_save(event)
+
         notif_service.stop.assert_called_once()
-
-    def test_change_notification_time(self, mock_page, mock_app_state):
-        """Verifie que _on_notification_time_change avec e.control.value='09:00'
-        appelle repo.set_setting('notification_time', '09:00')."""
-        view = _make_view(mock_page, mock_app_state)
-
-        event = MagicMock()
-        event.control.value = "09:00"
-
-        view._on_notification_time_change(event)
-
-        mock_app_state.repository.set_setting.assert_called_with(
-            "notification_time", "09:00"
-        )
+        notif_service.start.assert_not_called()
 
 
 # =============================================================================
-# SECTION 5 : Cache management
+# SECTION 5 : _format_notification_summary
+# =============================================================================
+
+
+class TestFormatNotificationSummary:
+    """Tests pour _format_notification_summary."""
+
+    def test_disabled(self):
+        from datetime import datetime
+
+        start = datetime(2026, 2, 21, 8, 0)
+        assert _format_notification_summary(False, start, 24, 0) == "Désactivées"
+
+    def test_24h_period(self):
+        from datetime import datetime
+
+        start = datetime(2026, 2, 21, 8, 0)
+        result = _format_notification_summary(True, start, 24, 0)
+        assert result == "Activées — toutes les 24h depuis le 21/02/2026 à 08:00"
+
+    def test_minutes_only(self):
+        from datetime import datetime
+
+        start = datetime(2026, 2, 21, 17, 50)
+        result = _format_notification_summary(True, start, 0, 5)
+        assert result == "Activées — toutes les 5min depuis le 21/02/2026 à 17:50"
+
+    def test_hours_and_minutes(self):
+        from datetime import datetime
+
+        start = datetime(2026, 2, 21, 8, 0)
+        result = _format_notification_summary(True, start, 1, 30)
+        assert result == "Activées — toutes les 1h 30min depuis le 21/02/2026 à 08:00"
+
+
+# =============================================================================
+# SECTION 6 : Cache management
 # =============================================================================
 
 
@@ -460,54 +534,76 @@ class TestCacheManagement:
 
     @patch("daynimal.ui.views.settings_view.asyncio.create_task")
     def test_clear_cache(self, mock_create_task, mock_page, mock_app_state):
-        """Verifie que _on_clear_cache appelle image_cache.clear()
-        puis recharge les settings (appelle _load_settings) pour
-        mettre a jour l'affichage de la taille du cache."""
         view = _make_view(mock_page, mock_app_state)
-
         event = MagicMock()
         view._on_clear_cache(event)
-
-        # image_cache.clear() should have been called
         mock_app_state.image_cache.clear.assert_called_once()
-        # _load_settings should have been re-triggered via asyncio.create_task
         mock_create_task.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_cache_size_format_kb(self, mock_page, mock_app_state):
-        """Verifie que quand get_cache_size retourne 512000 (500 Ko),
-        le texte affiche '500.0 Ko'."""
         mock_app_state.image_cache.get_cache_size = MagicMock(return_value=512000)
-
         view = _make_view(mock_page, mock_app_state)
         await view._load_settings()
-
         text_values = _find_text_values(view.settings_container)
         cache_texts = [t for t in text_values if "500.0 Ko" in t]
         assert len(cache_texts) >= 1
 
     @pytest.mark.asyncio
     async def test_cache_size_format_mb(self, mock_page, mock_app_state):
-        """Verifie que quand get_cache_size retourne 10485760 (10 Mo),
-        le texte affiche '10.0 Mo'."""
         mock_app_state.image_cache.get_cache_size = MagicMock(return_value=10485760)
-
         view = _make_view(mock_page, mock_app_state)
         await view._load_settings()
-
         text_values = _find_text_values(view.settings_container)
         cache_texts = [t for t in text_values if "10.0 Mo" in t]
         assert len(cache_texts) >= 1
 
     @pytest.mark.asyncio
     async def test_cache_size_zero(self, mock_page, mock_app_state):
-        """Verifie que quand get_cache_size retourne 0,
-        le texte affiche '0.0 Ko' ou equivalent."""
         mock_app_state.image_cache.get_cache_size = MagicMock(return_value=0)
-
         view = _make_view(mock_page, mock_app_state)
         await view._load_settings()
-
         text_values = _find_text_values(view.settings_container)
         cache_texts = [t for t in text_values if "0.0 Ko" in t]
         assert len(cache_texts) >= 1
+
+
+# =============================================================================
+# SECTION 7 : Auto-load toggle
+# =============================================================================
+
+
+class TestAutoLoadToggle:
+    """Tests pour _on_auto_load_toggle."""
+
+    def test_enable_auto_load(self, mock_page, mock_app_state):
+        view = _make_view(mock_page, mock_app_state)
+        event = MagicMock()
+        event.control.value = True
+        view._on_auto_load_toggle(event)
+        mock_app_state.repository.set_setting.assert_called_with(
+            "auto_load_on_start", "true"
+        )
+
+    def test_disable_auto_load(self, mock_page, mock_app_state):
+        view = _make_view(mock_page, mock_app_state)
+        event = MagicMock()
+        event.control.value = False
+        view._on_auto_load_toggle(event)
+        mock_app_state.repository.set_setting.assert_called_with(
+            "auto_load_on_start", "false"
+        )
+
+    @pytest.mark.asyncio
+    async def test_auto_load_switch_in_settings(self, mock_page, mock_app_state):
+        """Vérifie que _load_settings crée un ft.Switch pour le chargement auto."""
+        view = _make_view(mock_page, mock_app_state)
+        await view._load_settings()
+
+        switches = _find_controls_of_type(view.settings_container, ft.Switch)
+        auto_switches = [
+            s for s in switches if s.label and "démarrage" in s.label.lower()
+        ]
+        assert len(auto_switches) == 1
+        # Default is true (auto_load_on_start not in settings_map → default "true")
+        assert auto_switches[0].value is True

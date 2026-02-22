@@ -132,7 +132,7 @@ class TestAppControllerInit:
         from daynimal.ui.views.stats_view import StatsView
         from daynimal.ui.views.settings_view import SettingsView
 
-        assert isinstance(controller.today_view, TodayView)
+        assert isinstance(controller.discovery_view, TodayView)
         assert isinstance(controller.history_view, HistoryView)
         assert isinstance(controller.favorites_view, FavoritesView)
         assert isinstance(controller.search_view, SearchView)
@@ -151,7 +151,7 @@ class TestAppControllerInit:
 
         # Verify destination labels
         labels = [d.label for d in controller.nav_bar.destinations]
-        assert "Aujourd'hui" in labels
+        assert "Découverte" in labels
         assert "Historique" in labels
         assert "Favoris" in labels
         assert "Recherche" in labels
@@ -185,9 +185,30 @@ class TestAppControllerInit:
         assert controller.state is not None
 
     def test_creates_notification_service(self, mock_page, mock_repository):
-        """Vérifie que __init__ crée un NotificationService."""
-        controller = _create_controller(mock_page, mock_repository)
-        assert controller.notification_service is not None
+        """Vérifie que __init__ crée un NotificationService avec on_clicked."""
+        with (
+            patch("daynimal.ui.app_controller.AppState") as MockAppState,
+            patch("daynimal.ui.app_controller.NotificationService") as MockNotifService,
+        ):
+            mock_state = MagicMock()
+            mock_state.repository = mock_repository
+            mock_state.is_online = True
+            mock_state.image_cache = mock_repository.image_cache
+            mock_state.current_animal = None
+            mock_state.current_image_index = 0
+            mock_state.close_repository = MagicMock()
+            MockAppState.return_value = mock_state
+
+            mock_notif = MagicMock()
+            MockNotifService.return_value = mock_notif
+
+            from daynimal.ui.app_controller import AppController
+
+            controller = AppController(page=mock_page)
+
+            MockNotifService.assert_called_once_with(
+                mock_state.repository, on_clicked=controller._on_notification_clicked
+            )
 
 
 # =============================================================================
@@ -217,17 +238,40 @@ class TestAppControllerBuild:
         controller.build()
         controller.notification_service.start.assert_called_once()
 
-    def test_shows_today_view(self, controller):
-        """Vérifie que build() appelle show_today_view() pour afficher
+    def test_shows_discovery_view(self, controller):
+        """Vérifie que build() appelle show_discovery_view() pour afficher
         la vue par défaut."""
         with patch.object(
-            controller, "show_today_view", wraps=controller.show_today_view
+            controller, "show_discovery_view", wraps=controller.show_discovery_view
         ) as mock_show:
             controller.build()
             mock_show.assert_called_once()
 
-        # After build, current_view_name should be "today"
-        assert controller.current_view_name == "today"
+        assert controller.current_view_name == "discovery"
+
+    def test_auto_load_enabled_by_default(self, controller, mock_page):
+        """Vérifie que build() lance _load_random_animal quand
+        auto_load_on_start est 'true' (défaut)."""
+        controller.state.repository.get_setting = MagicMock(return_value="true")
+        mock_page.run_task.reset_mock()
+
+        controller.build()
+
+        mock_page.run_task.assert_called_with(
+            controller.discovery_view._load_random_animal, None
+        )
+
+    def test_auto_load_disabled(self, controller, mock_page):
+        """Vérifie que build() ne lance PAS _load_random_animal quand
+        auto_load_on_start est 'false'."""
+        controller.state.repository.get_setting = MagicMock(return_value="false")
+        mock_page.run_task.reset_mock()
+
+        controller.build()
+
+        # run_task should NOT have been called with _load_random_animal
+        for call_args in mock_page.run_task.call_args_list:
+            assert call_args[0][0] != controller.discovery_view._load_random_animal
 
 
 # =============================================================================
@@ -248,8 +292,8 @@ class TestAppControllerNavigation:
 
     def test_on_nav_change_index_0_shows_today(self, controller):
         """Vérifie que on_nav_change avec selected_index=0 appelle
-        show_today_view(). On crée un event mock avec control.selected_index=0."""
-        with patch.object(controller, "show_today_view") as mock_show:
+        show_discovery_view(). On crée un event mock avec control.selected_index=0."""
+        with patch.object(controller, "show_discovery_view") as mock_show:
             controller.on_nav_change(_make_nav_event(0))
             mock_show.assert_called_once()
 
@@ -292,15 +336,15 @@ class TestAppControllerNavigation:
         log_msg = mock_logger.info.call_args[0][0]
         assert "Favorites" in log_msg
 
-    def test_show_today_view_sets_content(self, controller, mock_page):
-        """Vérifie que show_today_view() remplace le contenu du
+    def test_show_discovery_view_sets_content(self, controller, mock_page):
+        """Vérifie que show_discovery_view() remplace le contenu du
         content_container par le résultat de today_view.build()
         et appelle page.update()."""
         mock_page.update.reset_mock()
-        controller.show_today_view()
+        controller.show_discovery_view()
 
         assert len(controller.content_container.controls) == 1
-        assert controller.current_view_name == "today"
+        assert controller.current_view_name == "discovery"
         mock_page.update.assert_called()
 
     def test_show_history_view_calls_build(self, controller, mock_page):
@@ -425,7 +469,7 @@ class TestLoadAndDisplayAnimal:
         controller.state.repository.get_by_id = MagicMock(return_value=sample_animal)
 
         with (
-            patch.object(controller.today_view, "_display_animal") as mock_display,
+            patch.object(controller.discovery_view, "_display_animal") as mock_display,
             patch("daynimal.ui.app_controller.asyncio.sleep", new_callable=AsyncMock),
             patch(
                 "daynimal.ui.app_controller.asyncio.to_thread",
@@ -463,7 +507,7 @@ class TestLoadAndDisplayAnimal:
             )
 
             # today_animal_container should contain an ErrorWidget
-            controls = controller.today_view.today_animal_container.controls
+            controls = controller.discovery_view.today_animal_container.controls
             assert len(controls) == 1
             assert isinstance(controls[0], ErrorWidget)
 
@@ -485,7 +529,7 @@ class TestLoadAndDisplayAnimal:
                 taxon_id=42, source="search", enrich=True, add_to_history=True
             )
 
-            controls = controller.today_view.today_animal_container.controls
+            controls = controller.discovery_view.today_animal_container.controls
             assert len(controls) == 1
             assert isinstance(controls[0], ErrorWidget)
 
@@ -497,7 +541,7 @@ class TestLoadAndDisplayAnimal:
         controller.state.repository.add_to_history = MagicMock()
 
         with (
-            patch.object(controller.today_view, "_display_animal"),
+            patch.object(controller.discovery_view, "_display_animal"),
             patch("daynimal.ui.app_controller.asyncio.sleep", new_callable=AsyncMock),
             patch(
                 "daynimal.ui.app_controller.asyncio.to_thread",
@@ -521,7 +565,7 @@ class TestLoadAndDisplayAnimal:
         controller.state.repository.add_to_history = MagicMock()
 
         with (
-            patch.object(controller.today_view, "_display_animal"),
+            patch.object(controller.discovery_view, "_display_animal"),
             patch("daynimal.ui.app_controller.asyncio.sleep", new_callable=AsyncMock),
             patch(
                 "daynimal.ui.app_controller.asyncio.to_thread",
@@ -540,7 +584,7 @@ class TestLoadAndDisplayAnimal:
         """Vérifie que _load_and_display_animal appelle _update_offline_banner()
         après le chargement."""
         with (
-            patch.object(controller.today_view, "_display_animal"),
+            patch.object(controller.discovery_view, "_display_animal"),
             patch.object(controller, "_update_offline_banner") as mock_banner,
             patch("daynimal.ui.app_controller.asyncio.sleep", new_callable=AsyncMock),
             patch(
@@ -679,7 +723,7 @@ class TestOfflineBanner:
         connectivity.is_online = False
 
         # Set current animal on today_view
-        controller.today_view.current_animal = sample_animal
+        controller.discovery_view.current_animal = sample_animal
 
         async def mock_to_thread(fn, *args, **kwargs):
             # Simulate connectivity.check() bringing us back online
@@ -713,7 +757,7 @@ class TestOfflineBanner:
         # Start offline, stay offline
         connectivity.is_online = False
 
-        controller.today_view.current_animal = sample_animal
+        controller.discovery_view.current_animal = sample_animal
 
         async def mock_to_thread(fn, *args, **kwargs):
             # check() called but stays offline
@@ -736,7 +780,44 @@ class TestOfflineBanner:
 
 
 # =============================================================================
-# SECTION 8 : Cleanup
+# SECTION 8 : Notification click callback
+# =============================================================================
+
+
+class TestOnNotificationClicked:
+    """Tests pour _on_notification_clicked(animal)."""
+
+    def test_on_notification_clicked_displays_animal(
+        self, controller, mock_page, sample_animal
+    ):
+        """Vérifie que _on_notification_clicked met nav_bar à index 0,
+        affecte l'animal à today_view, appelle show_discovery_view,
+        ajoute l'animal à l'historique, et amène la fenêtre au premier plan."""
+        controller.nav_bar.selected_index = 3
+        mock_page.update.reset_mock()
+
+        with patch.object(
+            controller, "show_discovery_view", wraps=controller.show_discovery_view
+        ) as mock_show:
+            controller._on_notification_clicked(sample_animal)
+
+            assert controller.nav_bar.selected_index == 0
+            assert controller.discovery_view.current_animal is sample_animal
+            mock_show.assert_called_once()
+            mock_page.run_task.assert_called_once_with(mock_page.window.to_front)
+
+    def test_on_notification_clicked_adds_to_history(self, controller, sample_animal):
+        """Vérifie que l'animal notifié est ajouté à l'historique
+        avec command='notification'."""
+        controller._on_notification_clicked(sample_animal)
+
+        controller.state.repository.add_to_history.assert_called_once_with(
+            sample_animal.taxon.taxon_id, command="notification"
+        )
+
+
+# =============================================================================
+# SECTION 9 : Cleanup
 # =============================================================================
 
 

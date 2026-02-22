@@ -5,7 +5,6 @@ This module targets the remaining 4% uncovered lines in repository.py
 to achieve 100% code coverage.
 """
 
-from datetime import datetime
 from unittest.mock import patch
 
 from daynimal.repository import AnimalRepository
@@ -165,68 +164,7 @@ def test_get_random_with_enrich_true(populated_session):
 
 
 # =============================================================================
-# SECTION 3: get_animal_of_the_day() edge cases (lines 416, 430, 447, 456)
-# =============================================================================
-
-
-def test_get_animal_of_the_day_no_date_parameter(populated_session):
-    """
-    get_animal_of_the_day() sans date → utilise datetime.now().
-
-    Covers line 416.
-    """
-    repo = AnimalRepository(session=populated_session)
-
-    with patch.object(repo, "_enrich"):
-        # Call without date parameter
-        animal = repo.get_animal_of_the_day()  # date=None
-
-    assert animal is not None
-
-
-def test_get_animal_of_the_day_empty_db(session):
-    """
-    get_animal_of_the_day() sur DB vide → None.
-
-    Covers lines 430 and 456.
-    """
-    repo = AnimalRepository(session=session)
-
-    test_date = datetime(2025, 1, 1)
-    animal = repo.get_animal_of_the_day(date=test_date)
-
-    assert animal is None
-
-
-def test_get_animal_of_the_day_wrap_around(populated_session):
-    """
-    get_animal_of_the_day() avec target_id > max_id → wrap around.
-
-    Covers line 447 (the wrap-around query).
-    """
-    repo = AnimalRepository(session=populated_session)
-
-    # Use a date that generates a very high target_id
-    # This should trigger the wrap-around logic
-    far_future_date = datetime(9999, 12, 31)
-
-    with patch.object(repo, "_enrich"):
-        animal = repo.get_animal_of_the_day(date=far_future_date)
-
-    # Should still return an animal (wrapped around to beginning)
-    assert animal is not None
-
-
-# Note: Line 456 in repository.py (final return None in get_animal_of_the_day)
-# is defensive code that is practically unreachable in normal conditions.
-# It would require min_id/max_id to be calculated successfully but then
-# both the initial query and wrap-around query to fail, which is logically
-# inconsistent. This line is kept for defensive programming but doesn't
-# need explicit testing. Current coverage: 99% is excellent.
-
-
-# =============================================================================
-# SECTION 4: _model_to_taxon() edge case (lines 711-714)
+# SECTION 3: _model_to_taxon() edge case (lines 711-714)
 # =============================================================================
 
 

@@ -22,7 +22,6 @@ from daynimal.main import (
     cmd_random,
     cmd_search,
     cmd_stats,
-    cmd_today,
     main,
     print_animal,
 )
@@ -56,7 +55,7 @@ def sample_animal(sample_taxon):
 def mock_repository(sample_animal):
     """Create a mock AnimalRepository with predefined responses."""
     repo = Mock()
-    repo.get_animal_of_the_day.return_value = sample_animal
+    # get_animal_of_the_day removed — "today" is now an alias for "random"
     repo.get_random.return_value = sample_animal
     repo.search.return_value = [sample_animal]
     repo.get_by_name.return_value = sample_animal
@@ -116,30 +115,15 @@ class TestPrintAnimal:
 
 
 class TestCmdToday:
-    """Tests for the cmd_today command."""
+    """Tests for the 'today' command (now alias for random)."""
 
-    @patch("daynimal.main.AnimalRepository")
-    def test_cmd_today_success(self, mock_repo_class, mock_repository):
-        """Test that cmd_today executes without errors."""
-        mock_repo_class.return_value.__enter__.return_value = mock_repository
-
-        output = capture_stdout(cmd_today)
-
-        # Verify the repository was called
-        mock_repository.get_animal_of_the_day.assert_called_once()
-
-        # Verify output contains animal info
-        assert "PANTHERA LEO" in output.upper()
-
-    @patch("daynimal.main.AnimalRepository")
-    def test_cmd_today_adds_to_history(self, mock_repo_class, mock_repository):
-        """Test that cmd_today adds animal to history."""
-        mock_repo_class.return_value.__enter__.return_value = mock_repository
-
-        capture_stdout(cmd_today)
-
-        # Verify add_to_history was called
-        mock_repository.add_to_history.assert_called_once_with(123456, command="today")
+    @patch("daynimal.main.cmd_random")
+    @patch("daynimal.main.resolve_database", return_value=Path("daynimal.db"))
+    @patch("sys.argv", ["daynimal", "today"])
+    def test_today_calls_cmd_random(self, _mock_resolve, mock_cmd_random):
+        """Test that 'daynimal today' calls cmd_random (alias)."""
+        main()
+        mock_cmd_random.assert_called_once()
 
 
 class TestCmdRandom:
@@ -332,12 +316,12 @@ class TestCmdHistory:
 class TestMainCLI:
     """Tests for the main() CLI entry point and argument parsing."""
 
-    @patch("daynimal.main.cmd_today")
+    @patch("daynimal.main.cmd_random")
     @patch("sys.argv", ["daynimal"])
-    def test_main_no_args_calls_today(self, mock_cmd_today, _mock_resolve):
-        """Test that running daynimal with no args calls cmd_today."""
+    def test_main_no_args_calls_random(self, mock_cmd_random, _mock_resolve):
+        """Test that running daynimal with no args calls cmd_random."""
         main()
-        mock_cmd_today.assert_called_once()
+        mock_cmd_random.assert_called_once()
 
     @patch("daynimal.main.cmd_random")
     @patch("sys.argv", ["daynimal", "random"])
@@ -404,9 +388,9 @@ class TestMainCLI:
         # cmd_history now receives parsed integer values
         mock_cmd_history.assert_called_once_with(page=2, per_page=10)
 
-    @patch("daynimal.main.cmd_today")
+    @patch("daynimal.main.cmd_random")
     @patch("sys.argv", ["daynimal", "--db", "test.db"])
-    def test_main_with_db_option(self, mock_cmd_today, _mock_resolve):
+    def test_main_with_db_option(self, mock_cmd_random, _mock_resolve):
         """Test that 'daynimal --db test.db' uses custom DB via context manager."""
         from daynimal.config import settings
 
@@ -417,7 +401,7 @@ class TestMainCLI:
         assert settings.database_url == original_url
 
         # Verify command was called
-        mock_cmd_today.assert_called_once()
+        mock_cmd_random.assert_called_once()
 
     @patch("daynimal.main.cmd_random")
     @patch("sys.argv", ["daynimal", "--db", "minimal.db", "random"])

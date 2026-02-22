@@ -1,8 +1,7 @@
 """Tests pour daynimal/ui/views/today_view.py — Vue Aujourd'hui.
 
-Couvre: TodayView (build, _load_today_animal, _load_random_animal,
-_load_animal_for_today_view, _display_animal, _on_favorite_toggle,
-_open_gallery, _on_copy_text, _on_open_wikipedia).
+Couvre: TodayView (build, _load_random_animal, _display_animal,
+_on_favorite_toggle, _open_gallery, _on_copy_text, _on_open_wikipedia).
 
 Note: test_sharing.py teste déjà _build_share_text (5 tests). Ce fichier
 couvre le reste de TodayView (103 lignes manquantes).
@@ -208,21 +207,6 @@ class TestTodayViewBuild:
         text_blob = " ".join(t for t in all_texts if t)
         assert sample_animal.display_name.upper() in text_blob
 
-    def test_has_today_button(self, mock_page, mock_app_state):
-        """Vérifie que build() crée un bouton 'Animal du jour' avec l'icône
-        TODAY et le handler _load_today_animal."""
-        view = _make_view(mock_page, mock_app_state)
-        result = view.build()
-
-        # Find buttons in the result
-        buttons = _find_controls_recursive(result, lambda c: isinstance(c, ft.Button))
-        today_buttons = [b for b in buttons if b.content == "Animal du jour"]
-        assert len(today_buttons) == 1
-
-        btn = today_buttons[0]
-        assert btn.icon == ft.Icons.CALENDAR_TODAY
-        assert btn.on_click == view._load_today_animal
-
     def test_has_random_button(self, mock_page, mock_app_state):
         """Vérifie que build() crée un bouton 'Animal aléatoire' avec l'icône
         SHUFFLE et le handler _load_random_animal."""
@@ -244,48 +228,7 @@ class TestTodayViewBuild:
 
 
 class TestTodayViewLoadAnimal:
-    """Tests pour _load_today_animal et _load_random_animal."""
-
-    @pytest.mark.asyncio
-    @patch("daynimal.ui.views.today_view.asyncio.to_thread")
-    async def test_load_today_animal_calls_get_animal_of_the_day(
-        self, mock_to_thread, mock_page, mock_app_state, sample_animal
-    ):
-        """Vérifie que _load_today_animal appelle
-        repo.get_animal_of_the_day() via asyncio.to_thread.
-        Mock: repo.get_animal_of_the_day retourne sample_animal."""
-        mock_app_state.repository.get_animal_of_the_day.return_value = sample_animal
-        view = _make_view(mock_page, mock_app_state)
-        view.build()
-
-        async def run_closure(fn, *args, **kwargs):
-            return fn(*args, **kwargs)
-
-        mock_to_thread.side_effect = run_closure
-        await view._load_today_animal(None)
-
-        mock_app_state.repository.get_animal_of_the_day.assert_called_once()
-
-    @pytest.mark.asyncio
-    @patch("daynimal.ui.views.today_view.asyncio.to_thread")
-    async def test_load_today_animal_adds_to_history(
-        self, mock_to_thread, mock_page, mock_app_state, sample_animal
-    ):
-        """Vérifie que après le chargement, repo.add_to_history est
-        appelé avec (taxon_id, command='today')."""
-        mock_app_state.repository.get_animal_of_the_day.return_value = sample_animal
-        view = _make_view(mock_page, mock_app_state)
-        view.build()
-
-        async def run_closure(fn, *args, **kwargs):
-            return fn(*args, **kwargs)
-
-        mock_to_thread.side_effect = run_closure
-        await view._load_today_animal(None)
-
-        mock_app_state.repository.add_to_history.assert_called_once_with(
-            sample_animal.taxon.taxon_id, command="today"
-        )
+    """Tests pour _load_random_animal."""
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.today_view.asyncio.to_thread")
@@ -336,7 +279,7 @@ class TestTodayViewLoadAnimal:
         contient un LoadingWidget."""
         loading_captured = []
 
-        mock_app_state.repository.get_animal_of_the_day.return_value = sample_animal
+        mock_app_state.repository.get_random.return_value = sample_animal
 
         view = _make_view(mock_page, mock_app_state)
         view.build()
@@ -353,7 +296,7 @@ class TestTodayViewLoadAnimal:
 
         mock_to_thread.side_effect = run_closure
 
-        await view._load_today_animal(None)
+        await view._load_random_animal(None)
 
         # The first page.update() call should have a LoadingWidget
         assert len(loading_captured) > 0
@@ -366,11 +309,9 @@ class TestTodayViewLoadAnimal:
     async def test_error_shows_error_widget(
         self, mock_to_thread, _mock_sleep, mock_page, mock_app_state
     ):
-        """Vérifie que si repo.get_animal_of_the_day lève une exception,
+        """Vérifie que si repo.get_random lève une exception,
         un ErrorWidget est affiché dans today_animal_container."""
-        mock_app_state.repository.get_animal_of_the_day.side_effect = RuntimeError(
-            "DB error"
-        )
+        mock_app_state.repository.get_random.side_effect = RuntimeError("DB error")
 
         view = _make_view(mock_page, mock_app_state)
         view.build()
@@ -380,7 +321,7 @@ class TestTodayViewLoadAnimal:
 
         mock_to_thread.side_effect = run_closure
 
-        await view._load_today_animal(None)
+        await view._load_random_animal(None)
 
         # After error, today_animal_container should contain an ErrorWidget
         controls = view.today_animal_container.controls
@@ -394,9 +335,9 @@ class TestTodayViewLoadAnimal:
     ):
         """Vérifie que si le repository retourne None,
         un message d'erreur est affiché."""
-        # When get_animal_of_the_day returns None, calling .taxon.taxon_id
+        # When get_random returns None, calling .taxon.taxon_id
         # on None will raise AttributeError, which triggers the error path
-        mock_app_state.repository.get_animal_of_the_day.return_value = None
+        mock_app_state.repository.get_random.return_value = None
 
         view = _make_view(mock_page, mock_app_state)
         view.build()
@@ -406,7 +347,7 @@ class TestTodayViewLoadAnimal:
 
         mock_to_thread.side_effect = run_closure
 
-        await view._load_today_animal(None)
+        await view._load_random_animal(None)
 
         # Should show error because None doesn't have .taxon
         controls = view.today_animal_container.controls
@@ -420,7 +361,7 @@ class TestTodayViewLoadAnimal:
     ):
         """Vérifie que on_load_complete() est appelé après le chargement
         réussi (callback optionnel défini par AppController)."""
-        mock_app_state.repository.get_animal_of_the_day.return_value = sample_animal
+        mock_app_state.repository.get_random.return_value = sample_animal
         view = _make_view(mock_page, mock_app_state)
         view.build()
 
@@ -432,7 +373,7 @@ class TestTodayViewLoadAnimal:
 
         mock_to_thread.side_effect = run_closure
 
-        await view._load_today_animal(None)
+        await view._load_random_animal(None)
 
         on_load_complete_mock.assert_called_once()
 

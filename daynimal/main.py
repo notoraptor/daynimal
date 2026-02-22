@@ -139,17 +139,6 @@ def print_animal(animal: AnimalInfo):
     print("")
 
 
-def cmd_today():
-    """Show today's animal."""
-    with AnimalRepository() as repo:
-        animal = repo.get_animal_of_the_day()
-        if animal:
-            print_animal(animal)
-            repo.add_to_history(animal.taxon.taxon_id, command="today")
-        else:
-            print("No animals in database. Run 'import-gbif' first.")
-
-
 def cmd_random():
     """Show a random animal."""
     with AnimalRepository() as repo:
@@ -581,8 +570,8 @@ def create_parser():
     # Subcommands
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    # today command (default if no command specified)
-    subparsers.add_parser("today", help="Show today's animal (default)")
+    # today command (alias for random, kept for backwards compatibility)
+    subparsers.add_parser("today", help="Show a random animal (alias for 'random')")
 
     # random command
     subparsers.add_parser("random", help="Show a random animal")
@@ -667,8 +656,8 @@ def main():
     # Use context manager to temporarily set database without polluting global state
     with temporary_database(database_url):
         # Route to appropriate command
-        # Default to 'today' if no command specified
-        command = args.command or "today"
+        # Default to 'random' if no command specified
+        command = args.command or "random"
 
         # Setup and rebuild don't need an existing DB
         if command in ("setup", "rebuild"):
@@ -683,9 +672,7 @@ def main():
             print("Database not found. Run 'daynimal setup' first.")
             raise SystemExit(1)
 
-        if command == "today":
-            cmd_today()
-        elif command == "random":
+        if command in ("today", "random"):
             cmd_random()
         elif command == "search":
             query = " ".join(args.query)

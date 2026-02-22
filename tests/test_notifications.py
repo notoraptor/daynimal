@@ -1,12 +1,12 @@
-"""Tests for NotificationService."""
+"""Tests for NotificationService with async callback scheduling."""
 
 import asyncio
-from datetime import datetime
-from unittest.mock import MagicMock, patch
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from daynimal.notifications import NotificationService
+from daynimal.notifications import NotificationService, _parse_period
 
 
 @pytest.fixture
@@ -29,12 +29,40 @@ def mock_repo():
 
 @pytest.fixture
 def service(mock_repo):
-    """Create a NotificationService with mock repo."""
-    return NotificationService(mock_repo)
+    """Create a NotificationService with mock repo and mocked notifier."""
+    svc = NotificationService(mock_repo)
+    svc._notifier = MagicMock()
+    svc._notifier.send = AsyncMock()
+    return svc
 
 
 # =============================================================================
-# SECTION 1: Properties and defaults
+# SECTION 1: _parse_period
+# =============================================================================
+
+
+def test_parse_period_daily():
+    assert _parse_period("24:00") == 1440
+
+
+def test_parse_period_5min():
+    assert _parse_period("00:05") == 5
+
+
+def test_parse_period_large_hours():
+    assert _parse_period("123:37") == 123 * 60 + 37
+
+
+def test_parse_period_invalid_returns_default():
+    assert _parse_period("invalid") == 1440
+
+
+def test_parse_period_minimum_1_minute():
+    assert _parse_period("00:00") == 1
+
+
+# =============================================================================
+# SECTION 2: Properties and defaults
 # =============================================================================
 
 
@@ -49,139 +77,149 @@ def test_enabled_when_set_to_true(service, mock_repo):
     assert service.enabled is True
 
 
-def test_notification_time_default(service):
-    """Default notification time is 08:00."""
-    assert service.notification_time == "08:00"
+def test_notification_start_default(service):
+    """Default start is today 08:00."""
+    start = service.notification_start
+    now = datetime.now()
+    assert start.hour == 8
+    assert start.minute == 0
+    assert start.date() == now.date()
 
 
-def test_notification_time_custom(service, mock_repo):
-    """Custom notification time from settings."""
-    mock_repo._settings["notification_time"] = "14:30"
-    assert service.notification_time == "14:30"
+def test_notification_start_from_setting(service, mock_repo):
+    """Reads notification_start from settings."""
+    mock_repo._settings["notification_start"] = "2026-03-15T14:30"
+    start = service.notification_start
+    assert start == datetime(2026, 3, 15, 14, 30)
+
+
+def test_notification_start_legacy_fallback(service, mock_repo):
+    """Falls back to notification_time if notification_start absent."""
+    mock_repo._settings["notification_time"] = "09:15"
+    start = service.notification_start
+    assert start.hour == 9
+    assert start.minute == 15
+
+
+def test_notification_period_default(service):
+    """Default period is 1440 minutes (24h)."""
+    assert service.notification_period == 1440
+
+
+def test_notification_period_custom(service, mock_repo):
+    """Custom period from settings."""
+    mock_repo._settings["notification_period"] = "00:05"
+    assert service.notification_period == 5
 
 
 # =============================================================================
-# SECTION 2: _should_notify()
+# SECTION 3: _compute_next_notification()
 # =============================================================================
-
-
-def test_should_not_notify_when_disabled(service):
-    """Should not notify when notifications are disabled."""
-    assert service._should_notify() is False
-
-
-def test_should_not_notify_already_sent_today(service, mock_repo):
-    """Should not notify if already sent today."""
-    mock_repo._settings["notifications_enabled"] = "true"
-    mock_repo._settings["notification_time"] = "00:00"
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    mock_repo._settings["last_notification_date"] = today_str
-    assert service._should_notify() is False
 
 
 @patch("daynimal.notifications.datetime")
-def test_should_not_notify_before_time(mock_dt, service, mock_repo):
-    """Should not notify before the configured time."""
-    mock_repo._settings["notifications_enabled"] = "true"
-    mock_repo._settings["notification_time"] = "23:59"
-
-    mock_now = MagicMock()
-    mock_now.hour = 0
-    mock_now.minute = 0
-    mock_now.strftime.return_value = "2026-02-10"
-    mock_dt.now.return_value = mock_now
-    assert service._should_notify() is False
+def test_compute_next_start_in_future(mock_dt, service):
+    """When start is in the future, return start."""
+    mock_dt.now.return_value = datetime(2026, 2, 22, 7, 0)
+    start = datetime(2026, 2, 22, 8, 0)
+    result = service._compute_next_notification(start, 1440)
+    assert result == start
 
 
 @patch("daynimal.notifications.datetime")
-def test_should_notify_when_enabled_and_time_reached(mock_dt, service, mock_repo):
-    """Should notify when enabled, time reached, and not yet sent today."""
-    mock_repo._settings["notifications_enabled"] = "true"
-    mock_repo._settings["notification_time"] = "08:00"
-
-    mock_now = MagicMock()
-    mock_now.hour = 10
-    mock_now.minute = 30
-    mock_now.strftime.return_value = "2026-02-10"
-    mock_dt.now.return_value = mock_now
-    assert service._should_notify() is True
+def test_compute_next_between_cycles(mock_dt, service):
+    """When now is between two cycles, return next cycle start."""
+    mock_dt.now.return_value = datetime(2026, 2, 22, 10, 30)
+    start = datetime(2026, 2, 22, 8, 0)
+    # Period = 60 min → cycles at 8:00, 9:00, 10:00, 11:00
+    # now = 10:30 → next = 11:00
+    result = service._compute_next_notification(start, 60)
+    assert result == datetime(2026, 2, 22, 11, 0)
 
 
 @patch("daynimal.notifications.datetime")
-def test_should_notify_handles_invalid_time_format(mock_dt, service, mock_repo):
-    """Should fallback to 08:00 on invalid time format."""
-    mock_repo._settings["notifications_enabled"] = "true"
-    mock_repo._settings["notification_time"] = "invalid"
+def test_compute_next_exactly_on_cycle(mock_dt, service):
+    """When now is exactly at a cycle boundary, return next cycle (N+1)."""
+    mock_dt.now.return_value = datetime(2026, 2, 22, 10, 0)
+    start = datetime(2026, 2, 22, 8, 0)
+    # Period = 60 min → cycles at 8:00, 9:00, 10:00, 11:00
+    # now = 10:00 exactly → complete_periods = 2, return 8:00 + 3*60 = 11:00
+    result = service._compute_next_notification(start, 60)
+    assert result == datetime(2026, 2, 22, 11, 0)
 
-    mock_now = MagicMock()
-    mock_now.hour = 9
-    mock_now.minute = 0
-    mock_now.strftime.return_value = "2026-02-10"
-    mock_dt.now.return_value = mock_now
-    assert service._should_notify() is True
+
+@patch("daynimal.notifications.datetime")
+def test_compute_next_short_period(mock_dt, service):
+    """Short 5-minute period works correctly."""
+    mock_dt.now.return_value = datetime(2026, 2, 22, 8, 7)
+    start = datetime(2026, 2, 22, 8, 0)
+    # Period = 5 min → cycles at 8:00, 8:05, 8:10, ...
+    # now = 8:07 → complete_periods = 1, return 8:00 + 2*5 = 8:10
+    result = service._compute_next_notification(start, 5)
+    assert result == datetime(2026, 2, 22, 8, 10)
+
+
+@patch("daynimal.notifications.datetime")
+def test_compute_next_now_equals_start(mock_dt, service):
+    """When now == start, return start (now <= start)."""
+    now = datetime(2026, 2, 22, 8, 0)
+    mock_dt.now.return_value = now
+    start = datetime(2026, 2, 22, 8, 0)
+    result = service._compute_next_notification(start, 1440)
+    assert result == start
 
 
 # =============================================================================
-# SECTION 3: _send_notification()
+# SECTION 4: _send_notification()
 # =============================================================================
 
 
-@patch("daynimal.notifications.notification")
-async def test_send_notification_calls_plyer(mock_notif, service, mock_repo):
-    """Should call plyer notification.notify with animal info."""
+async def test_send_notification_calls_desktop_notifier(service):
+    """Should call notifier.send() with animal info."""
     mock_animal = MagicMock()
     mock_animal.display_name = "Lion"
-    mock_repo.get_animal_of_the_day.return_value = mock_animal
 
-    await service._send_notification()
+    await service._send_notification(mock_animal)
 
-    mock_notif.notify.assert_called_once_with(
-        title="Animal du jour",
-        message="Découvrez Lion !",
-        app_name="Daynimal",
-        timeout=10,
-    )
+    service._notifier.send.assert_called_once()
+    call_kwargs = service._notifier.send.call_args[1]
+    assert call_kwargs["title"] == "Découvrez cet animal!"
+    assert call_kwargs["message"] == "Lion"
 
 
-@patch("daynimal.notifications.notification")
-async def test_send_notification_updates_last_date(_mock_notif, service, mock_repo):
-    """Should update last_notification_date after sending."""
+async def test_send_notification_no_last_ts_saved(service, mock_repo):
+    """Should NOT save last_notification_ts anymore."""
     mock_animal = MagicMock()
     mock_animal.display_name = "Lion"
-    mock_repo.get_animal_of_the_day.return_value = mock_animal
 
-    await service._send_notification()
+    await service._send_notification(mock_animal)
 
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    mock_repo.set_setting.assert_called_with("last_notification_date", today_str)
-
-
-@patch("daynimal.notifications.notification")
-async def test_send_notification_skips_when_no_animal(mock_notif, service, mock_repo):
-    """Should do nothing if get_animal_of_the_day returns None."""
-    mock_repo.get_animal_of_the_day.return_value = None
-
-    await service._send_notification()
-    mock_notif.notify.assert_not_called()
+    # set_setting should NOT be called (no more last_notification_ts saving)
+    mock_repo.set_setting.assert_not_called()
 
 
-async def test_send_notification_handles_error(service, mock_repo):
+async def test_send_notification_handles_error(service):
     """Should catch and log errors without crashing."""
-    mock_repo.get_animal_of_the_day.side_effect = RuntimeError("DB error")
+    service._notifier.send = AsyncMock(side_effect=RuntimeError("Send error"))
+    mock_animal = MagicMock()
+    mock_animal.display_name = "Lion"
 
     # Should not raise
-    await service._send_notification()
+    await service._send_notification(mock_animal)
 
 
 # =============================================================================
-# SECTION 4: Lifecycle (start/stop)
+# SECTION 5: Lifecycle (start/stop)
 # =============================================================================
 
 
-async def test_start_creates_task(service):
-    """Start should create an asyncio task."""
+async def test_start_creates_task_when_enabled(service, mock_repo):
+    """Start should create an asyncio task when enabled."""
+    mock_repo._settings["notifications_enabled"] = "true"
+    mock_repo._settings["notification_start"] = "2099-01-01T00:00"
+    mock_repo._settings["notification_period"] = "24:00"
+
     service.start()
-    assert service._running is True
     assert service._task is not None
 
     # Cleanup
@@ -189,13 +227,21 @@ async def test_start_creates_task(service):
     await asyncio.sleep(0.05)
 
 
-async def test_stop_cancels_task(service):
+async def test_start_does_nothing_when_disabled(service):
+    """Start should not create a task when notifications disabled."""
+    service.start()
+    assert service._task is None
+
+
+async def test_stop_cancels_task(service, mock_repo):
     """Stop should cancel the running task."""
+    mock_repo._settings["notifications_enabled"] = "true"
+    mock_repo._settings["notification_start"] = "2099-01-01T00:00"
+
     service.start()
     task = service._task
     service.stop()
 
-    assert service._running is False
     assert service._task is None
 
     # Wait for cancellation to propagate
@@ -203,94 +249,247 @@ async def test_stop_cancels_task(service):
     assert task.cancelled() or task.done()
 
 
-async def test_start_is_idempotent(service):
-    """Calling start twice should not create a second task."""
+async def test_start_replaces_existing_task(service, mock_repo):
+    """Calling start twice should cancel the first task and create a new one."""
+    mock_repo._settings["notifications_enabled"] = "true"
+    mock_repo._settings["notification_start"] = "2099-01-01T00:00"
+
     service.start()
     first_task = service._task
     service.start()
-    assert service._task is first_task
+    second_task = service._task
 
+    assert second_task is not first_task
+
+    # Cleanup
     service.stop()
     await asyncio.sleep(0.05)
 
 
+async def test_stop_when_no_task(service):
+    """Stop should be safe to call when no task exists."""
+    service.stop()  # Should not raise
+    assert service._task is None
+
+
 # =============================================================================
-# SECTION ÉTENDUE : Couverture lignes manquantes (82% → ~95%)
-# Lignes: 9-10 (import plyer), 53-61 (_check_loop), 90-91 (_send_notification)
+# SECTION 6: _wait_and_notify()
 # =============================================================================
 
 
 @pytest.mark.asyncio
-async def test_check_loop_calls_send_when_should_notify(service):
-    """Vérifie que _check_loop appelle _send_notification() quand
-    _should_notify() retourne True. On mock _should_notify pour retourner
-    True une fois, puis on arrête la boucle, et on vérifie que
-    _send_notification est appelé exactement une fois."""
-    from unittest.mock import AsyncMock
+async def test_wait_and_notify_sleeps_then_sends(service, mock_repo):
+    """Should sleep until next_time, fetch random animal, then send notification."""
+    mock_repo._settings["notifications_enabled"] = "true"
+    start = datetime(2026, 2, 22, 8, 0)
+    mock_repo._settings["notification_start"] = start.isoformat()
+    mock_repo._settings["notification_period"] = "24:00"
 
-    iteration = 0
+    mock_animal = MagicMock()
+    mock_repo.get_random.return_value = mock_animal
 
-    async def fake_sleep(_):
-        nonlocal iteration
-        iteration += 1
-        if iteration >= 2:
-            service._running = False
+    next_time = datetime.now() + timedelta(seconds=0.01)
 
-    with (
-        patch("asyncio.sleep", side_effect=fake_sleep),
-        patch.object(service, "_should_notify", side_effect=[True, False]),
-        patch.object(
-            service, "_send_notification", new_callable=AsyncMock
-        ) as mock_send,
-    ):
-        service._running = True
-        await service._check_loop()
+    with patch.object(
+        service, "_send_notification", new_callable=AsyncMock
+    ) as mock_send:
+        await service._wait_and_notify(next_time, start, 1440)
 
-    mock_send.assert_called_once()
+    mock_send.assert_called_once_with(mock_animal)
 
 
 @pytest.mark.asyncio
-async def test_check_loop_skips_when_should_not_notify(service):
-    """Vérifie que _check_loop N'appelle PAS _send_notification()
-    quand _should_notify() retourne False."""
-    from unittest.mock import AsyncMock
+async def test_wait_and_notify_skips_when_disabled(service, mock_repo):
+    """Should not notify if enabled becomes False during sleep."""
+    start = datetime(2026, 2, 22, 8, 0)
+    mock_repo._settings["notification_start"] = start.isoformat()
+    mock_repo._settings["notification_period"] = "24:00"
 
-    iteration = 0
+    # Start enabled, then disable before the check
+    call_count = 0
 
-    async def fake_sleep(_):
-        nonlocal iteration
-        iteration += 1
-        if iteration >= 2:
-            service._running = False
+    def enabled_side_effect(key, default=None):
+        nonlocal call_count
+        if key == "notifications_enabled":
+            call_count += 1
+            return "false"  # disabled
+        return mock_repo._settings.get(key, default)
 
-    with (
-        patch("asyncio.sleep", side_effect=fake_sleep),
-        patch.object(service, "_should_notify", return_value=False),
-        patch.object(
-            service, "_send_notification", new_callable=AsyncMock
-        ) as mock_send,
-    ):
-        service._running = True
-        await service._check_loop()
+    mock_repo.get_setting.side_effect = enabled_side_effect
+
+    next_time = datetime.now() - timedelta(seconds=1)  # already past
+
+    with patch.object(
+        service, "_send_notification", new_callable=AsyncMock
+    ) as mock_send:
+        await service._wait_and_notify(next_time, start, 1440)
 
     mock_send.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_send_notification_plyer_not_available(service):
-    """Vérifie que _send_notification() ne plante pas quand
-    daynimal.notifications.notification est None (plyer non disponible)."""
-    with patch("daynimal.notifications.notification", None):
-        await service._send_notification()  # Should not raise
+async def test_wait_and_notify_skips_when_start_changed(service, mock_repo):
+    """Should not notify if start changes during sleep."""
+    original_start = datetime(2026, 2, 22, 8, 0)
+    new_start = datetime(2026, 2, 22, 9, 0)
+
+    mock_repo._settings["notifications_enabled"] = "true"
+    mock_repo._settings["notification_start"] = new_start.isoformat()
+    mock_repo._settings["notification_period"] = "24:00"
+
+    next_time = datetime.now() - timedelta(seconds=1)
+
+    with patch.object(
+        service, "_send_notification", new_callable=AsyncMock
+    ) as mock_send:
+        # Pass original_start as expected, but settings now show new_start
+        await service._wait_and_notify(next_time, original_start, 1440)
+
+    mock_send.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_send_notification_no_animal(service, mock_repo):
-    """Vérifie que si le repository ne retourne aucun animal
-    (get_animal_of_the_day retourne None), _send_notification()
-    retourne sans essayer d envoyer une notification."""
-    mock_repo.get_animal_of_the_day.return_value = None
+async def test_wait_and_notify_skips_when_period_changed(service, mock_repo):
+    """Should not notify if period changes during sleep."""
+    start = datetime(2026, 2, 22, 8, 0)
 
-    with patch("daynimal.notifications.notification") as mock_notif:
-        await service._send_notification()
-        mock_notif.notify.assert_not_called()
+    mock_repo._settings["notifications_enabled"] = "true"
+    mock_repo._settings["notification_start"] = start.isoformat()
+    mock_repo._settings["notification_period"] = "00:05"  # changed to 5 min
+
+    next_time = datetime.now() - timedelta(seconds=1)
+
+    with patch.object(
+        service, "_send_notification", new_callable=AsyncMock
+    ) as mock_send:
+        # Pass period=1440 as expected, but settings now show 5 min
+        await service._wait_and_notify(next_time, start, 1440)
+
+    mock_send.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_wait_and_notify_schedules_next(service, mock_repo):
+    """Should schedule the next notification after sending."""
+    start = datetime(2026, 2, 22, 8, 0)
+    mock_repo._settings["notifications_enabled"] = "true"
+    mock_repo._settings["notification_start"] = start.isoformat()
+    mock_repo._settings["notification_period"] = "24:00"
+    mock_repo.get_random.return_value = MagicMock()
+
+    next_time = datetime.now() - timedelta(seconds=1)
+
+    with patch.object(service, "_send_notification", new_callable=AsyncMock):
+        await service._wait_and_notify(next_time, start, 1440)
+
+    # A new task should be created for the next notification
+    assert service._task is not None
+
+    # Cleanup
+    service.stop()
+    await asyncio.sleep(0.05)
+
+
+@pytest.mark.asyncio
+async def test_wait_and_notify_handles_cancelled_error(service, mock_repo):
+    """Should handle CancelledError gracefully."""
+    start = datetime(2026, 2, 22, 8, 0)
+    next_time = datetime.now() + timedelta(hours=1)
+
+    async def raise_cancelled(_):
+        raise asyncio.CancelledError()
+
+    with patch("asyncio.sleep", side_effect=raise_cancelled):
+        # Should not raise
+        await service._wait_and_notify(next_time, start, 1440)
+
+
+# =============================================================================
+# SECTION 7: Retrocompatibility
+# =============================================================================
+
+
+def test_no_settings_uses_defaults(service):
+    """With no settings at all, properties return sensible defaults."""
+    assert service.enabled is False
+    assert service.notification_start.hour == 8
+    assert service.notification_period == 1440
+
+
+def test_invalid_start_uses_default(service, mock_repo):
+    """Invalid notification_start falls back to legacy or default."""
+    mock_repo._settings["notification_start"] = "not-a-date"
+    start = service.notification_start
+    assert start.hour == 8  # default fallback
+
+
+# =============================================================================
+# SECTION 8: desktop-notifier unavailable
+# =============================================================================
+
+
+@pytest.mark.asyncio
+async def test_send_notification_notifier_not_available(service):
+    """Verify _send_notification doesn't crash when notifier is None."""
+    service._notifier = None
+    mock_animal = MagicMock()
+    mock_animal.display_name = "Lion"
+    await service._send_notification(mock_animal)  # Should not raise
+
+
+@pytest.mark.asyncio
+async def test_send_notification_creates_per_notification_closure(mock_repo):
+    """Verify on_clicked creates a closure that passes the animal to the callback."""
+    callback = MagicMock()
+    svc = NotificationService(mock_repo, on_clicked=callback)
+    svc._notifier = MagicMock()
+    svc._notifier.send = AsyncMock()
+
+    mock_animal = MagicMock()
+    mock_animal.display_name = "Tigre"
+
+    await svc._send_notification(mock_animal)
+
+    # Extract the on_clicked closure passed to send()
+    call_kwargs = svc._notifier.send.call_args[1]
+    on_clicked = call_kwargs["on_clicked"]
+    assert on_clicked is not None
+
+    # Call the closure — it should forward the animal to the original callback
+    on_clicked()
+    callback.assert_called_once_with(mock_animal)
+
+
+@pytest.mark.asyncio
+async def test_send_notification_no_closure_when_no_callback(mock_repo):
+    """Verify on_clicked is None when no callback is configured."""
+    svc = NotificationService(mock_repo, on_clicked=None)
+    svc._notifier = MagicMock()
+    svc._notifier.send = AsyncMock()
+
+    mock_animal = MagicMock()
+    mock_animal.display_name = "Lion"
+
+    await svc._send_notification(mock_animal)
+
+    call_kwargs = svc._notifier.send.call_args[1]
+    assert call_kwargs["on_clicked"] is None
+
+
+@pytest.mark.asyncio
+async def test_wait_and_notify_skips_when_no_animal(service, mock_repo):
+    """Should skip notification when get_random returns None."""
+    mock_repo._settings["notifications_enabled"] = "true"
+    start = datetime(2026, 2, 22, 8, 0)
+    mock_repo._settings["notification_start"] = start.isoformat()
+    mock_repo._settings["notification_period"] = "24:00"
+    mock_repo.get_random.return_value = None
+
+    next_time = datetime.now() - timedelta(seconds=1)
+
+    with patch.object(
+        service, "_send_notification", new_callable=AsyncMock
+    ) as mock_send:
+        await service._wait_and_notify(next_time, start, 1440)
+
+    mock_send.assert_not_called()

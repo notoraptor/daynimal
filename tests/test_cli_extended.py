@@ -22,7 +22,6 @@ from daynimal.schemas import (
     License,
 )
 from daynimal.main import (
-    cmd_today,
     cmd_random,
     cmd_history,
     cmd_setup,
@@ -159,20 +158,6 @@ class TestPrintAnimalEnriched:
         assert "Mass" not in output
         assert "Length" not in output
         assert "Lifespan" not in output
-
-
-class TestCmdTodayNoAnimal:
-    """Tests for cmd_today when no animal in DB."""
-
-    @patch("daynimal.main.AnimalRepository")
-    def test_no_animal_in_db(self, mock_repo_class):
-        """Test cmd_today when get_animal_of_the_day returns None."""
-        repo = Mock()
-        repo.get_animal_of_the_day.return_value = None
-        mock_repo_class.return_value.__enter__.return_value = repo
-
-        output = capture_stdout(cmd_today)
-        assert "No animals" in output
 
 
 class TestCmdRandomNoAnimal:
@@ -626,11 +611,11 @@ class TestMainRouting:
 
     @patch("sys.argv", ["daynimal"])
     @patch("daynimal.main.resolve_database", return_value="/path.db")
-    @patch("daynimal.main.cmd_today")
-    def test_default_command_is_today(self, mock_today, mock_resolve):
-        """Vérifie que sans sous-commande, main() appelle cmd_today()."""
+    @patch("daynimal.main.cmd_random")
+    def test_default_command_is_random(self, mock_random, mock_resolve):
+        """Vérifie que sans sous-commande, main() appelle cmd_random()."""
         main()
-        mock_today.assert_called_once()
+        mock_random.assert_called_once()
 
     @patch("sys.argv", ["daynimal", "setup", "--mode", "minimal"])
     @patch("daynimal.main.cmd_setup")
