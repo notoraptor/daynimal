@@ -9,7 +9,6 @@ import flet as ft
 
 from daynimal.ui.components.animal_card import create_history_card_with_delete
 from daynimal.ui.components.pagination import PaginationBar
-from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
@@ -44,6 +43,7 @@ class HistoryView(BaseView):
             on_animal_click: Callback when an animal is clicked (receives taxon_id)
         """
         super().__init__(page, app_state)
+        self.view_title = "📚 Historique"
         self.on_animal_click = on_animal_click
         self.current_page = 1
         self.total_count = 0
@@ -52,14 +52,9 @@ class HistoryView(BaseView):
 
     def build(self) -> ft.Control:
         """Build the history view UI."""
-        # Header
-        header = view_header("📚 Historique")
-
         # Content container
         content = ft.Column(
             controls=[
-                header,
-                ft.Divider(),
                 ft.Container(content=self.history_list, padding=20),
                 self.pagination_container,
             ]

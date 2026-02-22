@@ -78,11 +78,11 @@ class TestStatsViewBuild:
     """Tests pour StatsView.build()."""
 
     @patch("daynimal.ui.views.stats_view.asyncio.create_task")
-    def test_returns_column_with_header(
+    def test_returns_column_without_header(
         self, _mock_create_task, mock_page, mock_app_state
     ):
-        """Verifie que build() retourne un ft.Column contenant un header
-        'Statistiques' et le stats_container."""
+        """Verifie que build() retourne un ft.Column contenant le
+        stats_container (header géré par AppController)."""
         view = _make_view(mock_page, mock_app_state)
 
         result = view.build()
@@ -90,25 +90,14 @@ class TestStatsViewBuild:
         # build() returns a ft.Column
         assert isinstance(result, ft.Column)
 
-        # The Column should have controls: header, divider, container wrapping stats_container
-        assert len(result.controls) >= 3
+        # The Column should have controls: container wrapping stats_container
+        assert len(result.controls) >= 1
 
-        # First control is the header container (from view_header)
-        header_container = result.controls[0]
-        assert isinstance(header_container, ft.Container)
+        # view_title is set
+        assert "Statistiques" in view.view_title
 
-        # The header contains a Row with a Text that includes "Statistiques"
-        header_row = header_container.content
-        assert isinstance(header_row, ft.Row)
-        header_text = header_row.controls[0]
-        assert isinstance(header_text, ft.Text)
-        assert "Statistiques" in header_text.value
-
-        # Second control is a Divider
-        assert isinstance(result.controls[1], ft.Divider)
-
-        # Third control is a Container wrapping stats_container
-        stats_wrapper = result.controls[2]
+        # First control is a Container wrapping stats_container
+        stats_wrapper = result.controls[0]
         assert isinstance(stats_wrapper, ft.Container)
         assert stats_wrapper.content is view.stats_container
 

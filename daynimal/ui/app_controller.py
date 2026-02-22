@@ -7,7 +7,7 @@ import traceback
 import flet as ft
 
 from daynimal.notifications import NotificationService
-from daynimal.ui.components.widgets import ErrorWidget, LoadingWidget
+from daynimal.ui.components.widgets import ErrorWidget, LoadingWidget, view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.favorites_view import FavoritesView
 from daynimal.ui.views.history_view import HistoryView
@@ -44,6 +44,9 @@ class AppController:
             self.state.repository, on_clicked=self._on_notification_clicked
         )
         self.state.notification_service = self.notification_service
+
+        # Fixed title container (stays above scrollable content)
+        self.title_container = ft.Column(controls=[], spacing=0)
 
         # Content container (scrollable so navbar stays fixed at bottom)
         self.content_container = ft.Column(
@@ -133,7 +136,12 @@ class AppController:
         """Build the app UI."""
         # Main layout
         layout = ft.Column(
-            controls=[self.offline_banner, self.content_container, self.nav_bar],
+            controls=[
+                self.offline_banner,
+                self.title_container,
+                self.content_container,
+                self.nav_bar,
+            ],
             expand=True,
             spacing=0,
         )
@@ -182,39 +190,49 @@ class AppController:
         elif selected_index == 5:
             self.show_settings_view()
 
+    def _update_title(self, title: str):
+        """Update the fixed title container."""
+        self.title_container.controls = [view_header(title), ft.Divider()]
+
     def show_discovery_view(self):
         """Show the Discovery view."""
         self.current_view_name = "discovery"
+        self._update_title(self.discovery_view.view_title)
         self.content_container.controls = [self.discovery_view.build()]
         self.page.update()
 
     def show_history_view(self):
         """Show the History view."""
         self.current_view_name = "history"
+        self._update_title(self.history_view.view_title)
         self.content_container.controls = [self.history_view.build()]
         self.page.update()
 
     def show_favorites_view(self):
         """Show the Favorites view."""
         self.current_view_name = "favorites"
+        self._update_title(self.favorites_view.view_title)
         self.content_container.controls = [self.favorites_view.build()]
         self.page.update()
 
     def show_search_view(self):
         """Show the Search view."""
         self.current_view_name = "search"
+        self._update_title(self.search_view.view_title)
         self.content_container.controls = [self.search_view.build()]
         self.page.update()
 
     def show_stats_view(self):
         """Show the Stats view."""
         self.current_view_name = "stats"
+        self._update_title(self.stats_view.view_title)
         self.content_container.controls = [self.stats_view.build()]
         self.page.update()
 
     def show_settings_view(self):
         """Show the Settings view."""
         self.current_view_name = "settings"
+        self._update_title(self.settings_view.view_title)
         self.content_container.controls = [self.settings_view.build()]
         self.page.update()
 

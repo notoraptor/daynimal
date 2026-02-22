@@ -219,19 +219,21 @@ class TestAppControllerInit:
 class TestAppControllerBuild:
     """Tests pour AppController.build()."""
 
-    def test_returns_column_with_banner_content_nav(self, controller):
+    def test_returns_column_with_banner_title_content_nav(self, controller):
         """Vérifie que build() retourne un ft.Column contenant:
         1. Le bandeau offline
-        2. Le content_container (avec expand=True)
-        3. La barre de navigation."""
+        2. Le title_container (fixe)
+        3. Le content_container (avec expand=True)
+        4. La barre de navigation."""
         layout = controller.build()
 
         assert isinstance(layout, ft.Column)
         assert layout.expand is True
-        assert len(layout.controls) == 3
+        assert len(layout.controls) == 4
         assert layout.controls[0] is controller.offline_banner
-        assert layout.controls[1] is controller.content_container
-        assert layout.controls[2] is controller.nav_bar
+        assert layout.controls[1] is controller.title_container
+        assert layout.controls[2] is controller.content_container
+        assert layout.controls[3] is controller.nav_bar
 
     def test_starts_notification_service(self, controller):
         """Vérifie que build() appelle notification_service.start()."""

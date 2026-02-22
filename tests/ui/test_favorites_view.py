@@ -57,18 +57,20 @@ class TestFavoritesViewBuild:
     """Tests pour FavoritesView.build()."""
 
     @patch("daynimal.ui.views.favorites_view.asyncio.create_task")
-    def test_returns_column_with_header(
+    def test_returns_column_without_header(
         self, mock_create_task, mock_page, mock_app_state
     ):
-        """Vérifie que build() retourne un ft.Column contenant un header 'Favoris'."""
+        """Vérifie que build() retourne un ft.Column (header géré par AppController)."""
         from daynimal.ui.views.favorites_view import FavoritesView
 
         view = FavoritesView(mock_page, mock_app_state)
         result = view.build()
 
         assert isinstance(result, ft.Column)
-        # Should contain header, divider, favorites container, pagination
-        assert len(result.controls) >= 3
+        # Should contain favorites container, pagination
+        assert len(result.controls) >= 2
+        # view_title is set
+        assert "Favoris" in view.view_title
 
     @patch("daynimal.ui.views.favorites_view.asyncio.create_task")
     def test_triggers_load_favorites(self, mock_create_task, mock_page, mock_app_state):

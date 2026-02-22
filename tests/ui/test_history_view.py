@@ -62,12 +62,11 @@ class TestHistoryViewBuild:
     """Tests pour HistoryView.build()."""
 
     @patch("daynimal.ui.views.history_view.asyncio.create_task")
-    def test_returns_column_with_header(
+    def test_returns_column_without_header(
         self, _mock_create_task, mock_page, mock_app_state
     ):
-        """Verifie que build() retourne un ft.Column contenant un header
-        'Historique' (via view_header) suivi du container de liste et
-        du container de pagination."""
+        """Verifie que build() retourne un ft.Column contenant le container
+        de liste et le container de pagination (header géré par AppController)."""
         from daynimal.ui.views.history_view import HistoryView
 
         view = HistoryView(page=mock_page, app_state=mock_app_state)
@@ -76,27 +75,17 @@ class TestHistoryViewBuild:
         # build() returns a ft.Column
         assert isinstance(result, ft.Column)
 
-        # The column has controls: header, divider, content container, pagination container
-        assert len(result.controls) == 4
+        # The column has controls: content container, pagination container
+        assert len(result.controls) == 2
 
-        # First control is the header (a Container from view_header)
-        header = result.controls[0]
-        assert isinstance(header, ft.Container)
-        # The header contains a Row with a Text saying "Historique"
-        header_row = header.content
-        assert isinstance(header_row, ft.Row)
-        header_text = header_row.controls[0]
-        assert isinstance(header_text, ft.Text)
-        assert "Historique" in header_text.value
+        # view_title is set
+        assert "Historique" in view.view_title
 
-        # Second control is a Divider
-        assert isinstance(result.controls[1], ft.Divider)
+        # First control is a Container wrapping the history_list Column
+        assert isinstance(result.controls[0], ft.Container)
 
-        # Third control is a Container wrapping the history_list Column
-        assert isinstance(result.controls[2], ft.Container)
-
-        # Fourth control is the pagination container
-        assert result.controls[3] is view.pagination_container
+        # Second control is the pagination container
+        assert result.controls[1] is view.pagination_container
 
     @patch("daynimal.ui.views.history_view.asyncio.create_task")
     def test_triggers_load_history(self, mock_create_task, mock_page, mock_app_state):

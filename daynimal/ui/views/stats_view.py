@@ -6,7 +6,6 @@ import traceback
 
 import flet as ft
 
-from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
@@ -25,19 +24,15 @@ class StatsView(BaseView):
             app_state: Shared application state
         """
         super().__init__(page, app_state)
+        self.view_title = "📊 Statistiques"
         self.stats_container = ft.Column(controls=[], spacing=10)
         self.cached_stats: dict | None = None
 
     def build(self) -> ft.Control:
         """Build the statistics view UI."""
-        # Header
-        header = view_header("📊 Statistiques")
-
         # Content container
         content = ft.Column(
             controls=[
-                header,
-                ft.Divider(),
                 ft.Container(content=self.stats_container, padding=20),
             ]
         )

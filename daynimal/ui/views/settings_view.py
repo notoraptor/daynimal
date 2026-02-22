@@ -7,7 +7,6 @@ from datetime import datetime
 
 import flet as ft
 
-from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
@@ -61,6 +60,7 @@ class SettingsView(BaseView):
             on_offline_change: Callback when offline mode is toggled
         """
         super().__init__(page, app_state)
+        self.view_title = "⚙️ Paramètres"
         self.on_offline_change = on_offline_change
         self.settings_container = ft.Column(controls=[])
 
@@ -134,9 +134,6 @@ class SettingsView(BaseView):
                 period_minutes,
             ) = await asyncio.to_thread(fetch_notification_settings)
             is_dark = theme_mode == "dark"
-
-            # Header
-            header = view_header("⚙️ Paramètres")
 
             # App info section
             app_info = ft.Container(
@@ -319,8 +316,6 @@ class SettingsView(BaseView):
 
             # Update content
             self.settings_container.controls = [
-                header,
-                ft.Divider(),
                 app_info,
                 ft.Divider(),
                 preferences,

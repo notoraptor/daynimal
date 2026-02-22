@@ -35,6 +35,7 @@ class BaseView(ABC):
         """
         self.page = page
         self.app_state = app_state
+        self.view_title: str = ""
         self.container = ft.Column(controls=[], spacing=10)
 
     @abstractmethod

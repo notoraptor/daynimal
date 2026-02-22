@@ -10,7 +10,6 @@ from typing import Callable
 import flet as ft
 
 from daynimal.ui.components.animal_card import create_search_card
-from daynimal.ui.components.widgets import view_header
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
@@ -37,6 +36,7 @@ class SearchView(BaseView):
             on_result_click: Callback when search result is clicked. Receives taxon_id.
         """
         super().__init__(page, app_state)
+        self.view_title = "🔍 Recherche"
         self.on_result_click = on_result_click
 
         # Create UI components
@@ -61,9 +61,6 @@ class SearchView(BaseView):
         Returns:
             ft.Control: The root control for search view.
         """
-        # Header
-        header = view_header("🔍 Recherche")
-
         # Initial empty state
         self.show_empty_search_state()
 
@@ -79,8 +76,6 @@ class SearchView(BaseView):
 
         # Assemble view
         self.container.controls = [
-            header,
-            ft.Divider(),
             search_bar,
             ft.Container(content=self.results_container, padding=20),
         ]

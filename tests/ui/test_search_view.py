@@ -48,8 +48,8 @@ def test_search_view_build_returns_control():
     result = view.build()
 
     assert isinstance(result, ft.Column)
-    # Should have: header, divider, search_bar, results_container
-    assert len(result.controls) == 4
+    # Should have: search_bar, results_container (header managed by AppController)
+    assert len(result.controls) == 2
 
 
 def test_search_view_has_search_field_and_button():

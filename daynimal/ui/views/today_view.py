@@ -10,7 +10,7 @@ import flet as ft
 from daynimal.schemas import AnimalInfo, ImageSource
 from daynimal.ui.components.animal_display import AnimalDisplay
 from daynimal.ui.components.image_gallery_dialog import ImageGalleryDialog
-from daynimal.ui.components.widgets import ErrorWidget, LoadingWidget, view_header
+from daynimal.ui.components.widgets import ErrorWidget, LoadingWidget
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
 
@@ -36,6 +36,7 @@ class TodayView(BaseView):
                                 (receives taxon_id, is_currently_favorite)
         """
         super().__init__(page, app_state)
+        self.view_title = "🦁 Découverte"
         self.on_favorite_toggle_callback = on_favorite_toggle
         self.on_load_complete: Callable[[], None] | None = None
         self.today_animal_container = ft.Column(controls=[], spacing=10)
@@ -43,9 +44,6 @@ class TodayView(BaseView):
 
     def build(self) -> ft.Control:
         """Build the today view UI."""
-        # Header
-        header = view_header("🦁 Découverte")
-
         # Buttons
         random_button = ft.Button(
             "Animal aléatoire",
@@ -101,8 +99,6 @@ class TodayView(BaseView):
         # Content container
         content = ft.Column(
             controls=[
-                header,
-                ft.Divider(),
                 ft.Container(
                     content=button_row,
                     padding=ft.Padding(left=20, right=20, bottom=10, top=0),
