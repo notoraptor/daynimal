@@ -42,6 +42,21 @@ class ImageGalleryDialog:
         else:
             self._show_download_dialog()
 
+    def _build_title_row(self) -> ft.Row:
+        """Build the dialog title row with title text and close button."""
+        return ft.Row(
+            controls=[
+                ft.Text("Galerie d'images", size=20, weight=ft.FontWeight.BOLD),
+                ft.IconButton(
+                    icon=ft.Icons.CLOSE,
+                    tooltip="Fermer",
+                    on_click=lambda e: self.page.pop_dialog(),
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+
     def _show_download_dialog(self):
         """Show dialog with progress bar, then switch to carousel when done."""
         self._progress_bar = ft.ProgressBar(value=0, width=300)
@@ -56,9 +71,9 @@ class ImageGalleryDialog:
         )
 
         dialog = ft.AlertDialog(
-            title=ft.Text("Galerie d'images"),
+            title=self._build_title_row(),
             content=ft.Container(content=self._dialog_content, width=420, height=400),
-            actions=[ft.Button("Fermer", on_click=lambda e: self.page.pop_dialog())],
+            actions=[],
             modal=False,
         )
         self.page.show_dialog(dialog)
@@ -93,9 +108,9 @@ class ImageGalleryDialog:
         )
 
         dialog = ft.AlertDialog(
-            title=ft.Text("Galerie d'images"),
+            title=self._build_title_row(),
             content=ft.Container(content=self._dialog_content, width=420, height=400),
-            actions=[ft.Button("Fermer", on_click=lambda e: self.page.pop_dialog())],
+            actions=[],
             modal=False,
         )
         self.page.show_dialog(dialog)
@@ -120,13 +135,14 @@ class ImageGalleryDialog:
                     image_src = str(local_path)
                     break
 
+        counter_text = ft.Text(
+            f"{self.current_index + 1}/{total}",
+            size=14,
+            weight=ft.FontWeight.BOLD,
+            color=ft.Colors.BLUE,
+        )
+
         controls = [
-            ft.Text(
-                f"Image {self.current_index + 1}/{total}",
-                size=14,
-                weight=ft.FontWeight.BOLD,
-                color=ft.Colors.BLUE,
-            ),
             ft.Image(
                 src=image_src,
                 width=380,
@@ -140,13 +156,13 @@ class ImageGalleryDialog:
             ),
         ]
 
-        # Navigation
+        # Navigation row with counter between arrows
         if total > 1:
             controls.append(
                 ft.Row(
                     controls=[
                         ft.IconButton(icon=ft.Icons.ARROW_BACK, on_click=self._on_prev),
-                        ft.Container(expand=True),
+                        counter_text,
                         ft.IconButton(
                             icon=ft.Icons.ARROW_FORWARD, on_click=self._on_next
                         ),
@@ -154,15 +170,28 @@ class ImageGalleryDialog:
                     alignment=ft.MainAxisAlignment.CENTER,
                 )
             )
+        else:
+            controls.append(counter_text)
 
-        # Credit
+        # Credit in scrollable container
         if current_image.author:
             controls.append(
-                ft.Text(
-                    f"Crédit: {current_image.author} — {current_image.source_label}",
-                    size=12,
-                    color=ft.Colors.GREY_500,
-                    italic=True,
+                ft.Container(
+                    content=ft.Column(
+                        controls=[
+                            ft.Text(
+                                f"Crédit: {current_image.author}"
+                                f" — {current_image.source_label}",
+                                size=12,
+                                color=ft.Colors.GREY_500,
+                                italic=True,
+                                no_wrap=False,
+                            ),
+                        ],
+                        scroll=ft.ScrollMode.AUTO,
+                    ),
+                    padding=ft.Padding(left=5, right=5, top=0, bottom=0),
+                    height=50,
                 )
             )
 

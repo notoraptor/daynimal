@@ -124,15 +124,17 @@ class TestImageGalleryDialogOpen:
         # Verify the dialog is an AlertDialog with carousel content
         shown_dialog = mock_page.show_dialog.call_args[0][0]
         assert isinstance(shown_dialog, ft.AlertDialog)
-        assert shown_dialog.title.value == "Galerie d'images"
 
-        # The content column should have carousel controls (Image counter, ft.Image, etc.)
+        # Title is a Row with title text and close button
+        title_row = shown_dialog.title
+        assert isinstance(title_row, ft.Row)
+        assert title_row.controls[0].value == "Galerie d'images"
+
+        # The content column should have carousel controls (ft.Image, nav row, etc.)
         content_column = shown_dialog.content.content
         assert isinstance(content_column, ft.Column)
-        # First control should be the image counter text
-        counter_text = content_column.controls[0]
-        assert isinstance(counter_text, ft.Text)
-        assert "1/3" in counter_text.value
+        # First control should be the image
+        assert isinstance(content_column.controls[0], ft.Image)
 
     def test_not_cached_shows_download_dialog(
         self, mock_page, mock_image_cache, sample_images
@@ -212,11 +214,11 @@ class TestDownloadDialog:
         assert "0/3" in progress_text.value
         assert "chargement" in progress_text.value.lower()
 
-    def test_download_dialog_has_cancel_button(
+    def test_download_dialog_has_close_button_in_title(
         self, mock_page, mock_image_cache, sample_images
     ):
-        """Verifie que le dialog a un bouton 'Fermer' qui ferme le dialog
-        via page.pop_dialog."""
+        """Verifie que le dialog a un bouton X dans le titre qui ferme
+        le dialog via page.pop_dialog."""
         mock_image_cache.are_all_cached.return_value = False
 
         gallery = ImageGalleryDialog(
@@ -226,16 +228,12 @@ class TestDownloadDialog:
 
         shown_dialog = mock_page.show_dialog.call_args[0][0]
 
-        # Check actions contain a close button
-        assert shown_dialog.actions is not None
-        assert len(shown_dialog.actions) >= 1
-
-        close_button = shown_dialog.actions[0]
-        assert isinstance(close_button, ft.Button)
-        assert (
-            getattr(close_button, "text", None) == "Fermer"
-            or getattr(close_button, "content", None) == "Fermer"
-        )
+        # Title is a Row with title text and close IconButton
+        title_row = shown_dialog.title
+        assert isinstance(title_row, ft.Row)
+        close_button = title_row.controls[1]
+        assert isinstance(close_button, ft.IconButton)
+        assert close_button.icon == ft.Icons.CLOSE
 
         # Simulate clicking the button - it should call page.pop_dialog
         close_button.on_click(MagicMock())
@@ -320,16 +318,10 @@ class TestDownloadDialog:
 
         # After download, the dialog content should have carousel controls
         controls = gallery._dialog_content.controls
-        # Carousel controls start with image counter text
-        counter_text = controls[0]
-        assert isinstance(counter_text, ft.Text)
-        assert "1/3" in counter_text.value
+        # Carousel controls start with the image
+        assert isinstance(controls[0], ft.Image)
 
-        # Should have an ft.Image control
-        images_in_controls = [c for c in controls if isinstance(c, ft.Image)]
-        assert len(images_in_controls) == 1
-
-        # Should have navigation row (since we have 3 images > 1)
+        # Should have navigation row with counter (since we have 3 images > 1)
         rows = [c for c in controls if isinstance(c, ft.Row)]
         assert len(rows) >= 1
 
@@ -345,11 +337,11 @@ class TestDownloadDialog:
 class TestCarouselDialog:
     """Tests pour _show_carousel_dialog et _build_carousel_controls."""
 
-    def test_carousel_dialog_has_close_button(
+    def test_carousel_dialog_has_close_button_in_title(
         self, mock_page, mock_image_cache, sample_images
     ):
-        """Verifie que le dialog carousel a un bouton 'Fermer' qui appelle
-        page.pop_dialog."""
+        """Verifie que le dialog carousel a un bouton X dans le titre
+        qui appelle page.pop_dialog."""
         mock_image_cache.are_all_cached.return_value = True
         mock_image_cache.get_local_path.return_value = None
 
@@ -360,14 +352,13 @@ class TestCarouselDialog:
 
         shown_dialog = mock_page.show_dialog.call_args[0][0]
         assert isinstance(shown_dialog, ft.AlertDialog)
-        assert len(shown_dialog.actions) >= 1
 
-        close_button = shown_dialog.actions[0]
-        assert isinstance(close_button, ft.Button)
-        assert (
-            getattr(close_button, "text", None) == "Fermer"
-            or getattr(close_button, "content", None) == "Fermer"
-        )
+        # Title is a Row with title text and close IconButton
+        title_row = shown_dialog.title
+        assert isinstance(title_row, ft.Row)
+        close_button = title_row.controls[1]
+        assert isinstance(close_button, ft.IconButton)
+        assert close_button.icon == ft.Icons.CLOSE
 
         # Click the close button
         close_button.on_click(MagicMock())
@@ -377,30 +368,41 @@ class TestCarouselDialog:
         self, mock_page, mock_image_cache, sample_images
     ):
         """Verifie que _build_carousel_controls affiche un compteur
-        'Image 1 / 3' (ou equivalent) base sur current_index et len(images)."""
+        '1/3' (ou equivalent) dans la navigation row."""
         mock_image_cache.get_local_path.return_value = None
 
         gallery = ImageGalleryDialog(
             images=sample_images, image_cache=mock_image_cache, page=mock_page
         )
 
+        def _find_counter(controls):
+            """Find the counter Text in the navigation row."""
+            for ctrl in controls:
+                if isinstance(ctrl, ft.Row):
+                    for child in ctrl.controls:
+                        if isinstance(child, ft.Text) and "/" in child.value:
+                            return child
+                if isinstance(ctrl, ft.Text) and "/" in ctrl.value:
+                    return ctrl
+            return None
+
         # Test at index 0
         gallery.current_index = 0
         controls = gallery._build_carousel_controls()
-        counter = controls[0]
-        assert isinstance(counter, ft.Text)
+        counter = _find_counter(controls)
+        assert counter is not None
         assert "1/3" in counter.value
 
         # Test at index 1
         gallery.current_index = 1
         controls = gallery._build_carousel_controls()
-        counter = controls[0]
+        counter = _find_counter(controls)
         assert "2/3" in counter.value
 
         # Test at index 2
         gallery.current_index = 2
         controls = gallery._build_carousel_controls()
-        counter = controls[0]
+        counter = _find_counter(controls)
         assert "3/3" in counter.value
 
     def test_build_carousel_controls_uses_cached_path(
@@ -493,10 +495,13 @@ class TestGalleryNavigation:
         # Controls should have been rebuilt (no longer "old content")
         controls = gallery._dialog_content.controls
         assert len(controls) > 1
-        # First control should be the counter for image 2/3
-        counter = controls[0]
-        assert isinstance(counter, ft.Text)
-        assert "2/3" in counter.value
+        # First control should be the image
+        assert isinstance(controls[0], ft.Image)
+        # Navigation row should contain counter "2/3"
+        nav_row = controls[1]
+        assert isinstance(nav_row, ft.Row)
+        counter_texts = [c for c in nav_row.controls if isinstance(c, ft.Text)]
+        assert any("2/3" in t.value for t in counter_texts)
 
         # page.update was called
         mock_page.update.assert_called_once()
