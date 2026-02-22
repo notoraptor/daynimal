@@ -155,91 +155,7 @@ class TodayView(BaseView):
         """Display animal information in the Today view."""
         controls = []
 
-        # Use AnimalDisplay for animal details
-        animal_display = AnimalDisplay(animal)
-        controls.extend(animal_display.build())
-
-        # Insert favorite button after taxon ID (before first divider)
-        # Find first divider index (should be at index 3)
-        first_divider_index = 3 if len(controls) > 3 else len(controls)
-
-        # Favorite button
-        is_favorite = (
-            self.app_state.repository.is_favorite(animal.taxon.taxon_id)
-            if self.app_state
-            else False
-        )
-
-        favorite_button = ft.IconButton(
-            icon=ft.Icons.FAVORITE if is_favorite else ft.Icons.FAVORITE_BORDER,
-            icon_color=ft.Colors.RED if is_favorite else ft.Colors.GREY_500,
-            icon_size=32,
-            tooltip="Ajouter aux favoris" if not is_favorite else "Retirer des favoris",
-            data=animal.taxon.taxon_id,
-            on_click=self._on_favorite_toggle,
-        )
-
-        # Share buttons row
-        share_buttons = []
-
-        # Copy text button
-        share_buttons.append(
-            ft.IconButton(
-                icon=ft.Icons.CONTENT_COPY,
-                icon_size=24,
-                tooltip="Copier le texte",
-                on_click=self._on_copy_text,
-            )
-        )
-
-        # Open Wikipedia button (disabled if no Wikipedia article)
-        has_wikipedia = animal.wikipedia is not None
-        share_buttons.append(
-            ft.IconButton(
-                icon=ft.Icons.LANGUAGE,
-                icon_size=24,
-                tooltip="Ouvrir Wikipedia",
-                on_click=self._on_open_wikipedia if has_wikipedia else None,
-                disabled=not has_wikipedia,
-            )
-        )
-
-        # Open GBIF button (always available — taxon_id is always present)
-        share_buttons.append(
-            ft.IconButton(
-                icon=ft.Icons.OPEN_IN_NEW,
-                icon_size=24,
-                tooltip="Ouvrir GBIF",
-                on_click=self._on_open_gbif,
-            )
-        )
-
-        controls.insert(
-            first_divider_index,
-            ft.Container(
-                content=ft.Row(
-                    controls=[
-                        ft.Container(
-                            content=ft.Text("Favori:", size=14),
-                            data=animal.taxon.taxon_id,
-                            on_click=self._on_favorite_toggle,
-                            ink=True,
-                        ),
-                        favorite_button,
-                        ft.Text("Partager:", size=14),
-                        *share_buttons,
-                    ],
-                    spacing=5,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
-                padding=ft.Padding(top=10, bottom=10, left=0, right=0),
-            ),
-        )
-
-        # Add images section — single image + "More images" button
-        controls.append(ft.Divider())
-        controls.append(ft.Text("Images", size=20, weight=ft.FontWeight.BOLD))
-
+        # Hero image at the top
         images = animal.images or []
         if images:
             first_image = images[0]
@@ -313,28 +229,110 @@ class TodayView(BaseView):
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 )
             )
+            controls.append(ft.Divider())
         else:
             controls.append(
                 ft.Container(
-                    content=ft.Column(
+                    content=ft.Row(
                         controls=[
-                            ft.Icon(ft.Icons.IMAGE, size=60, color=ft.Colors.GREY_500),
+                            ft.Icon(ft.Icons.IMAGE_NOT_SUPPORTED, size=18, color=ft.Colors.GREY_500),
                             ft.Text(
                                 "Aucune image disponible",
-                                size=16,
-                                weight=ft.FontWeight.BOLD,
+                                size=14,
+                                color=ft.Colors.GREY_500,
+                                italic=True,
                             ),
                         ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=10,
+                        alignment=ft.MainAxisAlignment.CENTER,
+                        spacing=8,
                     ),
-                    padding=30,
-                    bgcolor=ft.Colors.GREY_200,
-                    border_radius=10,
+                    padding=ft.Padding(left=0, right=0, top=10, bottom=10),
                 )
             )
+            controls.append(ft.Divider())
 
-        controls.append(ft.Divider())
+        # Animal details (title, classification, description, etc.)
+        animal_display = AnimalDisplay(animal)
+        controls.extend(animal_display.build())
+
+        # Insert favorite/share buttons after taxon ID (before first divider)
+        # AnimalDisplay starts with: title, scientific name, ID, Divider, ...
+        # The image section is already prepended, so offset by the image controls count
+        image_offset = 2 if images else 0  # image column + divider
+        first_divider_index = (image_offset + 3) if len(controls) > (image_offset + 3) else len(controls)
+
+        # Favorite button
+        is_favorite = (
+            self.app_state.repository.is_favorite(animal.taxon.taxon_id)
+            if self.app_state
+            else False
+        )
+
+        favorite_button = ft.IconButton(
+            icon=ft.Icons.FAVORITE if is_favorite else ft.Icons.FAVORITE_BORDER,
+            icon_color=ft.Colors.RED if is_favorite else ft.Colors.GREY_500,
+            icon_size=32,
+            tooltip="Ajouter aux favoris" if not is_favorite else "Retirer des favoris",
+            data=animal.taxon.taxon_id,
+            on_click=self._on_favorite_toggle,
+        )
+
+        # Share buttons row
+        share_buttons = []
+
+        # Copy text button
+        share_buttons.append(
+            ft.IconButton(
+                icon=ft.Icons.CONTENT_COPY,
+                icon_size=24,
+                tooltip="Copier le texte",
+                on_click=self._on_copy_text,
+            )
+        )
+
+        # Open Wikipedia button (disabled if no Wikipedia article)
+        has_wikipedia = animal.wikipedia is not None
+        share_buttons.append(
+            ft.IconButton(
+                icon=ft.Icons.LANGUAGE,
+                icon_size=24,
+                tooltip="Ouvrir Wikipedia",
+                on_click=self._on_open_wikipedia if has_wikipedia else None,
+                disabled=not has_wikipedia,
+            )
+        )
+
+        # Open GBIF button (always available — taxon_id is always present)
+        share_buttons.append(
+            ft.IconButton(
+                icon=ft.Icons.OPEN_IN_NEW,
+                icon_size=24,
+                tooltip="Ouvrir GBIF",
+                on_click=self._on_open_gbif,
+            )
+        )
+
+        controls.insert(
+            first_divider_index,
+            ft.Container(
+                content=ft.Row(
+                    controls=[
+                        ft.Container(
+                            content=ft.Text("Favori:", size=14),
+                            data=animal.taxon.taxon_id,
+                            on_click=self._on_favorite_toggle,
+                            ink=True,
+                        ),
+                        favorite_button,
+                        ft.Text("Partager:", size=14),
+                        *share_buttons,
+                    ],
+                    spacing=5,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                padding=ft.Padding(top=10, bottom=10, left=0, right=0),
+            ),
+        )
 
         # Update container
         self.today_animal_container.controls = controls

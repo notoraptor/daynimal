@@ -522,7 +522,7 @@ class TestTodayViewDisplayAnimal:
         ]
         assert len(gallery_buttons) == 0
 
-        # Should show "Aucune image disponible"
+        # Should show "Aucune image disponible" banner
         all_texts = []
         for ctrl in view.today_animal_container.controls:
             all_texts.extend(_find_text_values(ctrl))
