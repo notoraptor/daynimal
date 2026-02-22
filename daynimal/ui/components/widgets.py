@@ -91,26 +91,35 @@ class ErrorWidget(ft.Container):
         )
 
 
-def view_header(title: str) -> ft.Container:
+def view_header(
+    title: str, actions: list[ft.Control] | None = None
+) -> ft.Container:
     """Standard page header used by all views.
 
     Args:
         title: Title string, typically starting with an emoji (e.g. "🦁 Animal du jour").
+        actions: Optional list of action controls displayed on the right side.
 
     Returns:
-        A centered Container with bold primary-colored text.
+        A Container with bold primary-colored text and optional action buttons.
     """
-    return ft.Container(
-        content=ft.Row(
-            controls=[
-                ft.Text(
-                    title, size=28, weight=ft.FontWeight.BOLD, color=ft.Colors.PRIMARY
-                )
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-        ),
-        padding=10,
+    title_text = ft.Text(
+        title, size=28, weight=ft.FontWeight.BOLD, color=ft.Colors.PRIMARY
     )
+
+    if actions:
+        row = ft.Row(
+            controls=[title_text, ft.Row(controls=actions, spacing=5)],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+    else:
+        row = ft.Row(
+            controls=[title_text],
+            alignment=ft.MainAxisAlignment.CENTER,
+        )
+
+    return ft.Container(content=row, padding=10)
 
 
 class EmptyStateWidget(ft.Container):

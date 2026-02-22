@@ -190,49 +190,52 @@ class AppController:
         elif selected_index == 5:
             self.show_settings_view()
 
-    def _update_title(self, title: str):
-        """Update the fixed title container."""
-        self.title_container.controls = [view_header(title), ft.Divider()]
+    def _update_title(self, view):
+        """Update the fixed title container from a view's title and actions."""
+        self.title_container.controls = [
+            view_header(view.view_title, view.view_title_actions),
+            ft.Divider(),
+        ]
 
     def show_discovery_view(self):
         """Show the Discovery view."""
         self.current_view_name = "discovery"
-        self._update_title(self.discovery_view.view_title)
+        self._update_title(self.discovery_view)
         self.content_container.controls = [self.discovery_view.build()]
         self.page.update()
 
     def show_history_view(self):
         """Show the History view."""
         self.current_view_name = "history"
-        self._update_title(self.history_view.view_title)
+        self._update_title(self.history_view)
         self.content_container.controls = [self.history_view.build()]
         self.page.update()
 
     def show_favorites_view(self):
         """Show the Favorites view."""
         self.current_view_name = "favorites"
-        self._update_title(self.favorites_view.view_title)
+        self._update_title(self.favorites_view)
         self.content_container.controls = [self.favorites_view.build()]
         self.page.update()
 
     def show_search_view(self):
         """Show the Search view."""
         self.current_view_name = "search"
-        self._update_title(self.search_view.view_title)
+        self._update_title(self.search_view)
         self.content_container.controls = [self.search_view.build()]
         self.page.update()
 
     def show_stats_view(self):
         """Show the Stats view."""
         self.current_view_name = "stats"
-        self._update_title(self.stats_view.view_title)
+        self._update_title(self.stats_view)
         self.content_container.controls = [self.stats_view.build()]
         self.page.update()
 
     def show_settings_view(self):
         """Show the Settings view."""
         self.current_view_name = "settings"
-        self._update_title(self.settings_view.view_title)
+        self._update_title(self.settings_view)
         self.content_container.controls = [self.settings_view.build()]
         self.page.update()
 

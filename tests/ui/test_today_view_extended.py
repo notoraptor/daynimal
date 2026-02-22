@@ -207,17 +207,14 @@ class TestTodayViewBuild:
         text_blob = " ".join(t for t in all_texts if t)
         assert sample_animal.display_name.upper() in text_blob
 
-    def test_has_random_button(self, mock_page, mock_app_state):
-        """Vérifie que build() crée un bouton 'Animal aléatoire' avec l'icône
-        SHUFFLE et le handler _load_random_animal."""
+    def test_has_random_button_in_title_actions(self, mock_page, mock_app_state):
+        """Vérifie que view_title_actions contient un IconButton SHUFFLE
+        avec le handler _load_random_animal."""
         view = _make_view(mock_page, mock_app_state)
-        result = view.build()
 
-        buttons = _find_controls_recursive(result, lambda c: isinstance(c, ft.Button))
-        random_buttons = [b for b in buttons if b.content == "Animal aléatoire"]
-        assert len(random_buttons) == 1
-
-        btn = random_buttons[0]
+        assert len(view.view_title_actions) == 1
+        btn = view.view_title_actions[0]
+        assert isinstance(btn, ft.IconButton)
         assert btn.icon == ft.Icons.SHUFFLE
         assert btn.on_click == view._load_random_animal
 

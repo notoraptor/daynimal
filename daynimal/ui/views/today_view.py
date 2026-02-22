@@ -37,6 +37,18 @@ class TodayView(BaseView):
         """
         super().__init__(page, app_state)
         self.view_title = "🦁 Découverte"
+        self.view_title_actions = [
+            ft.IconButton(
+                icon=ft.Icons.SHUFFLE,
+                tooltip="Animal aléatoire",
+                on_click=self._load_random_animal,
+                style=ft.ButtonStyle(
+                    bgcolor=ft.Colors.BLUE,
+                    color=ft.Colors.WHITE,
+                    shape=ft.CircleBorder(),
+                ),
+            )
+        ]
         self.on_favorite_toggle_callback = on_favorite_toggle
         self.on_load_complete: Callable[[], None] | None = None
         self.today_animal_container = ft.Column(controls=[], spacing=10)
@@ -44,18 +56,6 @@ class TodayView(BaseView):
 
     def build(self) -> ft.Control:
         """Build the today view UI."""
-        # Buttons
-        random_button = ft.Button(
-            "Animal aléatoire",
-            icon=ft.Icons.SHUFFLE,
-            on_click=self._load_random_animal,
-            style=ft.ButtonStyle(color=ft.Colors.WHITE, bgcolor=ft.Colors.BLUE),
-        )
-
-        button_row = ft.Row(
-            controls=[random_button], alignment=ft.MainAxisAlignment.CENTER, spacing=10
-        )
-
         # Restore previous animal if available
         if self.current_animal is not None:
             self._display_animal(self.current_animal)
@@ -80,7 +80,7 @@ class TodayView(BaseView):
                                 text_align=ft.TextAlign.CENTER,
                             ),
                             ft.Text(
-                                "Cliquez sur 'Animal aléatoire' pour découvrir",
+                                "Cliquez sur le bouton 🔀 pour découvrir",
                                 size=14,
                                 color=ft.Colors.BLUE,
                                 text_align=ft.TextAlign.CENTER,
@@ -99,10 +99,6 @@ class TodayView(BaseView):
         # Content container
         content = ft.Column(
             controls=[
-                ft.Container(
-                    content=button_row,
-                    padding=ft.Padding(left=20, right=20, bottom=10, top=0),
-                ),
                 ft.Container(content=self.today_animal_container, padding=20),
             ]
         )
