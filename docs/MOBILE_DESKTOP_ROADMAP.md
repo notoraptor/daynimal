@@ -1,12 +1,12 @@
 # Roadmap : Application Mobile/Desktop
 
-**Derniere mise a jour** : 2026-02-18
+**Derniere mise a jour** : 2026-02-22 11:17
 
 ---
 
 ## Etat actuel
 
-Application Flet desktop fonctionnelle avec 6 onglets (Aujourd'hui, Historique, Favoris, Recherche, Statistiques, Parametres). Architecture modulaire, 949 tests (94% couverture), infrastructure mobile prete (cache images, mode hors ligne, distribution TSV). Chemins mobile-aware (`get_app_data_dir()`, `get_app_temp_dir()`), detection mobile via `is_mobile()`. Build mobile valide sur emulateur Android (premier lancement + telechargement DB OK). Setup CLI etendu (`daynimal setup --mode full|minimal --no-taxref`). Desktop sans DB : ecran informatif avec commandes CLI (setup auto reserve au mobile). Navbar fixe en bas (scroll deplace vers le contenu). Chargement paresseux des images (1 seule image au chargement, galerie a la demande). Silhouettes PhyloPic locales en fallback. Recherche FTS5 amelioree (pertinence, classement). Logging simplifie via `logging` standard Python (suppression du systeme debug custom).
+Application Flet desktop fonctionnelle avec 6 onglets (Decouverte, Historique, Favoris, Recherche, Statistiques, Parametres). Architecture modulaire, infrastructure mobile prete (cache images, mode hors ligne, distribution TSV). Chemins mobile-aware (`get_app_data_dir()`, `get_app_temp_dir()`), detection mobile via `is_mobile()`. Build mobile valide sur emulateur Android (premier lancement + telechargement DB OK). Setup CLI etendu (`daynimal setup --mode full|minimal --no-taxref`). Desktop sans DB : ecran informatif avec commandes CLI (setup auto reserve au mobile). Navbar fixe en bas (scroll deplace vers le contenu). Chargement paresseux des images (1 seule image au chargement, galerie a la demande). Silhouettes PhyloPic locales en fallback. Recherche FTS5 amelioree (pertinence, classement). Logging simplifie via `logging` standard Python (suppression du systeme debug custom). Notifications periodiques via `desktop-notifier` (date de depart, periode configurable, callback au clic). Chargement auto d'un animal au demarrage (configurable).
 
 **Prochaine etape** : tests appareil reel et ajustements UI mobile (Phase 3).
 
@@ -84,9 +84,6 @@ uv run build-db --taxa data/animalia_taxa_minimal.tsv \
 # 3. Construire l'index de recherche FTS5
 uv run init-fts
 
-# 4. Migrations (si upgrade d'une DB existante)
-uv run migrate-history
-uv run migrate-favorites
 ```
 
 ### Distribution mobile
@@ -121,7 +118,7 @@ Tables : `taxa`, `vernacular_names`, `enrichment_cache`, `animal_history`, `favo
 
 ### Phase 1 : Application desktop (completee 2026-02-07)
 
-App Flet avec 6 onglets : Aujourd'hui (animal du jour + aleatoire, image unique + galerie a la demande), Historique (paginee), Favoris, Recherche (FTS5), Statistiques, Parametres (theme clair/sombre, credits). DB minimale 163K especes, chargement async.
+App Flet avec 6 onglets : Decouverte (animal aleatoire, image unique + galerie a la demande), Historique (paginee), Favoris, Recherche (FTS5), Statistiques, Parametres (theme clair/sombre, credits). DB minimale 163K especes, chargement async.
 
 ### Phase 2a : Stabilisation et refactoring (completee fev 2026)
 
@@ -142,7 +139,7 @@ App Flet avec 6 onglets : Aujourd'hui (animal du jour + aleatoire, image unique 
 ### Phase 2c : Features secondaires (completee fev 2026)
 
 - **Pagination** : composant `PaginationBar` reutilisable, integre dans HistoryView et FavoritesView (per_page=20). 6 tests.
-- **Notifications desktop** : `NotificationService` via plyer, heure personnalisable, switch activation. 13 tests.
+- **Notifications desktop** : `NotificationService` via `desktop-notifier`, notifications periodiques configurables (date de depart, periode, callback au clic). Tests unitaires.
 - **Partage desktop** : copier texte formate, ouvrir Wikipedia, copier chemin image locale. Attribution legale automatique. 5 tests.
 
 ### Phase 2d : Polissage UI et performances (completee fev 2026)
@@ -163,34 +160,38 @@ Objectif : valider que Flet compile sur mobile et deployer l'app.
 ### Workflow de test Android
 
 ```bash
+# Define tool paths (required — $ANDROID_HOME is NOT set on this machine)
+ADB="$HOME/Android/Sdk/platform-tools/adb"
+EMULATOR="$HOME/Android/Sdk/emulator/emulator"
+
 # Build APK (3 architectures: arm64-v8a, armeabi-v7a, x86_64)
 PYTHONUTF8=1 PYTHONIOENCODING=utf-8 uv run flet build apk --no-rich-output
 
 # Lancer l'emulateur (AVD "daynimal_test", Pixel 6, API 35)
-$ANDROID_HOME/emulator/emulator -avd daynimal_test -no-audio &
+"$EMULATOR" -avd daynimal_test -no-audio &
 
 # Installer et lancer l'app
-adb wait-for-device
-adb install -r build/apk/app-x86_64-release.apk
-adb shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
+"$ADB" wait-for-device
+"$ADB" install -r build/apk/app-x86_64-release.apk
+"$ADB" shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
 
 # Verifier l'UI (screenshot) et les logs
-adb exec-out screencap -p > screenshot.png
-adb logcat -d | grep -i "flutter\|python\|error" | grep -v "audit\|InetDiag"
+"$ADB" exec-out screencap -p > tmp/screenshot.png
+"$ADB" logcat -d | grep -i "flutter\|python\|error" | grep -v "audit\|InetDiag"
 
 # Redemarrer l'app
-adb shell am force-stop com.daynimal.daynimal
+"$ADB" shell am force-stop com.daynimal.daynimal
 ```
 
-**Note** : BlueStacks est incompatible avec Flet (ecran blanc). Utiliser l'emulateur Android Studio.
-Sur Windows/Git Bash, utiliser des chemins Unix : `"/c/Users/.../Android/sdk/platform-tools/adb"`.
+**Note** : BlueStacks est incompatible avec Flet (ecran blanc). Utiliser l'emulateur Android Studio (AVD `daynimal_test`).
+Voir `CLAUDE.md` pour les chemins ADB exacts et les instructions detaillees.
 
 ### Etape 1 : Adaptations pre-build
 
 - [x] Remplacer `webbrowser.open()` par `page.launch_url()` (today_view.py)
 - [x] Creer `get_app_data_dir()` / `get_app_temp_dir()` mobile-aware dans config.py (utilise `FLET_APP_STORAGE_DATA` / `FLET_APP_STORAGE_TEMP`)
 - [x] Corriger chemins hardcodes dans first_launch.py (tmp/, db filename) et debug.py (logs/)
-- [x] Ajouter detection de plateforme pour features desktop-only (plyer notifications)
+- [x] Ajouter detection de plateforme pour features desktop-only (desktop-notifier)
 - [x] Ajouter `is_mobile()` dans config.py (detection via `FLET_APP_STORAGE_DATA`)
 - [x] Desktop sans DB : ecran informatif avec commandes CLI au lieu du setup auto (reserve au mobile)
 - [x] Etendre `daynimal setup` avec `--mode full|minimal` et `--no-taxref` (telechargement TAXREF inclus)
@@ -204,7 +205,7 @@ Sur Windows/Git Bash, utiliser des chemins Unix : `"/c/Users/.../Android/sdk/pla
 - [x] Tests emulateur Android (AVD via Android Studio emulator) — ecran premier lancement OK
 - [x] Tester telechargement DB depuis ecran premier lancement — OK (fix parsing manifest dict)
 - [x] Tester navigation complete apres installation DB — ecran principal avec 6 onglets OK
-- [x] UX onboarding premier lancement : accueil + "Commencer" → progression ("Preparation des donnees sur les animaux...") avec barre reelle (poids : download ~70%, build ~30%) → "Tout est pret !" (2s) → transition auto vers animal du jour
+- [x] UX onboarding premier lancement : accueil + "Commencer" → progression ("Preparation des donnees sur les animaux...") avec barre reelle (poids : download ~70%, build ~30%) → "Tout est pret !" (2s) → transition auto vers decouverte
 - [x] Fix scroll : navbar fixe en bas, scroll deplace vers le content_container
 - [ ] Ajustements UI/UX mobile (tailles, touch targets, navigation) — tests sur emulateur + desktop
 
@@ -213,7 +214,7 @@ Sur Windows/Git Bash, utiliser des chemins Unix : `"/c/Users/.../Android/sdk/pla
 ### Etape 3 : Adaptations mobile
 
 - [ ] Partage mobile (share sheet natif Android/iOS) — remplace les boutons desktop
-- [ ] Notifications mobiles (FCM Android, APNs iOS) — remplace plyer
+- [ ] Notifications mobiles (FCM Android, APNs iOS) — remplace desktop-notifier
 
 ### Etape 4 : Build iOS (si Mac disponible)
 

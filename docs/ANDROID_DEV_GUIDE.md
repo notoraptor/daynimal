@@ -2,7 +2,7 @@
 
 Guide complet pour compiler l'APK Daynimal, configurer l'emulateur Android, et tester l'interface sur une machine Windows.
 
-**Derniere mise a jour** : 2026-02-17
+**Derniere mise a jour** : 2026-02-22 11:17
 
 ---
 
@@ -38,18 +38,22 @@ uv sync
    - Device : **Pixel 6** (ou similaire)
    - System Image : **API 35 x86_64** (avec Google APIs)
    - Nom AVD : `daynimal_test`
-4. Configurer la variable d'environnement `ANDROID_HOME` :
-   - Valeur typique : `C:\Users\<user>\AppData\Local\Android\Sdk`
-   - Ajouter au PATH : `%ANDROID_HOME%\platform-tools` et `%ANDROID_HOME%\emulator`
+4. Reperer le chemin du SDK Android installe (ex: `C:\Users\<user>\AppData\Local\Android\Sdk` ou `~/Android/Sdk`)
 
-### 1.3. Verifier l'installation
+> **Note** : sur cette machine, `$ANDROID_HOME` n'est PAS defini. Toutes les commandes ci-dessous utilisent des variables shell explicites. Voir `CLAUDE.md` pour les chemins exacts.
+
+### 1.3. Definir les chemins et verifier l'installation
 
 ```bash
+# Definir les chemins (obligatoire dans chaque terminal)
+ADB="$HOME/Android/Sdk/platform-tools/adb"
+EMULATOR="$HOME/Android/Sdk/emulator/emulator"
+
 # Verifier que adb est accessible
-adb version
+"$ADB" version
 
 # Verifier que l'emulateur est accessible
-emulator -list-avds
+"$EMULATOR" -list-avds
 # Doit afficher : daynimal_test
 ```
 
@@ -102,7 +106,7 @@ split_per_abi = true    # Genere un APK par architecture
 |--------|----------|
 | Encodage UTF-8 | Verifier `PYTHONUTF8=1 PYTHONIOENCODING=utf-8` |
 | JDK introuvable | Flet l'installe automatiquement, relancer le build |
-| SDK introuvable | Verifier `ANDROID_HOME` ou laisser Flet installer |
+| SDK introuvable | Verifier les chemins SDK ou laisser Flet installer |
 | `flet` introuvable | `uv sync` pour reinstaller les dependances |
 
 ---
@@ -115,13 +119,13 @@ Par defaut, l'emulateur s'ouvre avec une fenetre visible ou l'on peut interagir 
 
 ```bash
 # Lancer l'emulateur avec fenetre visible (RECOMMANDE pour le developpement)
-$ANDROID_HOME/emulator/emulator -avd daynimal_test -no-audio
+"$EMULATOR" -avd daynimal_test -no-audio
 
 # Attendre que l'emulateur soit pret (dans un autre terminal)
-adb wait-for-device
+"$ADB" wait-for-device
 ```
 
-> **Note** : la commande `emulator` bloque le terminal. Ouvrir un **second terminal** pour les commandes `adb`. Alternativement, ajouter `&` a la fin pour lancer en arriere-plan, mais la fenetre sera quand meme visible.
+> **Note** : la commande `emulator` bloque le terminal. Ouvrir un **second terminal** pour les commandes ADB. Alternativement, ajouter `&` a la fin pour lancer en arriere-plan, mais la fenetre sera quand meme visible.
 
 ### 3.2. Demarrer l'emulateur (mode headless — sans fenetre)
 
@@ -129,10 +133,10 @@ Le mode headless est utile pour les scripts CI ou quand Claude Code execute les 
 
 ```bash
 # Lancer sans fenetre (mode headless)
-$ANDROID_HOME/emulator/emulator -avd daynimal_test -no-audio -no-window &
+"$EMULATOR" -avd daynimal_test -no-audio -no-window &
 
 # Attendre que l'emulateur soit pret
-adb wait-for-device
+"$ADB" wait-for-device
 ```
 
 > **Quand utiliser quel mode ?**
@@ -152,7 +156,7 @@ adb wait-for-device
 ### 3.4. Verifier que l'emulateur est connecte
 
 ```bash
-adb devices
+"$ADB" devices
 # Doit afficher :
 # emulator-5554   device
 ```
@@ -165,7 +169,7 @@ adb devices
 
 ```bash
 # Pour l'emulateur x86_64
-adb install -r build/apk/app-x86_64-release.apk
+"$ADB" install -r build/apk/app-x86_64-release.apk
 ```
 
 - `-r` : remplace l'installation precedente si elle existe
@@ -173,23 +177,23 @@ adb install -r build/apk/app-x86_64-release.apk
 ### 4.2. Lancer l'app
 
 ```bash
-adb shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
+"$ADB" shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
 ```
 
 ### 4.3. Forcer l'arret et relancer
 
 ```bash
 # Forcer l'arret
-adb shell am force-stop com.daynimal.daynimal
+"$ADB" shell am force-stop com.daynimal.daynimal
 
 # Relancer
-adb shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
+"$ADB" shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
 ```
 
 ### 4.4. Desinstaller l'app (pour tester le premier lancement)
 
 ```bash
-adb uninstall com.daynimal.daynimal
+"$ADB" uninstall com.daynimal.daynimal
 ```
 
 ---
@@ -200,7 +204,7 @@ adb uninstall com.daynimal.daynimal
 
 ```bash
 # Sauvegarder dans tmp/ (git-ignored)
-adb exec-out screencap -p > tmp/screenshot.png
+"$ADB" exec-out screencap -p > tmp/screenshot.png
 ```
 
 > **Important** : toujours sauvegarder dans `tmp/` pour eviter de committer les screenshots.
@@ -209,13 +213,13 @@ adb exec-out screencap -p > tmp/screenshot.png
 
 ```bash
 # Logs filtres (Flutter + Python + erreurs)
-adb logcat -d | grep -i "flutter\|python\|error" | grep -v "audit\|InetDiag"
+"$ADB" logcat -d | grep -i "flutter\|python\|error" | grep -v "audit\|InetDiag"
 
 # Logs en temps reel
-adb logcat | grep -i "flutter\|python\|error" | grep -v "audit\|InetDiag"
+"$ADB" logcat | grep -i "flutter\|python\|error" | grep -v "audit\|InetDiag"
 
 # Effacer les logs (avant un test)
-adb logcat -c
+"$ADB" logcat -c
 ```
 
 ### 5.3. Reperer un widget a l'ecran (UI Automator)
@@ -224,10 +228,10 @@ Flet utilise Flutter pour le rendu, donc les widgets ne sont pas des vues Androi
 
 ```bash
 # Dumper la hierarchie UI dans un fichier XML
-adb shell uiautomator dump //sdcard/ui.xml
+"$ADB" shell uiautomator dump //sdcard/ui.xml
 
 # Lire le fichier XML
-adb shell cat //sdcard/ui.xml
+"$ADB" shell cat //sdcard/ui.xml
 ```
 
 > **Note Windows/Git Bash** : utiliser `//sdcard/` (double slash) pour eviter que MSYS convertisse le chemin.
@@ -240,7 +244,7 @@ Flet/Flutter rend l'UI dans un canvas unique, donc on doit taper a des coordonne
 
 ```bash
 # 1. Dumper la hierarchie UI
-adb shell uiautomator dump //sdcard/ui.xml && adb shell cat //sdcard/ui.xml
+"$ADB" shell uiautomator dump //sdcard/ui.xml && "$ADB" shell cat //sdcard/ui.xml
 
 # 2. Trouver les bounds du bouton dans le XML
 #    Exemple : bounds="[100,200][300,250]"
@@ -250,7 +254,7 @@ adb shell uiautomator dump //sdcard/ui.xml && adb shell cat //sdcard/ui.xml
 #    y = (200 + 250) / 2 = 225
 
 # 4. Taper
-adb shell input tap 200 225
+"$ADB" shell input tap 200 225
 ```
 
 **Attention** : ne PAS deviner les coordonnees a partir d'un screenshot. Toujours utiliser `uiautomator dump` pour obtenir les bounds exacts.
@@ -259,16 +263,16 @@ adb shell input tap 200 225
 
 ```bash
 # Appuyer sur le bouton Back
-adb shell input keyevent KEYCODE_BACK
+"$ADB" shell input keyevent KEYCODE_BACK
 
 # Appuyer sur Home
-adb shell input keyevent KEYCODE_HOME
+"$ADB" shell input keyevent KEYCODE_HOME
 
 # Saisir du texte
-adb shell input text "Canis lupus"
+"$ADB" shell input text "Canis lupus"
 
 # Swipe (scroll vers le bas)
-adb shell input swipe 500 1500 500 500 300
+"$ADB" shell input swipe 500 1500 500 500 300
 # Arguments : startX startY endX endY duration_ms
 ```
 
@@ -279,27 +283,31 @@ adb shell input swipe 500 1500 500 500 300
 Voici le workflow typique pour tester une modification :
 
 ```bash
+# 0. Definir les chemins (obligatoire)
+ADB="$HOME/Android/Sdk/platform-tools/adb"
+EMULATOR="$HOME/Android/Sdk/emulator/emulator"
+
 # 1. Compiler l'APK
 PYTHONUTF8=1 PYTHONIOENCODING=utf-8 uv run flet build apk --no-rich-output
 
 # 2. Demarrer l'emulateur (si pas deja lance)
-$ANDROID_HOME/emulator/emulator -avd daynimal_test -no-audio &
-adb wait-for-device
+"$EMULATOR" -avd daynimal_test -no-audio &
+"$ADB" wait-for-device
 
 # 3. Installer l'APK
-adb install -r build/apk/app-x86_64-release.apk
+"$ADB" install -r build/apk/app-x86_64-release.apk
 
 # 4. Lancer l'app
-adb shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
+"$ADB" shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
 
 # 5. Attendre le chargement (3-5 secondes)
 sleep 5
 
 # 6. Prendre un screenshot
-adb exec-out screencap -p > tmp/screenshot.png
+"$ADB" exec-out screencap -p > tmp/screenshot.png
 
 # 7. Verifier les logs
-adb logcat -d | grep -i "flutter\|python\|error" | grep -v "audit\|InetDiag"
+"$ADB" logcat -d | grep -i "flutter\|python\|error" | grep -v "audit\|InetDiag"
 ```
 
 ### Test du premier lancement (onboarding)
@@ -308,23 +316,23 @@ Pour tester l'ecran de premier lancement (telechargement de la DB) :
 
 ```bash
 # 1. Desinstaller l'app completement
-adb uninstall com.daynimal.daynimal
+"$ADB" uninstall com.daynimal.daynimal
 
 # 2. Reinstaller et lancer
-adb install -r build/apk/app-x86_64-release.apk
-adb shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
+"$ADB" install -r build/apk/app-x86_64-release.apk
+"$ADB" shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1
 
 # 3. Prendre des screenshots a intervalles
-sleep 3 && adb exec-out screencap -p > tmp/onboarding_1.png
-sleep 10 && adb exec-out screencap -p > tmp/onboarding_2.png
-sleep 30 && adb exec-out screencap -p > tmp/onboarding_3.png
+sleep 3 && "$ADB" exec-out screencap -p > tmp/onboarding_1.png
+sleep 10 && "$ADB" exec-out screencap -p > tmp/onboarding_2.png
+sleep 30 && "$ADB" exec-out screencap -p > tmp/onboarding_3.png
 ```
 
 L'onboarding suit ce flux :
 1. Ecran d'accueil avec bouton "Commencer"
 2. Ecran de progression ("Preparation des donnees...") avec barre reelle
 3. Ecran "Tout est pret !" (2 secondes)
-4. Transition automatique vers l'animal du jour
+4. Transition automatique vers la vue Decouverte
 
 ---
 
@@ -342,7 +350,7 @@ Git Bash (MSYS) convertit automatiquement les chemins commencant par `/`. Pour l
 
 ### L'app plante au demarrage
 
-1. Verifier les logs : `adb logcat -d | grep -i "error\|exception\|crash"`
+1. Verifier les logs : `"$ADB" logcat -d | grep -i "error\|exception\|crash"`
 2. Causes frequentes :
    - Import Python manquant (verifier que toutes les dependances sont dans `pyproject.toml`)
    - Chemin fichier hardcode (utiliser `get_app_data_dir()` / `get_app_temp_dir()`)
@@ -379,20 +387,22 @@ tmp/                                    # Git-ignored
 
 ## 9. Reference rapide des commandes ADB
 
+> Toutes les commandes supposent que `ADB` et `EMULATOR` sont definis (voir section 1.3).
+
 | Action | Commande |
 |--------|----------|
-| Lister les appareils | `adb devices` |
-| Installer APK | `adb install -r <apk>` |
-| Desinstaller app | `adb uninstall com.daynimal.daynimal` |
-| Lancer app | `adb shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1` |
-| Forcer l'arret | `adb shell am force-stop com.daynimal.daynimal` |
-| Screenshot | `adb exec-out screencap -p > tmp/screenshot.png` |
-| Logs filtres | `adb logcat -d \| grep -i "flutter\|python\|error"` |
-| Effacer logs | `adb logcat -c` |
-| Dump UI | `adb shell uiautomator dump //sdcard/ui.xml` |
-| Lire dump UI | `adb shell cat //sdcard/ui.xml` |
-| Tap a (x,y) | `adb shell input tap <x> <y>` |
-| Bouton Back | `adb shell input keyevent KEYCODE_BACK` |
-| Saisir texte | `adb shell input text "<texte>"` |
-| Scroll bas | `adb shell input swipe 500 1500 500 500 300` |
-| Wipe emulateur | `emulator -avd daynimal_test -wipe-data` |
+| Lister les appareils | `"$ADB" devices` |
+| Installer APK | `"$ADB" install -r <apk>` |
+| Desinstaller app | `"$ADB" uninstall com.daynimal.daynimal` |
+| Lancer app | `"$ADB" shell monkey -p com.daynimal.daynimal -c android.intent.category.LAUNCHER 1` |
+| Forcer l'arret | `"$ADB" shell am force-stop com.daynimal.daynimal` |
+| Screenshot | `"$ADB" exec-out screencap -p > tmp/screenshot.png` |
+| Logs filtres | `"$ADB" logcat -d \| grep -i "flutter\|python\|error"` |
+| Effacer logs | `"$ADB" logcat -c` |
+| Dump UI | `"$ADB" shell uiautomator dump //sdcard/ui.xml` |
+| Lire dump UI | `"$ADB" shell cat //sdcard/ui.xml` |
+| Tap a (x,y) | `"$ADB" shell input tap <x> <y>` |
+| Bouton Back | `"$ADB" shell input keyevent KEYCODE_BACK` |
+| Saisir texte | `"$ADB" shell input text "<texte>"` |
+| Scroll bas | `"$ADB" shell input swipe 500 1500 500 500 300` |
+| Wipe emulateur | `"$EMULATOR" -avd daynimal_test -wipe-data` |

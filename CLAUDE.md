@@ -26,7 +26,7 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for complete structure, function/class 
 
 ## Project Overview
 
-Daynimal is a daily animal discovery application (CLI + Flet GUI) that displays one random animal per day with enriched information from multiple sources. The app combines local taxonomy data from GBIF with real-time data from Wikidata, Wikipedia, and Wikimedia Commons.
+Daynimal is an animal discovery application (CLI + Flet GUI) that displays random animals with enriched information from multiple sources. The app combines local taxonomy data from GBIF with real-time data from Wikidata, Wikipedia, and Wikimedia Commons.
 
 **CRITICAL: Legal Compliance**
 - This project uses data from multiple sources (GBIF CC-BY 4.0, TAXREF Etalab 2.0, Wikidata CC0, Wikipedia/Commons CC-BY-SA).
@@ -202,7 +202,7 @@ On Windows/Git Bash, use `//sdcard/` (double slash) to prevent path conversion b
      - Initialize with `uv run init-fts` after importing GBIF data (and TAXREF if used)
      - Falls back to slower LIKE queries if not initialized
    - **Animal History**: Tracks all viewed animals with timestamps
-     - Records which command was used (today, random, info, search)
+     - Records which command was used (random, info, search, notification)
      - Supports full history (multiple views of same animal)
      - Pagination support for large histories
    - **Favorites**: Users can mark animals as favorites
@@ -216,11 +216,14 @@ On Windows/Git Bash, use `//sdcard/` (double slash) to prevent path conversion b
 
 2. **External API Layer** (`sources/`)
    - Abstract base class: `DataSource` (base.py)
-   - Three implementations following same interface:
+   - Three remote implementations following same interface:
      - `WikidataAPI`: Species properties (IUCN status, mass, lifespan)
      - `WikipediaAPI`: Article extracts and descriptions
      - `CommonsAPI`: Images with licensing metadata
-   - All APIs use lazy-initialized httpx clients with proper User-Agent
+   - Two local sources:
+     - `GBIFMediaAPI`: GBIF media (images) from species API
+     - `PhyloPicLocal`: Local CSV-based silhouette lookup (fallback when no photo)
+   - All remote APIs use lazy-initialized httpx clients with proper User-Agent
    - All implement: `get_by_source_id()`, `get_by_taxonomy()`, `search()`
    - All HTTP calls use `_request_with_retry()` with exponential backoff (retry on 429/503)
    - Graceful degradation: return `None` or `[]` instead of crashing on errors
@@ -233,10 +236,10 @@ On Windows/Git Bash, use `//sdcard/` (double slash) to prevent path conversion b
      - `get_by_id()`, `get_by_name()`: Fetch and enrich single animal
      - `search()`: Search by scientific or vernacular names (uses FTS5 if available)
      - `get_random()`: Random animal (preferring unenriched for discovery)
-     - `add_to_history()`: Record animal view with command metadata
-     - `get_history()`: Retrieve paginated history
+     - `add_to_history()`, `remove_from_history()`: Record/remove animal views
+     - `get_history()`, `get_history_count()`: Retrieve paginated history
      - `clear_history()`: Delete all history entries
-     - `add_favorite()`, `remove_favorite()`, `is_favorite()`, `get_favorites()`: Favorites CRUD
+     - `add_favorite()`, `remove_favorite()`, `is_favorite()`, `get_favorites()`, `get_favorites_count()`: Favorites CRUD
      - `get_setting()`, `set_setting()`: User preferences (key-value store)
    - Enrichment is idempotent: API data cached locally, marked with `is_enriched` flag
    - History is automatically recorded when animals are displayed via CLI
@@ -303,24 +306,39 @@ daynimal/
 │   ├── base.py      # Abstract DataSource base + retry_with_backoff()
 │   ├── wikidata.py  # Wikidata SPARQL queries
 │   ├── wikipedia.py # Wikipedia article fetcher
-│   └── commons.py   # Wikimedia Commons images
+│   ├── commons.py   # Wikimedia Commons images
+│   ├── gbif_media.py      # GBIF media (images) from species API
+│   └── phylopic_local.py  # Local PhyloPic silhouette lookup
 ├── ui/              # Modular UI architecture (Flet GUI)
-│   ├── state.py     # AppState (shared state + repository lifecycle)
+│   ├── state.py           # AppState (shared state + repository lifecycle)
+│   ├── app_controller.py  # AppController (navigation, views, notifications)
 │   ├── components/
-│   │   ├── widgets.py      # LoadingWidget, ErrorWidget, EmptyStateWidget
-│   │   └── animal_card.py  # AnimalCard + helpers (history, favorite, search)
+│   │   ├── widgets.py              # LoadingWidget, ErrorWidget, EmptyStateWidget
+│   │   ├── animal_card.py          # AnimalCard + helpers (history, favorite, search)
+│   │   ├── animal_display.py       # AnimalDisplay (detailed animal info)
+│   │   ├── image_carousel.py       # Image carousel navigation
+│   │   ├── image_gallery_dialog.py # Full-screen image gallery dialog
+│   │   └── pagination.py           # PaginationBar for paginated lists
 │   ├── views/
-│   │   ├── base.py         # BaseView (abstract class for all views)
-│   │   └── search_view.py  # SearchView (classic search with Enter/button)
+│   │   ├── base.py           # BaseView (abstract class for all views)
+│   │   ├── today_view.py     # Discovery view (random animals)
+│   │   ├── history_view.py   # History view (viewed animals)
+│   │   ├── favorites_view.py # Favorites view
+│   │   ├── search_view.py    # SearchView (classic search with Enter/button)
+│   │   ├── stats_view.py     # Statistics view
+│   │   ├── settings_view.py  # Settings and credits view
+│   │   └── setup_view.py     # First-launch database setup view
 │   └── utils/
 │       └── debounce.py     # Debouncer (300ms async, not used in SearchView)
 ├── attribution.py   # Legal attribution helpers
 ├── config.py        # Application settings
+├── connectivity.py  # Network connectivity detection for offline mode
+├── image_cache.py   # Image cache service (download + local serving)
 ├── repository.py    # Data orchestration layer (with parallel API calls)
 ├── schemas.py       # Pydantic/dataclass models
 ├── main.py          # CLI entry point
 ├── app.py           # Flet GUI application (delegates to ui/ modules)
-└── notifications.py # Desktop notification service
+└── notifications.py # Periodic desktop notification service
 
 scripts/             # Build and release scripts
 ├── prepare_release.py          # Compress TSV + generate manifest for GitHub Release
@@ -338,11 +356,23 @@ tests/
 ├── fixtures/        # Mock API responses
 ├── test_*.py        # Unit tests per module
 └── ui/              # UI component and view tests
-    ├── test_state.py        # AppState tests
-    ├── test_widgets.py      # Reusable widgets tests
-    ├── test_debouncer.py    # Debouncer tests
-    ├── test_search_view.py  # SearchView tests
-    └── test_animal_card.py  # AnimalCard tests
+    ├── test_state.py              # AppState tests
+    ├── test_widgets.py            # Reusable widgets tests
+    ├── test_debouncer.py          # Debouncer tests
+    ├── test_search_view.py        # SearchView tests
+    ├── test_animal_card.py        # AnimalCard tests
+    ├── test_animal_display.py     # AnimalDisplay tests
+    ├── test_app_controller.py     # AppController tests
+    ├── test_base_view.py          # BaseView tests
+    ├── test_favorites_view.py     # FavoritesView tests
+    ├── test_history_view.py       # HistoryView tests
+    ├── test_image_carousel.py     # ImageCarousel tests
+    ├── test_image_gallery_dialog.py # ImageGalleryDialog tests
+    ├── test_pagination.py         # PaginationBar tests
+    ├── test_settings_view.py      # SettingsView tests
+    ├── test_setup_view.py         # SetupView tests
+    ├── test_stats_view.py         # StatsView tests
+    └── test_today_view_extended.py # TodayView (Discovery) tests
 
 logs/                # Application logs (created at runtime)
 └── daynimal_*.log   # Timestamped log files
