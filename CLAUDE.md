@@ -4,16 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Architecture
 
-**CRITICAL**: Always consider this file as canonical memory of the codebase.  
+**CRITICAL**: Always consider this file as canonical memory of the codebase.
 Claude Code should reference this architecture before suggesting any code changes, refactoring, or fixes.
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for complete structure, function/class signatures, and internal dependencies.
-
 **Instruction for Claude Code**:
-- Assume the contents of `ARCHITECTURE.md` as fully accurate and up-to-date.
-- Use it to understand module layers, function/method signatures, classes, dependencies, and high-risk zones.
-- Before making any suggestions, cross-reference `ARCHITECTURE.md` to avoid hallucinations.
-- At the start, **always** re-generate `ARCHITECTURE.md` with following command: `uv run generate_architecture.py`
 - At the start, **always** read [`docs/MOBILE_DESKTOP_ROADMAP.md`](docs/MOBILE_DESKTOP_ROADMAP.md) to understand current priorities and planned features.
 - For Android build, emulator setup, and ADB testing, refer to [`docs/ANDROID_DEV_GUIDE.md`](docs/ANDROID_DEV_GUIDE.md).
 - **CRITICAL**: Before ANY modification of code UI (Flet), **always** read [`docs/FLET_API_GUIDE.md`](docs/FLET_API_GUIDE.md) for the current API (Flet 0.80+). Ne JAMAIS deviner l'API Flet — toujours consulter ce guide en premier.
