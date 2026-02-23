@@ -42,9 +42,7 @@ class TodayView(BaseView):
             tooltip="Animal aléatoire",
             on_click=self._load_random_animal,
             style=ft.ButtonStyle(
-                bgcolor=ft.Colors.BLUE,
-                color=ft.Colors.WHITE,
-                shape=ft.CircleBorder(),
+                bgcolor=ft.Colors.BLUE, color=ft.Colors.WHITE, shape=ft.CircleBorder()
             ),
         )
         self.view_title_actions = [self.random_button]
@@ -98,9 +96,7 @@ class TodayView(BaseView):
 
         # Content container
         content = ft.Column(
-            controls=[
-                ft.Container(content=self.today_animal_container, padding=20),
-            ]
+            controls=[ft.Container(content=self.today_animal_container, padding=20)]
         )
 
         return content
@@ -230,10 +226,13 @@ class TodayView(BaseView):
                 )
 
             controls.append(
-                ft.Column(
-                    controls=image_controls,
-                    spacing=10,
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                ft.Container(
+                    content=ft.Column(
+                        controls=image_controls,
+                        spacing=10,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    alignment=ft.Alignment.CENTER,
                 )
             )
             controls.append(ft.Divider())
@@ -242,7 +241,11 @@ class TodayView(BaseView):
                 ft.Container(
                     content=ft.Row(
                         controls=[
-                            ft.Icon(ft.Icons.IMAGE_NOT_SUPPORTED, size=18, color=ft.Colors.GREY_500),
+                            ft.Icon(
+                                ft.Icons.IMAGE_NOT_SUPPORTED,
+                                size=18,
+                                color=ft.Colors.GREY_500,
+                            ),
                             ft.Text(
                                 "Aucune image disponible",
                                 size=14,
@@ -260,14 +263,15 @@ class TodayView(BaseView):
 
         # Animal details (title, classification, description, etc.)
         animal_display = AnimalDisplay(animal)
-        controls.extend(animal_display.build())
+        controls.extend(
+            animal_display.build(buttons=self._get_animal_buttons_line(animal))
+        )
 
-        # Insert favorite/share buttons after taxon ID (before first divider)
-        # AnimalDisplay starts with: title, scientific name, ID, Divider, ...
-        # The image section is already prepended, so offset by the image controls count
-        image_offset = 2 if images else 0  # image column + divider
-        first_divider_index = (image_offset + 3) if len(controls) > (image_offset + 3) else len(controls)
+        # Update container
+        self.today_animal_container.controls = controls
+        self.page.update()
 
+    def _get_animal_buttons_line(self, animal: AnimalInfo):
         # Favorite button
         is_favorite = (
             self.app_state.repository.is_favorite(animal.taxon.taxon_id)
@@ -319,31 +323,12 @@ class TodayView(BaseView):
             )
         )
 
-        controls.insert(
-            first_divider_index,
-            ft.Container(
-                content=ft.Row(
-                    controls=[
-                        ft.Container(
-                            content=ft.Text("Favori:", size=14),
-                            data=animal.taxon.taxon_id,
-                            on_click=self._on_favorite_toggle,
-                            ink=True,
-                        ),
-                        favorite_button,
-                        ft.Text("Partager:", size=14),
-                        *share_buttons,
-                    ],
-                    spacing=5,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
-                padding=ft.Padding(top=10, bottom=10, left=0, right=0),
-            ),
+        return ft.Row(
+            controls=[favorite_button, *share_buttons],
+            spacing=5,
+            alignment=ft.MainAxisAlignment.CENTER,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
-
-        # Update container
-        self.today_animal_container.controls = controls
-        self.page.update()
 
     def _on_favorite_toggle(self, e):
         """Handle favorite button toggle."""

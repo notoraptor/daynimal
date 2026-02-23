@@ -91,9 +91,7 @@ class ErrorWidget(ft.Container):
         )
 
 
-def view_header(
-    title: str, actions: list[ft.Control] | None = None
-) -> ft.Container:
+def view_header(title: str, actions: list[ft.Control] | None = None) -> ft.Container:
     """Standard page header used by all views.
 
     Args:
@@ -114,10 +112,7 @@ def view_header(
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
     else:
-        row = ft.Row(
-            controls=[title_text],
-            alignment=ft.MainAxisAlignment.CENTER,
-        )
+        row = ft.Row(controls=[title_text], alignment=ft.MainAxisAlignment.CENTER)
 
     return ft.Container(content=row, padding=10)
 

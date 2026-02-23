@@ -135,12 +135,35 @@ class TestAnimalDisplayBuild:
         assert sci_text.italic is True
 
     def test_shows_taxon_id(self, minimal_animal):
-        """Vérifie qu'un ft.Text contenant 'ID: {taxon_id}' est présent."""
+        """Vérifie qu'un ft.Text contenant 'GBIF ID: {taxon_id}' est présent."""
         display = AnimalDisplay(minimal_animal)
         controls = display.build()
 
         texts = _text_values(controls)
-        assert any("ID: 42" in t for t in texts if t)
+        assert any("GBIF ID: 42" in t for t in texts if t)
+
+    def test_build_without_buttons(self, minimal_animal):
+        """Vérifie que build() sans boutons ne contient pas de ligne de boutons."""
+        display = AnimalDisplay(minimal_animal)
+        controls = display.build()
+
+        # Aucun ft.Row ne doit être directement dans les contrôles (pas de ligne de boutons)
+        rows = [c for c in controls if isinstance(c, ft.Row)]
+        assert len(rows) == 0
+
+    def test_build_with_buttons(self, minimal_animal):
+        """Vérifie que build(buttons=...) insère les boutons après le premier Divider."""
+        display = AnimalDisplay(minimal_animal)
+        buttons = ft.Row(controls=[ft.IconButton(icon=ft.Icons.FAVORITE)])
+        controls = display.build(buttons=buttons)
+
+        # Les boutons doivent être présents dans la liste
+        assert buttons in controls
+
+        # Les boutons doivent être suivis d'un Divider
+        idx = controls.index(buttons)
+        assert idx + 1 < len(controls)
+        assert isinstance(controls[idx + 1], ft.Divider)
 
     def test_attribution_always_present(self, minimal_animal):
         """Vérifie que le texte d'attribution GBIF est toujours présent."""

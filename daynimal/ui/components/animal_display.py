@@ -34,7 +34,7 @@ class AnimalDisplay:
         """
         self.animal = animal
 
-    def build(self) -> list[ft.Control]:
+    def build(self, buttons: ft.Control | None = None) -> list[ft.Control]:
         """
         Build the animal display UI.
 
@@ -60,14 +60,12 @@ class AnimalDisplay:
             )
         )
 
-        # ID
-        controls.append(
-            ft.Text(
-                f"ID: {self.animal.taxon.taxon_id}", size=14, color=ft.Colors.GREY_500
-            )
-        )
-
         controls.append(ft.Divider())
+
+        # Animal buttons line
+        if buttons:
+            controls.append(buttons)
+            controls.append(ft.Divider())
 
         # Classification
         controls.extend(self._build_classification())
@@ -90,6 +88,15 @@ class AnimalDisplay:
         controls.append(
             ft.Text(
                 f"Données : {' · '.join(sources)}",
+                size=12,
+                color=ft.Colors.GREY_500,
+                italic=True,
+            )
+        )
+        # ID
+        controls.append(
+            ft.Text(
+                f"GBIF ID: {self.animal.taxon.taxon_id}",
                 size=12,
                 color=ft.Colors.GREY_500,
                 italic=True,

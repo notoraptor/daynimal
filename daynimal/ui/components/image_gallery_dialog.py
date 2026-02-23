@@ -153,7 +153,7 @@ class ImageGalleryDialog:
                 if current_image.image_source == ImageSource.PHYLOPIC
                 and self.page.theme_mode == ft.ThemeMode.DARK
                 else None,
-            ),
+            )
         ]
 
         # Navigation row with counter between arrows
@@ -186,7 +186,7 @@ class ImageGalleryDialog:
                                 color=ft.Colors.GREY_500,
                                 italic=True,
                                 no_wrap=False,
-                            ),
+                            )
                         ],
                         scroll=ft.ScrollMode.AUTO,
                     ),

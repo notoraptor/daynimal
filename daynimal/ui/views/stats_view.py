@@ -32,9 +32,7 @@ class StatsView(BaseView):
         """Build the statistics view UI."""
         # Content container
         content = ft.Column(
-            controls=[
-                ft.Container(content=self.stats_container, padding=20),
-            ]
+            controls=[ft.Container(content=self.stats_container, padding=20)]
         )
 
         # If stats already cached, display them immediately
