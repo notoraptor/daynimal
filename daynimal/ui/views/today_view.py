@@ -37,20 +37,20 @@ class TodayView(BaseView):
         """
         super().__init__(page, app_state)
         self.view_title = "🦁 Découverte"
-        self.view_title_actions = [
-            ft.IconButton(
-                icon=ft.Icons.SHUFFLE,
-                tooltip="Animal aléatoire",
-                on_click=self._load_random_animal,
-                style=ft.ButtonStyle(
-                    bgcolor=ft.Colors.BLUE,
-                    color=ft.Colors.WHITE,
-                    shape=ft.CircleBorder(),
-                ),
-            )
-        ]
+        self.random_button = ft.IconButton(
+            icon=ft.Icons.SHUFFLE,
+            tooltip="Animal aléatoire",
+            on_click=self._load_random_animal,
+            style=ft.ButtonStyle(
+                bgcolor=ft.Colors.BLUE,
+                color=ft.Colors.WHITE,
+                shape=ft.CircleBorder(),
+            ),
+        )
+        self.view_title_actions = [self.random_button]
         self.on_favorite_toggle_callback = on_favorite_toggle
         self.on_load_complete: Callable[[], None] | None = None
+        self.on_loading_change: Callable[[bool], None] | None = None
         self.today_animal_container = ft.Column(controls=[], spacing=10)
         self.current_animal: AnimalInfo | None = None
 
@@ -109,6 +109,10 @@ class TodayView(BaseView):
         """Load a random animal."""
         logger.info("Loading random animal...")
 
+        # Signal loading started
+        if self.on_loading_change:
+            self.on_loading_change(True)
+
         # Show loading message
         self.today_animal_container.controls = [
             LoadingWidget(subtitle="Récupération de l'animal aléatoire")
@@ -148,6 +152,9 @@ class TodayView(BaseView):
             ]
 
         finally:
+            # Signal loading ended
+            if self.on_loading_change:
+                self.on_loading_change(False)
             # Update page after loading
             self.page.update()
 

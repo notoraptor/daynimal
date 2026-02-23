@@ -58,6 +58,7 @@ class AppController:
             page=page, app_state=self.state, on_favorite_toggle=self.on_favorite_toggle
         )
         self.discovery_view.on_load_complete = self._update_offline_banner
+        self.discovery_view.on_loading_change = self._set_loading
 
         self.history_view = HistoryView(
             page=page,
@@ -273,6 +274,9 @@ class AppController:
             enrich: Whether to enrich the animal with external API data
             add_to_history: Whether to add the animal to history after loading
         """
+        # Lock UI during loading
+        self._set_loading(True)
+
         # Switch to Today view
         self.nav_bar.selected_index = 0
         self.show_discovery_view()
@@ -325,6 +329,10 @@ class AppController:
             ]
             self.page.update()
 
+        finally:
+            # Unlock UI
+            self._set_loading(False)
+
     def on_favorite_toggle(self, taxon_id: int, is_favorite: bool):
         """Handle favorite toggle from any view."""
         try:
@@ -357,6 +365,12 @@ class AppController:
                     show_close_icon=True,
                 )
             )
+
+    def _set_loading(self, loading: bool):
+        """Enable or disable UI interaction during animal loading."""
+        self.discovery_view.random_button.disabled = loading
+        self.nav_bar.disabled = loading
+        self.page.update()
 
     def _update_offline_banner(self):
         """Update offline banner visibility and content based on connectivity state."""
