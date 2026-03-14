@@ -14,6 +14,7 @@ Claude Code should reference this architecture before suggesting any code change
 
 **CRITICAL: Environment Management**:
 - This project uses **uv** for dependency management with a local `.venv`
+- **Requires Python ≥ 3.13**
 - **ALWAYS** use `uv run <command>` to execute Python scripts/commands
 - **NEVER** use `python <script>` directly - it may use wrong environment
 - Examples: `uv run pytest`, `uv run scripts/compress_distribution.py`, `uv run daynimal`
@@ -62,8 +63,8 @@ uv run init-fts
 
 ### Testing
 ```bash
-# Run all tests
-uv run pytest
+# Run all tests (parallel with pytest-xdist)
+uv run pytest -n auto
 
 # Run specific test file
 uv run pytest tests/test_wikidata.py
@@ -77,7 +78,7 @@ uv run pytest tests/test_commons.py::test_get_images_for_wikidata
 
 ### Code Quality
 ```bash
-# Format code (Ruff)
+# Format code (Ruff — uses skip-magic-trailing-comma)
 uv run ruff format .
 
 # Lint code
@@ -118,9 +119,8 @@ uv run daynimal credits
 
 **GUI Mode (Flet):**
 ```bash
-# Run the desktop/mobile app (via entry point or directly)
+# Run the desktop/mobile app
 uv run daynimal-app
-# or: python daynimal/app.py
 ```
 
 **Android Build & Test (via ADB):**
@@ -272,7 +272,9 @@ def test_my_feature(mock_wikidata_client):
     assert result is not None
 ```
 
-UI tests are in `tests/ui/` and use `pytest-asyncio` for async testing. They test `AppState`, reusable widgets, `Debouncer`, `SearchView`, and `AnimalCard`.
+UI tests are in `tests/ui/` and use `pytest-asyncio` for async testing. `asyncio_mode = "auto"` is configured in `pyproject.toml`, so `@pytest.mark.asyncio` is not needed — just define `async def test_...()`.
+
+Tests must be **fully isolated** (no shared state) because `pytest-xdist` runs them in parallel.
 
 ## Important Notes
 
@@ -285,92 +287,16 @@ UI tests are in `tests/ui/` and use `pytest-asyncio` for async testing. They tes
   - After importing data, run `uv run init-fts` to enable fast search
   - FTS5 provides instant results even with 1.5M taxa
 
-## File Structure
+## Key Directories
 
-```
-daynimal/
-├── db/              # Database layer
-│   ├── models.py    # SQLAlchemy models (TaxonModel, VernacularNameModel, etc.)
-│   ├── session.py   # DB session management
-│   ├── generate_distribution.py  # Generate distribution TSV files (GBIF + TAXREF)
-│   ├── build_db.py              # Build SQLite DB from distribution TSV files
-│   ├── import_gbif_utils.py     # Shared utilities (download, column defs)
-│   └── init_fts.py              # FTS5 index initialization
-├── sources/         # External API integrations
-│   ├── base.py      # Abstract DataSource base + retry_with_backoff()
-│   ├── wikidata.py  # Wikidata SPARQL queries
-│   ├── wikipedia.py # Wikipedia article fetcher
-│   ├── commons.py   # Wikimedia Commons images
-│   ├── gbif_media.py      # GBIF media (images) from species API
-│   └── phylopic_local.py  # Local PhyloPic silhouette lookup
-├── ui/              # Modular UI architecture (Flet GUI)
-│   ├── state.py           # AppState (shared state + repository lifecycle)
-│   ├── app_controller.py  # AppController (navigation, views, notifications)
-│   ├── components/
-│   │   ├── widgets.py              # LoadingWidget, ErrorWidget, EmptyStateWidget
-│   │   ├── animal_card.py          # AnimalCard + helpers (history, favorite, search)
-│   │   ├── animal_display.py       # AnimalDisplay (detailed animal info)
-│   │   ├── image_carousel.py       # Image carousel navigation
-│   │   ├── image_gallery_dialog.py # Full-screen image gallery dialog
-│   │   └── pagination.py           # PaginationBar for paginated lists
-│   ├── views/
-│   │   ├── base.py           # BaseView (abstract class for all views)
-│   │   ├── today_view.py     # Discovery view (random animals)
-│   │   ├── history_view.py   # History view (viewed animals)
-│   │   ├── favorites_view.py # Favorites view
-│   │   ├── search_view.py    # SearchView (classic search with Enter/button)
-│   │   ├── stats_view.py     # Statistics view
-│   │   ├── settings_view.py  # Settings and credits view
-│   │   └── setup_view.py     # First-launch database setup view
-│   └── utils/
-│       └── debounce.py     # Debouncer (300ms async, not used in SearchView)
-├── attribution.py   # Legal attribution helpers
-├── config.py        # Application settings
-├── connectivity.py  # Network connectivity detection for offline mode
-├── image_cache.py   # Image cache service (download + local serving)
-├── repository.py    # Data orchestration layer (with parallel API calls)
-├── schemas.py       # Pydantic/dataclass models
-├── main.py          # CLI entry point
-├── app.py           # Flet GUI application (delegates to ui/ modules)
-└── notifications.py # Periodic desktop notification service
-
-scripts/             # Build and release scripts
-├── prepare_release.py          # Compress TSV + generate manifest for GitHub Release
-└── download_phylopic.py        # Download PhyloPic silhouettes (see docs/PHYLOPIC.md)
-
-docs/                # Documentation
-├── DISTRIBUTION_RELEASE.md     # Distribution release process
-├── FLET_API_GUIDE.md           # Flet API reference
-├── TAXREF.md                   # TAXREF integration guide
-├── PHYLOPIC.md                 # PhyloPic silhouettes guide
-└── MOBILE_DESKTOP_ROADMAP.md   # Development roadmap
-
-tests/
-├── conftest.py      # Pytest fixtures and mocks
-├── fixtures/        # Mock API responses
-├── test_*.py        # Unit tests per module
-└── ui/              # UI component and view tests
-    ├── test_state.py              # AppState tests
-    ├── test_widgets.py            # Reusable widgets tests
-    ├── test_debouncer.py          # Debouncer tests
-    ├── test_search_view.py        # SearchView tests
-    ├── test_animal_card.py        # AnimalCard tests
-    ├── test_animal_display.py     # AnimalDisplay tests
-    ├── test_app_controller.py     # AppController tests
-    ├── test_base_view.py          # BaseView tests
-    ├── test_favorites_view.py     # FavoritesView tests
-    ├── test_history_view.py       # HistoryView tests
-    ├── test_image_carousel.py     # ImageCarousel tests
-    ├── test_image_gallery_dialog.py # ImageGalleryDialog tests
-    ├── test_pagination.py         # PaginationBar tests
-    ├── test_settings_view.py      # SettingsView tests
-    ├── test_setup_view.py         # SetupView tests
-    ├── test_stats_view.py         # StatsView tests
-    └── test_today_view_extended.py # TodayView (Discovery) tests
-
-logs/                # Application logs (created at runtime)
-└── daynimal_*.log   # Timestamped log files
-```
+- `daynimal/db/` — Database layer (SQLAlchemy models, GBIF/TAXREF import pipeline, FTS5)
+- `daynimal/sources/` — External API integrations (Wikidata, Wikipedia, Commons, GBIF Media, PhyloPic)
+- `daynimal/ui/` — Flet GUI: `state.py` (AppState), `app_controller.py` (navigation), `views/` (extend `BaseView`), `components/`
+- `daynimal/repository.py` — Data orchestration layer (enrichment, caching, parallel API calls)
+- `daynimal/main.py` — CLI entry point, `daynimal/app.py` — Flet GUI entry point
+- `scripts/` — Build and release scripts
+- `docs/` — `FLET_API_GUIDE.md`, `MOBILE_DESKTOP_ROADMAP.md`, `ANDROID_DEV_GUIDE.md`, `TAXREF.md`, `PHYLOPIC.md`
+- `tests/` — Unit tests (`conftest.py` for mocks, `fixtures/` for API responses, `ui/` for async UI tests)
 
 ## When Modifying Code
 
