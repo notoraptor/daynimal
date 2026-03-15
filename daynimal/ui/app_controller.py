@@ -53,6 +53,9 @@ class AppController:
             controls=[], expand=True, spacing=0, scroll=ft.ScrollMode.AUTO
         )
 
+        # Fixed footer container (stays below scrollable content, above nav bar)
+        self.footer_container = ft.Column(controls=[], spacing=0)
+
         # Initialize views (repository shared via AppState)
         self.discovery_view = TodayView(
             page=page, app_state=self.state, on_favorite_toggle=self.on_favorite_toggle
@@ -119,16 +122,14 @@ class AppController:
         # Navigation bar
         self.nav_bar = ft.NavigationBar(
             destinations=[
-                ft.NavigationBarDestination(icon=ft.Icons.PETS, label="Découverte"),
-                ft.NavigationBarDestination(icon=ft.Icons.HISTORY, label="Historique"),
+                ft.NavigationBarDestination(icon=ft.Icons.PETS, label="Accueil"),
+                ft.NavigationBarDestination(icon=ft.Icons.HISTORY, label="Récents"),
                 ft.NavigationBarDestination(icon=ft.Icons.FAVORITE, label="Favoris"),
                 ft.NavigationBarDestination(icon=ft.Icons.SEARCH, label="Recherche"),
-                ft.NavigationBarDestination(
-                    icon=ft.Icons.BAR_CHART, label="Statistiques"
-                ),
-                ft.NavigationBarDestination(icon=ft.Icons.SETTINGS, label="Paramètres"),
+                ft.NavigationBarDestination(icon=ft.Icons.BAR_CHART, label="Stats"),
+                ft.NavigationBarDestination(icon=ft.Icons.SETTINGS, label="Réglages"),
             ],
-            label_behavior=ft.NavigationBarLabelBehavior.ONLY_SHOW_SELECTED,
+            label_behavior=ft.NavigationBarLabelBehavior.ALWAYS_SHOW,
             selected_index=0,
             on_change=self.on_nav_change,
         )
@@ -141,6 +142,7 @@ class AppController:
                 self.offline_banner,
                 self.title_container,
                 self.content_container,
+                self.footer_container,
                 self.nav_bar,
             ],
             expand=True,
@@ -192,11 +194,16 @@ class AppController:
             self.show_settings_view()
 
     def _update_title(self, view):
-        """Update the fixed title container from a view's title and actions."""
-        self.title_container.controls = [
-            view_header(view.view_title, view.view_title_actions),
-            ft.Divider(),
-        ]
+        """Update the fixed title/subheader/footer containers from view properties."""
+        controls = [view_header(view.view_title, view.view_title_actions), ft.Divider()]
+        if view.view_subheader is not None:
+            controls.append(view.view_subheader)
+        self.title_container.controls = controls
+        # Footer (e.g. pagination) fixed above nav bar
+        if view.view_footer is not None:
+            self.footer_container.controls = [view.view_footer]
+        else:
+            self.footer_container.controls = []
 
     def show_discovery_view(self):
         """Show the Discovery view."""

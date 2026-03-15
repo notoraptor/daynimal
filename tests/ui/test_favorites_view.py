@@ -66,11 +66,13 @@ class TestFavoritesViewBuild:
         view = FavoritesView(mock_page, mock_app_state)
         result = view.build()
 
-        assert isinstance(result, ft.Column)
-        # Should contain favorites container, pagination
-        assert len(result.controls) >= 2
+        # build() returns a Container wrapping the favorites_list
+        assert isinstance(result, ft.Container)
         # view_title is set
         assert "Favoris" in view.view_title
+        # view_subheader is set for the fixed info+pagination area
+        assert view.view_subheader is not None
+        assert isinstance(view.view_subheader, ft.Container)
 
     @patch("daynimal.ui.views.favorites_view.asyncio.create_task")
     def test_triggers_load_favorites(self, mock_create_task, mock_page, mock_app_state):
@@ -151,11 +153,10 @@ class TestFavoritesViewLoadFavorites:
 
         await view.load_favorites()
 
-        # Check that count text is in controls
-        texts = [
-            c.value for c in view.favorites_list.controls if isinstance(c, ft.Text)
-        ]
-        assert any("1 favori" in t for t in texts if t)
+        # Count text is in info_container (fixed subheader)
+        count_text = view.info_container.controls[0]
+        assert isinstance(count_text, ft.Text)
+        assert "1 favori" in count_text.value
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.favorites_view.asyncio.create_task")
@@ -205,6 +206,9 @@ class TestFavoritesViewLoadFavorites:
         await view.load_favorites()
 
         mock_pagination.assert_called_once()
+        # Its build() result is in pagination_container (footer)
+        mock_bar.build.assert_called_once()
+        assert mock_bar.build.return_value in view.pagination_container.controls
 
 
 # =============================================================================

@@ -215,9 +215,7 @@ def create_history_card_with_delete(
 
 
 def create_favorite_card_with_delete(
-    animal: AnimalInfo,
-    on_click: Callable[[int], None],
-    on_delete: Callable,
+    animal: AnimalInfo, on_click: Callable[[int], None], on_delete: Callable
 ) -> ft.Row:
     """Create a favorite card with a delete button.
 

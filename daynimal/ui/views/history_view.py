@@ -48,18 +48,23 @@ class HistoryView(BaseView):
         self.on_animal_click = on_animal_click
         self.current_page = 1
         self.total_count = 0
+        self.info_container = ft.Column(
+            controls=[], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+        self.view_subheader = ft.Container(
+            content=self.info_container,
+            padding=ft.Padding(left=20, right=20, top=5, bottom=5),
+            alignment=ft.Alignment.CENTER,
+        )
+        self.pagination_container = ft.Column(
+            controls=[], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+        self.view_footer = ft.Container(content=self.pagination_container)
         self.history_list = ft.Column(controls=[], spacing=10)
-        self.pagination_container = ft.Container()
 
     def build(self) -> ft.Control:
         """Build the history view UI."""
-        # Content container
-        content = ft.Column(
-            controls=[
-                ft.Container(content=self.history_list, padding=20),
-                self.pagination_container,
-            ]
-        )
+        content = ft.Container(content=self.history_list, padding=20)
 
         # Load history asynchronously
         asyncio.create_task(self.load_history())
@@ -97,6 +102,8 @@ class HistoryView(BaseView):
 
             if not history_items:
                 # Empty history
+                self.info_container.controls = []
+                self.pagination_container.controls = []
                 self.history_list.controls = [
                     ft.Container(
                         content=ft.Column(
@@ -122,35 +129,35 @@ class HistoryView(BaseView):
                     )
                 ]
             else:
-                # Display history items
-                controls = [
+                # Info (fixed at top)
+                self.info_container.controls = [
                     ft.Text(
-                        f"{total} animal(aux) consulté(s)",
+                        f"{total} {'animal consulté' if total == 1 else 'animaux consultés'}",
                         size=16,
                         color=ft.Colors.GREY_500,
                     )
                 ]
 
-                for item in history_items:
-                    viewed_at = item.viewed_at.strftime("%d/%m/%Y %H:%M")
-                    card = create_history_card_with_delete(
-                        item, self._on_item_click, viewed_at, self._on_delete_history
-                    )
-                    controls.append(card)
-
-                self.history_list.controls = controls
-
-                # Update pagination
-                self.pagination_container.content = (
+                # Pagination (fixed at bottom)
+                self.pagination_container.controls = [
                     PaginationBar(
                         page=self.current_page,
                         total=total,
                         per_page=PER_PAGE,
                         on_page_change=self._on_page_change,
+                    ).build()
+                ]
+
+                # History cards (scrollable)
+                cards = []
+                for item in history_items:
+                    viewed_at = item.viewed_at.strftime("%d/%m/%Y %H:%M")
+                    card = create_history_card_with_delete(
+                        item, self._on_item_click, viewed_at, self._on_delete_history
                     )
-                    .build()
-                    .content
-                )
+                    cards.append(card)
+
+                self.history_list.controls = cards
 
         except Exception as error:
             logger.error(f"Error in load_history: {error}")
@@ -247,10 +254,7 @@ class HistoryView(BaseView):
             await self.load_history()
             label = _truncate_name(animal.display_name)
             self.page.show_dialog(
-                ft.SnackBar(
-                    ft.Text(f"Restauré : {label}"),
-                    show_close_icon=True,
-                )
+                ft.SnackBar(ft.Text(f"Restauré : {label}"), show_close_icon=True)
             )
         except Exception as error:
             logger.error(f"Error restoring history entry: {error}")

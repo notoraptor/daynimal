@@ -63,9 +63,7 @@ class TodayView(BaseView):
                 ft.Container(
                     content=ft.Column(
                         controls=[
-                            ft.Icon(
-                                ft.Icons.PETS, size=80, color=ft.Colors.PRIMARY
-                            ),
+                            ft.Icon(ft.Icons.PETS, size=80, color=ft.Colors.PRIMARY),
                             ft.Text(
                                 "Bienvenue sur Daynimal !",
                                 size=24,

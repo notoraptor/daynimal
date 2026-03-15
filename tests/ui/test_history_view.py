@@ -72,20 +72,15 @@ class TestHistoryViewBuild:
         view = HistoryView(page=mock_page, app_state=mock_app_state)
         result = view.build()
 
-        # build() returns a ft.Column
-        assert isinstance(result, ft.Column)
-
-        # The column has controls: content container, pagination container
-        assert len(result.controls) == 2
+        # build() returns a Container wrapping the history_list
+        assert isinstance(result, ft.Container)
 
         # view_title is set
         assert "Historique" in view.view_title
 
-        # First control is a Container wrapping the history_list Column
-        assert isinstance(result.controls[0], ft.Container)
-
-        # Second control is the pagination container
-        assert result.controls[1] is view.pagination_container
+        # view_subheader is set for the fixed info+pagination area
+        assert view.view_subheader is not None
+        assert isinstance(view.view_subheader, ft.Container)
 
     @patch("daynimal.ui.views.history_view.asyncio.create_task")
     def test_triggers_load_history(self, mock_create_task, mock_page, mock_app_state):
@@ -175,9 +170,8 @@ class TestHistoryViewLoadHistory:
 
         await view.load_history()
 
-        # The first control is the count text, then one card per animal
-        # controls = [count_text, card1, card2, card3]
-        assert len(view.history_list.controls) == 4  # 1 count text + 3 cards
+        # history_list contains only cards (count text is in info_container)
+        assert len(view.history_list.controls) == 3
         mock_create_card.assert_called()
         assert mock_create_card.call_count == 3
 
@@ -229,11 +223,11 @@ class TestHistoryViewLoadHistory:
 
         await view.load_history()
 
-        # First control should be the count text
-        count_text = view.history_list.controls[0]
+        # Count text is in info_container (first control)
+        count_text = view.info_container.controls[0]
         assert isinstance(count_text, ft.Text)
         assert "2" in count_text.value
-        assert "animal(aux)" in count_text.value
+        assert "animaux consultés" in count_text.value
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
@@ -314,9 +308,11 @@ class TestHistoryViewLoadHistory:
         mock_pagination.assert_called_once_with(
             page=1, total=25, per_page=PER_PAGE, on_page_change=view._on_page_change
         )
-        # Its build() was called and its content was assigned
+        # Its build() was called and result is in pagination_container (footer)
         mock_bar_instance.build.assert_called_once()
-        assert view.pagination_container.content is mock_bar_build.content
+        assert (
+            mock_bar_instance.build.return_value in view.pagination_container.controls
+        )
 
 
 # =============================================================================

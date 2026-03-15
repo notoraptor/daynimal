@@ -60,7 +60,7 @@ class SettingsView(BaseView):
             on_offline_change: Callback when offline mode is toggled
         """
         super().__init__(page, app_state)
-        self.view_title = "⚙️ Paramètres"
+        self.view_title = "⚙️ Réglages"
         self.on_offline_change = on_offline_change
         self.settings_container = ft.Column(controls=[])
 
@@ -161,6 +161,7 @@ class SettingsView(BaseView):
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=5,
                 ),
+                alignment=ft.Alignment.CENTER,
                 padding=20,
             )
 

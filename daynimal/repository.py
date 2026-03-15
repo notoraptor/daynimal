@@ -1010,9 +1010,7 @@ class AnimalRepository:
 
     # --- Favorites methods ---
 
-    def add_favorite(
-        self, taxon_id: int, added_at: datetime | None = None
-    ) -> bool:
+    def add_favorite(self, taxon_id: int, added_at: datetime | None = None) -> bool:
         """
         Add an animal to favorites.
 
@@ -1035,8 +1033,7 @@ class AnimalRepository:
 
         # Add to favorites
         favorite = FavoriteModel(
-            taxon_id=taxon_id,
-            added_at=added_at or datetime.now(UTC),
+            taxon_id=taxon_id, added_at=added_at or datetime.now(UTC)
         )
         self.session.add(favorite)
         self.session.commit()

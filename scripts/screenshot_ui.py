@@ -24,7 +24,8 @@ TAB_SWITCH_DELAY = 3000  # ms - wait for view content to load
 
 def launch_flet_server():
     """Launch Flet app in web mode without opening a browser."""
-    launcher_code = """
+    launcher_code = (
+        """
 import webbrowser
 webbrowser.open = lambda *a, **kw: None  # Suppress auto-open browser
 
@@ -36,7 +37,9 @@ def app_main(page: ft.Page):
     DaynimalApp(page)
 
 ft.run(main=app_main, view=ft.AppView.WEB_BROWSER, port=%d)
-""" % PORT
+"""
+        % PORT
+    )
 
     proc = subprocess.Popen(
         ["uv", "run", "python", "-c", launcher_code],

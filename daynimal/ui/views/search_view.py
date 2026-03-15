@@ -10,8 +10,12 @@ from typing import Callable
 import flet as ft
 
 from daynimal.ui.components.animal_card import create_search_card
+from daynimal.ui.components.pagination import PaginationBar
 from daynimal.ui.state import AppState
 from daynimal.ui.views.base import BaseView
+
+PER_PAGE = 20
+MAX_RESULTS = 50
 
 
 class SearchView(BaseView):
@@ -21,7 +25,7 @@ class SearchView(BaseView):
     - Search triggered by Enter key or search button
     - Empty state when no query
     - Loading indicator during search
-    - Results as clickable cards
+    - Results as clickable cards with pagination
     - No results state
     """
 
@@ -38,6 +42,9 @@ class SearchView(BaseView):
         super().__init__(page, app_state)
         self.view_title = "🔍 Recherche"
         self.on_result_click = on_result_click
+        self.all_results = []
+        self.current_page = 1
+        self.total_count = 0
 
         # Create UI components
         self.search_field = ft.TextField(
@@ -50,8 +57,36 @@ class SearchView(BaseView):
         )
 
         self.search_button = ft.IconButton(
-            icon=ft.Icons.ARROW_FORWARD, on_click=self._on_search_click, tooltip="Rechercher"
+            icon=ft.Icons.ARROW_FORWARD,
+            on_click=self._on_search_click,
+            tooltip="Rechercher",
         )
+
+        # Info container (result count) — fixed at top with search bar
+        self.info_container = ft.Column(
+            controls=[], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+        self.view_subheader = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Row(
+                        controls=[self.search_field, self.search_button],
+                        spacing=5,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    self.info_container,
+                ],
+                spacing=5,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+            padding=ft.Padding(left=20, right=20, top=10, bottom=5),
+        )
+
+        # Pagination — fixed at bottom
+        self.pagination_container = ft.Column(
+            controls=[], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+        self.view_footer = ft.Container(content=self.pagination_container)
 
         self.results_container = ft.Column(controls=[], spacing=10)
 
@@ -64,23 +99,7 @@ class SearchView(BaseView):
         # Initial empty state
         self.show_empty_search_state()
 
-        # Search bar: TextField + button
-        search_bar = ft.Container(
-            content=ft.Row(
-                controls=[self.search_field, self.search_button],
-                spacing=5,
-                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
-            padding=ft.Padding(left=20, right=20, top=10, bottom=0),
-        )
-
-        # Assemble view
-        self.container.controls = [
-            search_bar,
-            ft.Container(content=self.results_container, padding=20),
-        ]
-
-        return self.container
+        return ft.Container(content=self.results_container, padding=20)
 
     async def refresh(self):
         """Refresh search view (no-op for search view).
@@ -103,6 +122,8 @@ class SearchView(BaseView):
 
     def show_empty_search_state(self):
         """Show empty state (before any search)."""
+        self.info_container.controls = []
+        self.pagination_container.controls = []
         self.results_container.controls = [
             ft.Container(
                 content=ft.Column(
@@ -135,8 +156,11 @@ class SearchView(BaseView):
             query: Search query string.
         """
         self.log_info(f"Search started: '{query}'")
+        self.current_page = 1
 
         # Show loading
+        self.info_container.controls = []
+        self.pagination_container.controls = []
         self.results_container.controls = [
             ft.Container(
                 content=ft.Column(
@@ -159,13 +183,17 @@ class SearchView(BaseView):
         try:
             # Perform search (in background thread)
             results = await asyncio.to_thread(
-                lambda: self.app_state.repository.search(query, limit=50)
+                lambda: self.app_state.repository.search(query, limit=MAX_RESULTS)
             )
 
             self.log_info(f"Search completed: {len(results)} results for '{query}'")
+            self.all_results = results
+            self.total_count = len(results)
 
             if not results:
                 # No results
+                self.info_container.controls = []
+                self.pagination_container.controls = []
                 self.results_container.controls = [
                     ft.Container(
                         content=ft.Column(
@@ -195,21 +223,12 @@ class SearchView(BaseView):
                     )
                 ]
             else:
-                # Display results
-                controls = [
-                    ft.Text(
-                        f"{len(results)} résultat(s)", size=16, color=ft.Colors.GREY_500
-                    )
-                ]
-
-                for animal in results:
-                    card = create_search_card(animal, self.on_result_click)
-                    controls.append(card)
-
-                self.results_container.controls = controls
+                self._display_page()
 
         except Exception as error:
             self.log_error("perform_search", error)
+            self.info_container.controls = []
+            self.pagination_container.controls = []
             self.results_container.controls = [
                 ft.Container(
                     content=ft.Column(
@@ -235,3 +254,42 @@ class SearchView(BaseView):
 
         finally:
             self.page.update()
+
+    def _display_page(self):
+        """Display the current page of results."""
+        start = (self.current_page - 1) * PER_PAGE
+        end = start + PER_PAGE
+        page_results = self.all_results[start:end]
+
+        # Info (fixed at top)
+        self.info_container.controls = [
+            ft.Text(
+                f"{self.total_count} {'résultat' if self.total_count == 1 else 'résultats'}",
+                size=16,
+                color=ft.Colors.GREY_500,
+            )
+        ]
+
+        # Pagination (fixed at bottom)
+        self.pagination_container.controls = [
+            PaginationBar(
+                page=self.current_page,
+                total=self.total_count,
+                per_page=PER_PAGE,
+                on_page_change=self._on_page_change,
+            ).build()
+        ]
+
+        # Result cards (scrollable)
+        cards = []
+        for animal in page_results:
+            card = create_search_card(animal, self.on_result_click)
+            cards.append(card)
+
+        self.results_container.controls = cards
+
+    def _on_page_change(self, new_page: int):
+        """Handle page change from pagination bar."""
+        self.current_page = new_page
+        self._display_page()
+        self.page.update()

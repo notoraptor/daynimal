@@ -7,7 +7,7 @@ import pytest
 
 from daynimal.schemas import AnimalInfo, Taxon
 from daynimal.ui.state import AppState
-from daynimal.ui.views.search_view import SearchView
+from daynimal.ui.views.search_view import PER_PAGE, SearchView
 
 
 def _make_animal(
@@ -42,14 +42,13 @@ def _make_search_view():
     return view, page, app_state, on_click
 
 
-def test_search_view_build_returns_control():
-    """Test build() returns a ft.Control with search field and button."""
+def test_search_view_build_returns_container():
+    """Test build() returns a Container with results_container."""
     view, _, _, _ = _make_search_view()
     result = view.build()
 
-    assert isinstance(result, ft.Column)
-    # Should have: search_bar, results_container (header managed by AppController)
-    assert len(result.controls) == 2
+    assert isinstance(result, ft.Container)
+    assert result.content is view.results_container
 
 
 def test_search_view_has_search_field_and_button():
@@ -61,6 +60,13 @@ def test_search_view_has_search_field_and_button():
     assert isinstance(view.search_button, ft.IconButton)
     assert view.search_field.on_submit is not None
     assert view.search_button.on_click is not None
+
+
+def test_search_view_has_subheader_and_footer():
+    """Test SearchView sets view_subheader and view_footer."""
+    view, _, _, _ = _make_search_view()
+    assert view.view_subheader is not None
+    assert view.view_footer is not None
 
 
 def test_search_view_initial_empty_state():
@@ -78,6 +84,10 @@ def test_search_view_initial_empty_state():
     texts = [c for c in inner_col.controls if isinstance(c, ft.Text)]
     assert any("Recherchez un animal" in t.value for t in texts)
 
+    # Info and pagination should be empty
+    assert len(view.info_container.controls) == 0
+    assert len(view.pagination_container.controls) == 0
+
 
 @pytest.mark.asyncio
 async def test_perform_search_with_results():
@@ -90,9 +100,12 @@ async def test_perform_search_with_results():
 
     await view.perform_search("Panthera")
 
-    # Should show count text + 2 cards
-    assert len(view.results_container.controls) == 3
-    count_text = view.results_container.controls[0]
+    # Cards in results_container (no count text — it's in info_container)
+    assert len(view.results_container.controls) == 2
+
+    # Info container shows count
+    assert len(view.info_container.controls) == 1
+    count_text = view.info_container.controls[0]
     assert isinstance(count_text, ft.Text)
     assert "2" in count_text.value
 
@@ -114,6 +127,10 @@ async def test_perform_search_no_results():
     texts = [c for c in inner_col.controls if isinstance(c, ft.Text)]
     assert any("Aucun résultat" in t.value for t in texts)
 
+    # Info and pagination should be cleared
+    assert len(view.info_container.controls) == 0
+    assert len(view.pagination_container.controls) == 0
+
 
 @pytest.mark.asyncio
 async def test_perform_search_with_error():
@@ -132,6 +149,58 @@ async def test_perform_search_with_error():
     texts = [c for c in inner_col.controls if isinstance(c, ft.Text)]
     assert any("Erreur" in t.value for t in texts)
     assert any("DB error" in t.value for t in texts)
+
+    # Info and pagination should be cleared
+    assert len(view.info_container.controls) == 0
+    assert len(view.pagination_container.controls) == 0
+
+
+@pytest.mark.asyncio
+async def test_perform_search_pagination():
+    """Test pagination works with many results."""
+    view, page, app_state, _ = _make_search_view()
+    view.build()
+
+    # Create more results than PER_PAGE
+    animals = [_make_animal(i, f"Animal{i} species") for i in range(25)]
+    app_state.repository.search.return_value = animals
+
+    await view.perform_search("Animal")
+
+    # Page 1: PER_PAGE cards
+    assert len(view.results_container.controls) == PER_PAGE
+    assert view.current_page == 1
+    assert view.total_count == 25
+
+    # Pagination should be visible
+    assert len(view.pagination_container.controls) == 1
+
+    # Info shows total count
+    count_text = view.info_container.controls[0]
+    assert "25" in count_text.value
+
+    # Navigate to page 2
+    view._on_page_change(2)
+    assert view.current_page == 2
+    assert len(view.results_container.controls) == 5  # 25 - 20 = 5 remaining
+
+
+@pytest.mark.asyncio
+async def test_perform_search_resets_page():
+    """Test new search resets to page 1."""
+    view, page, app_state, _ = _make_search_view()
+    view.build()
+
+    animals = [_make_animal(i, f"Animal{i} species") for i in range(25)]
+    app_state.repository.search.return_value = animals
+
+    await view.perform_search("Animal")
+    view._on_page_change(2)
+    assert view.current_page == 2
+
+    # New search resets to page 1
+    await view.perform_search("Other")
+    assert view.current_page == 1
 
 
 @patch("daynimal.ui.views.search_view.asyncio.create_task")

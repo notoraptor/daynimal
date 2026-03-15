@@ -37,6 +37,8 @@ class BaseView(ABC):
         self.app_state = app_state
         self.view_title: str = ""
         self.view_title_actions: list[ft.Control] = []
+        self.view_subheader: ft.Control | None = None
+        self.view_footer: ft.Control | None = None
         self.container = ft.Column(controls=[], spacing=10)
 
     @abstractmethod

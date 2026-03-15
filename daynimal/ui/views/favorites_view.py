@@ -48,19 +48,23 @@ class FavoritesView(BaseView):
         self.on_animal_click = on_animal_click
         self.current_page = 1
         self.total_count = 0
+        self.info_container = ft.Column(
+            controls=[], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+        self.view_subheader = ft.Container(
+            content=self.info_container,
+            padding=ft.Padding(left=20, right=20, top=5, bottom=5),
+            alignment=ft.Alignment.CENTER,
+        )
+        self.pagination_container = ft.Column(
+            controls=[], spacing=0, horizontal_alignment=ft.CrossAxisAlignment.CENTER
+        )
+        self.view_footer = ft.Container(content=self.pagination_container)
         self.favorites_list = ft.Column(controls=[], spacing=10)
-        self.pagination_container = ft.Container()
 
     def build(self) -> ft.Control:
         """Build the favorites view UI."""
-        # Content container
-        content = ft.Column(
-            controls=[
-                ft.Container(content=self.favorites_list, padding=20, expand=True),
-                self.pagination_container,
-            ],
-            expand=True,
-        )
+        content = ft.Container(content=self.favorites_list, padding=20)
 
         # Load favorites asynchronously
         asyncio.create_task(self.load_favorites())
@@ -98,6 +102,8 @@ class FavoritesView(BaseView):
 
             if not favorites_items:
                 # Empty favorites
+                self.info_container.controls = []
+                self.pagination_container.controls = []
                 self.favorites_list.controls = [
                     ft.Container(
                         content=ft.Column(
@@ -123,30 +129,34 @@ class FavoritesView(BaseView):
                     )
                 ]
             else:
-                # Display favorites items
-                controls = [
-                    ft.Text(f"{total} favori(s)", size=16, color=ft.Colors.GREY_500)
+                # Info (fixed at top)
+                self.info_container.controls = [
+                    ft.Text(
+                        f"{total} {'favori' if total == 1 else 'favoris'}",
+                        size=16,
+                        color=ft.Colors.GREY_500,
+                    )
                 ]
 
-                for item in favorites_items:
-                    card = create_favorite_card_with_delete(
-                        item, self._on_item_click, self._on_delete_favorite
-                    )
-                    controls.append(card)
-
-                self.favorites_list.controls = controls
-
-                # Update pagination
-                self.pagination_container.content = (
+                # Pagination (fixed at bottom)
+                self.pagination_container.controls = [
                     PaginationBar(
                         page=self.current_page,
                         total=total,
                         per_page=PER_PAGE,
                         on_page_change=self._on_page_change,
+                    ).build()
+                ]
+
+                # Favorite cards (scrollable)
+                cards = []
+                for item in favorites_items:
+                    card = create_favorite_card_with_delete(
+                        item, self._on_item_click, self._on_delete_favorite
                     )
-                    .build()
-                    .content
-                )
+                    cards.append(card)
+
+                self.favorites_list.controls = cards
 
         except Exception as error:
             logger.error(f"Error in load_favorites: {error}")
@@ -242,10 +252,7 @@ class FavoritesView(BaseView):
             await self.load_favorites()
             label = _truncate_name(animal.display_name)
             self.page.show_dialog(
-                ft.SnackBar(
-                    ft.Text(f"Restauré : {label}"),
-                    show_close_icon=True,
-                )
+                ft.SnackBar(ft.Text(f"Restauré : {label}"), show_close_icon=True)
             )
         except Exception as error:
             logger.error(f"Error restoring favorite: {error}")
