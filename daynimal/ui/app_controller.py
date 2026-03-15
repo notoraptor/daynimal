@@ -128,7 +128,7 @@ class AppController:
                 ),
                 ft.NavigationBarDestination(icon=ft.Icons.SETTINGS, label="Paramètres"),
             ],
-            label_behavior=ft.NavigationBarLabelBehavior.ALWAYS_HIDE,
+            label_behavior=ft.NavigationBarLabelBehavior.ONLY_SHOW_SELECTED,
             selected_index=0,
             on_change=self.on_nav_change,
         )

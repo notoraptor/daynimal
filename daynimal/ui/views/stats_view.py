@@ -95,17 +95,23 @@ class StatsView(BaseView):
                 "Espèces",
             ),
             self._stat_card(
-                ft.Icons.INFO,
-                ft.Colors.GREEN_500,
-                f"{stats['enriched_count']:,}",
-                "Animaux enrichis",
-                subtitle=stats["enrichment_progress"],
-            ),
-            self._stat_card(
                 ft.Icons.TRANSLATE,
                 ft.Colors.AMBER_500,
                 f"{stats['vernacular_names']:,}",
                 "Noms vernaculaires",
+            ),
+            ft.Divider(),
+            self._stat_card(
+                ft.Icons.HISTORY,
+                ft.Colors.TEAL_500,
+                f"{stats['history_count']:,}",
+                "Animaux consultés",
+            ),
+            self._stat_card(
+                ft.Icons.STAR,
+                ft.Colors.ORANGE_500,
+                f"{stats['favorites_count']:,}",
+                "Favoris",
             ),
         ]
 

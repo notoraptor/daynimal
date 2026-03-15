@@ -279,8 +279,9 @@ class TestFavoritesViewDelete:
         from daynimal.ui.views.favorites_view import FavoritesView
 
         view = FavoritesView(mock_page, mock_app_state)
+        animal = _make_animal(42, "Canis lupus")
 
-        view._on_delete_favorite(42, "Canis lupus")
+        view._on_delete_favorite(animal)
 
         mock_create_task.assert_called_once()
 
@@ -291,7 +292,7 @@ class TestFavoritesViewDelete:
         self, mock_create_task, mock_to_thread, mock_page, mock_app_state
     ):
         """Vérifie que _delete_favorite_async appelle remove_favorite,
-        recharge la liste et affiche un SnackBar avec le nom de l'animal."""
+        recharge la liste et affiche un SnackBar avec action Annuler."""
         from daynimal.ui.views.favorites_view import FavoritesView
 
         # First call: remove_favorite returns True
@@ -300,16 +301,18 @@ class TestFavoritesViewDelete:
 
         view = FavoritesView(mock_page, mock_app_state)
         view.build()
+        animal = _make_animal(42, "Canis lupus")
 
-        await view._delete_favorite_async(42, "Canis lupus")
+        await view._delete_favorite_async(animal)
 
         # remove_favorite was called
         assert mock_to_thread.call_count >= 1
 
-        # SnackBar was shown with animal name
+        # SnackBar was shown with animal name and undo action
         mock_page.show_dialog.assert_called_once()
         snackbar = mock_page.show_dialog.call_args[0][0]
         assert "Canis lupus" in snackbar.content.value
+        assert snackbar.action == "Annuler"
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.favorites_view.asyncio.to_thread", new_callable=AsyncMock)
@@ -324,7 +327,61 @@ class TestFavoritesViewDelete:
 
         view = FavoritesView(mock_page, mock_app_state)
         view.build()
+        animal = _make_animal(999, "Unknown")
 
-        await view._delete_favorite_async(999, "Unknown")
+        await view._delete_favorite_async(animal)
 
         mock_page.show_dialog.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("daynimal.ui.views.favorites_view.asyncio.to_thread", new_callable=AsyncMock)
+    @patch("daynimal.ui.views.favorites_view.asyncio.create_task")
+    async def test_undo_delete_favorite_restores_entry(
+        self, mock_create_task, mock_to_thread, mock_page, mock_app_state
+    ):
+        """Vérifie que _undo_delete_favorite_async appelle add_favorite
+        avec le taxon_id et added_at originaux, puis recharge la liste."""
+        from datetime import datetime, UTC
+        from daynimal.ui.views.favorites_view import FavoritesView
+
+        # First call: add_favorite, second call: load_favorites
+        mock_to_thread.side_effect = [True, ([], 0)]
+
+        view = FavoritesView(mock_page, mock_app_state)
+        view.build()
+        added = datetime(2026, 2, 20, 14, 30, tzinfo=UTC)
+        animal = _make_animal(42, "Canis lupus")
+        animal.added_at = added
+
+        await view._undo_delete_favorite_async(animal)
+
+        # add_favorite was called with original data
+        first_call = mock_to_thread.call_args_list[0]
+        assert first_call[0][1] == 42  # taxon_id
+        assert first_call[0][2] == added  # added_at
+
+        # SnackBar "Restauré" was shown
+        mock_page.show_dialog.assert_called_once()
+        snackbar = mock_page.show_dialog.call_args[0][0]
+        assert "Restauré" in snackbar.content.value
+
+    @pytest.mark.asyncio
+    @patch("daynimal.ui.views.favorites_view.asyncio.to_thread", new_callable=AsyncMock)
+    @patch("daynimal.ui.views.favorites_view.asyncio.create_task")
+    async def test_undo_delete_favorite_error(
+        self, mock_create_task, mock_to_thread, mock_page, mock_app_state
+    ):
+        """Vérifie que si la restauration échoue, un SnackBar d'erreur est affiché."""
+        from daynimal.ui.views.favorites_view import FavoritesView
+
+        mock_to_thread.side_effect = RuntimeError("DB error")
+
+        view = FavoritesView(mock_page, mock_app_state)
+        view.build()
+        animal = _make_animal(42, "Canis lupus")
+
+        await view._undo_delete_favorite_async(animal)
+
+        mock_page.show_dialog.assert_called_once()
+        snackbar = mock_page.show_dialog.call_args[0][0]
+        assert snackbar.bgcolor == ft.Colors.ERROR

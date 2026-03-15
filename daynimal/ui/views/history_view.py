@@ -7,6 +7,7 @@ from typing import Callable
 
 import flet as ft
 
+from daynimal.schemas import AnimalInfo
 from daynimal.ui.components.animal_card import create_history_card_with_delete
 from daynimal.ui.components.pagination import PaginationBar
 from daynimal.ui.state import AppState
@@ -193,12 +194,14 @@ class HistoryView(BaseView):
             logger.error(f"Error in on_history_item_click: {error}")
             traceback.print_exc()
 
-    def _on_delete_history(self, history_id: int, display_name: str):
+    def _on_delete_history(self, animal: AnimalInfo):
         """Handle delete button click on a history item."""
-        asyncio.create_task(self._delete_history_async(history_id, display_name))
+        asyncio.create_task(self._delete_history_async(animal))
 
-    async def _delete_history_async(self, history_id: int, display_name: str):
-        """Delete a history entry and refresh the list."""
+    async def _delete_history_async(self, animal: AnimalInfo):
+        """Delete a history entry, show SnackBar with undo action."""
+        history_id = animal.history_id
+        display_name = animal.display_name
         try:
             removed = await asyncio.to_thread(
                 self.app_state.repository.remove_from_history, history_id
@@ -208,7 +211,9 @@ class HistoryView(BaseView):
                 label = _truncate_name(display_name)
                 self.page.show_dialog(
                     ft.SnackBar(
-                        ft.Text(f"Supprimé de l'historique : {label}"),
+                        ft.Text(f"Supprimé : {label}"),
+                        action="Annuler",
+                        on_action=lambda e: self._undo_delete_history(animal),
                         show_close_icon=True,
                     )
                 )
@@ -221,6 +226,37 @@ class HistoryView(BaseView):
             self.page.show_dialog(
                 ft.SnackBar(
                     ft.Text("Erreur lors de la suppression"),
+                    bgcolor=ft.Colors.ERROR,
+                    show_close_icon=True,
+                )
+            )
+
+    def _undo_delete_history(self, animal: AnimalInfo):
+        """Restore a deleted history entry."""
+        asyncio.create_task(self._undo_delete_history_async(animal))
+
+    async def _undo_delete_history_async(self, animal: AnimalInfo):
+        """Restore a deleted history entry and refresh the list."""
+        try:
+            await asyncio.to_thread(
+                self.app_state.repository.add_to_history,
+                animal.taxon.taxon_id,
+                animal.command,
+                animal.viewed_at,
+            )
+            await self.load_history()
+            label = _truncate_name(animal.display_name)
+            self.page.show_dialog(
+                ft.SnackBar(
+                    ft.Text(f"Restauré : {label}"),
+                    show_close_icon=True,
+                )
+            )
+        except Exception as error:
+            logger.error(f"Error restoring history entry: {error}")
+            self.page.show_dialog(
+                ft.SnackBar(
+                    ft.Text("Erreur lors de la restauration"),
                     bgcolor=ft.Colors.ERROR,
                     show_close_icon=True,
                 )

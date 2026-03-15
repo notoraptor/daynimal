@@ -76,6 +76,13 @@ uv run pytest -v
 uv run pytest tests/test_commons.py::test_get_images_for_wikidata
 ```
 
+### UI Screenshots (automated)
+```bash
+# Take screenshots of all 6 tabs (Playwright + Flet web mode, headless)
+uv run python scripts/screenshot_ui.py
+# Output: tmp/screenshots/01_decouverte.png ... 06_parametres.png
+```
+
 ### Code Quality
 ```bash
 # Format code (Ruff — uses skip-magic-trailing-comma)
@@ -237,6 +244,7 @@ On Windows/Git Bash, use `//sdcard/` (double slash) to prevent path conversion b
      - `get_setting()`, `set_setting()`: User preferences (key-value store)
    - Enrichment is idempotent: API data cached locally, marked with `is_enriched` flag
    - History is automatically recorded when animals are displayed via CLI
+   - `add_to_history()` and `add_favorite()` accept optional timestamps (`viewed_at`, `added_at`) for undo/restore
 
 ### Schema Hierarchy
 
@@ -244,6 +252,8 @@ All data models in `schemas.py` use `@dataclass`:
 - `Taxon`: Core taxonomic data from GBIF
 - `WikidataEntity`, `WikipediaArticle`, `CommonsImage`: External API data
 - `AnimalInfo`: Aggregate model combining all sources with attribution methods
+  - History metadata: `viewed_at`, `command`, `history_id`
+  - Favorites metadata: `added_at`
 
 Each schema with external data has `get_attribution_text()` method for legal compliance.
 
@@ -295,7 +305,8 @@ Tests must be **fully isolated** (no shared state) because `pytest-xdist` runs t
 - `daynimal/repository.py` — Data orchestration layer (enrichment, caching, parallel API calls)
 - `daynimal/main.py` — CLI entry point, `daynimal/app.py` — Flet GUI entry point
 - `scripts/` — Build and release scripts
-- `docs/` — `FLET_API_GUIDE.md`, `MOBILE_DESKTOP_ROADMAP.md`, `ANDROID_DEV_GUIDE.md`, `TAXREF.md`, `PHYLOPIC.md`
+- `docs/` — `FLET_API_GUIDE.md`, `MOBILE_DESKTOP_ROADMAP.md`, `ANDROID_DEV_GUIDE.md`, `TAXREF.md`, `PHYLOPIC.md`, `UI_AUDIT.md`
+- `scripts/screenshot_ui.py` — Automated UI screenshots (Playwright + Flet web mode)
 - `tests/` — Unit tests (`conftest.py` for mocks, `fixtures/` for API responses, `ui/` for async UI tests)
 
 ## When Modifying Code
@@ -308,4 +319,7 @@ Tests must be **fully isolated** (no shared state) because `pytest-xdist` runs t
 - **Database changes**: Create new models or migrations, update import script if needed
 - **CLI commands**: Add to `main.py` following existing command pattern
 - **GUI changes**: New views and components go in `daynimal/ui/` (extend `BaseView` for views, add components in `components/`). Legacy code remains in `app.py` until fully migrated. Use async/await patterns for UI responsiveness
+  - **Deletions in lists**: Use SnackBar with `action="Annuler"` + `show_close_icon=True` (undo pattern). See `history_view.py` and `favorites_view.py`.
+  - **Page headers**: `view_header()` in `widgets.py` centers titles; with actions, uses 3-column layout `[spacer | title | actions]`
+  - **UI quality review**: Run `uv run python scripts/screenshot_ui.py` to capture all 6 tabs automatically (Playwright headless + Flet web mode), then analyze the screenshots for ergonomics, visual hierarchy, consistency, spacing, and accessibility. Track issues in `docs/UI_AUDIT.md`.
 - **Logging**: Uses standard Python `logging` module (`logging.getLogger("daynimal")`)

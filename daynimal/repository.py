@@ -835,15 +835,29 @@ class AnimalRepository:
             "species_count": species,
             "enriched_count": enriched,
             "vernacular_names": vernacular,
-            "enrichment_progress": f"{enriched}/{species} ({100 * enriched / species:.1f}%)"
-            if species
-            else "N/A",
+            "enrichment_progress": self._format_enrichment_progress(enriched, species),
+            "history_count": self.get_history_count(),
+            "favorites_count": self.get_favorites_count(),
         }
+
+    @staticmethod
+    def _format_enrichment_progress(enriched: int, species: int) -> str:
+        if not species:
+            return "N/A"
+        pct = 100 * enriched / species
+        if pct == 0:
+            return f"{enriched}/{species} (0%)"
+        if pct < 0.1:
+            return f"{enriched}/{species} (< 0.1%)"
+        return f"{enriched}/{species} ({pct:.1f}%)"
 
     # --- History ---
 
     def add_to_history(
-        self, taxon_id: int, command: str | None = None
+        self,
+        taxon_id: int,
+        command: str | None = None,
+        viewed_at: datetime | None = None,
     ) -> AnimalHistoryModel:
         """
         Add an animal view to the history.
@@ -851,12 +865,13 @@ class AnimalRepository:
         Args:
             taxon_id: GBIF taxon key
             command: Command used to view the animal ('today', 'random', 'info', 'search')
+            viewed_at: Optional timestamp (defaults to now). Used to restore undone deletions.
 
         Returns:
             The created history entry
         """
         entry = AnimalHistoryModel(
-            taxon_id=taxon_id, viewed_at=datetime.now(UTC), command=command
+            taxon_id=taxon_id, viewed_at=viewed_at or datetime.now(UTC), command=command
         )
         self.session.add(entry)
         self.session.commit()
@@ -995,12 +1010,15 @@ class AnimalRepository:
 
     # --- Favorites methods ---
 
-    def add_favorite(self, taxon_id: int) -> bool:
+    def add_favorite(
+        self, taxon_id: int, added_at: datetime | None = None
+    ) -> bool:
         """
         Add an animal to favorites.
 
         Args:
             taxon_id: GBIF taxon ID
+            added_at: Optional timestamp (defaults to now). Used to restore undone deletions.
 
         Returns:
             True if added, False if already in favorites
@@ -1016,7 +1034,10 @@ class AnimalRepository:
             return False
 
         # Add to favorites
-        favorite = FavoriteModel(taxon_id=taxon_id)
+        favorite = FavoriteModel(
+            taxon_id=taxon_id,
+            added_at=added_at or datetime.now(UTC),
+        )
         self.session.add(favorite)
         self.session.commit()
         return True
@@ -1094,7 +1115,7 @@ class AnimalRepository:
         for fav in favorites:
             taxon_model = fav.taxon
             taxon = self._model_to_taxon(taxon_model)
-            animal = AnimalInfo(taxon=taxon)
+            animal = AnimalInfo(taxon=taxon, added_at=fav.added_at)
             animals.append(animal)
 
         return (animals, total)

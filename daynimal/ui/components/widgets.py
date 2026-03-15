@@ -106,10 +106,21 @@ def view_header(title: str, actions: list[ft.Control] | None = None) -> ft.Conta
     )
 
     if actions:
+        # 3-column layout so the title stays visually centered:
+        # [left spacer (expand) | title | right actions (expand, END-aligned)]
         row = ft.Row(
-            controls=[title_text, ft.Row(controls=actions, spacing=5)],
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            controls=[
+                ft.Container(expand=True),
+                title_text,
+                ft.Row(
+                    controls=actions,
+                    spacing=5,
+                    expand=True,
+                    alignment=ft.MainAxisAlignment.END,
+                ),
+            ],
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=0,
         )
     else:
         row = ft.Row(controls=[title_text], alignment=ft.MainAxisAlignment.CENTER)

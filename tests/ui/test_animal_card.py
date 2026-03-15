@@ -249,7 +249,7 @@ def test_create_history_card_with_delete_calls_on_delete():
     mock_event = MagicMock()
     delete_btn.on_click(mock_event)
 
-    on_delete.assert_called_once_with(42, "Panthera")
+    on_delete.assert_called_once_with(animal)
 
 
 def test_create_favorite_card_with_delete_returns_row():
@@ -282,4 +282,4 @@ def test_create_favorite_card_with_delete_calls_on_delete():
     mock_event = MagicMock()
     delete_btn.on_click(mock_event)
 
-    on_delete.assert_called_once_with(55, "Panthera")
+    on_delete.assert_called_once_with(animal)

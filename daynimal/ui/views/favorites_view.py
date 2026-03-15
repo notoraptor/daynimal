@@ -7,6 +7,7 @@ from typing import Callable
 
 import flet as ft
 
+from daynimal.schemas import AnimalInfo
 from daynimal.ui.components.animal_card import create_favorite_card_with_delete
 from daynimal.ui.components.pagination import PaginationBar
 from daynimal.ui.state import AppState
@@ -189,12 +190,14 @@ class FavoritesView(BaseView):
             logger.error(f"Error in on_favorite_item_click: {error}")
             traceback.print_exc()
 
-    def _on_delete_favorite(self, taxon_id: int, display_name: str):
+    def _on_delete_favorite(self, animal: AnimalInfo):
         """Handle delete button click on a favorite item."""
-        asyncio.create_task(self._delete_favorite_async(taxon_id, display_name))
+        asyncio.create_task(self._delete_favorite_async(animal))
 
-    async def _delete_favorite_async(self, taxon_id: int, display_name: str):
-        """Remove a favorite and refresh the list."""
+    async def _delete_favorite_async(self, animal: AnimalInfo):
+        """Remove a favorite, show SnackBar with undo action."""
+        taxon_id = animal.taxon.taxon_id
+        display_name = animal.display_name
         try:
             removed = await asyncio.to_thread(
                 self.app_state.repository.remove_favorite, taxon_id
@@ -204,7 +207,10 @@ class FavoritesView(BaseView):
                 label = _truncate_name(display_name)
                 self.page.show_dialog(
                     ft.SnackBar(
-                        ft.Text(f"Retiré des favoris : {label}"), show_close_icon=True
+                        ft.Text(f"Retiré des favoris : {label}"),
+                        action="Annuler",
+                        on_action=lambda e: self._undo_delete_favorite(animal),
+                        show_close_icon=True,
                     )
                 )
             else:
@@ -216,6 +222,36 @@ class FavoritesView(BaseView):
             self.page.show_dialog(
                 ft.SnackBar(
                     ft.Text("Erreur lors de la suppression"),
+                    bgcolor=ft.Colors.ERROR,
+                    show_close_icon=True,
+                )
+            )
+
+    def _undo_delete_favorite(self, animal: AnimalInfo):
+        """Restore a deleted favorite."""
+        asyncio.create_task(self._undo_delete_favorite_async(animal))
+
+    async def _undo_delete_favorite_async(self, animal: AnimalInfo):
+        """Restore a deleted favorite and refresh the list."""
+        try:
+            await asyncio.to_thread(
+                self.app_state.repository.add_favorite,
+                animal.taxon.taxon_id,
+                animal.added_at,
+            )
+            await self.load_favorites()
+            label = _truncate_name(animal.display_name)
+            self.page.show_dialog(
+                ft.SnackBar(
+                    ft.Text(f"Restauré : {label}"),
+                    show_close_icon=True,
+                )
+            )
+        except Exception as error:
+            logger.error(f"Error restoring favorite: {error}")
+            self.page.show_dialog(
+                ft.SnackBar(
+                    ft.Text("Erreur lors de la restauration"),
                     bgcolor=ft.Colors.ERROR,
                     show_close_icon=True,
                 )

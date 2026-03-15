@@ -44,6 +44,8 @@ def mock_app_state():
             "enriched_count": 500,
             "vernacular_names": 1100000,
             "enrichment_progress": "500/160000 (0.3%)",
+            "history_count": 42,
+            "favorites_count": 10,
         }
     )
     state.current_animal = None
@@ -61,6 +63,8 @@ def sample_stats():
         "enriched_count": 500,
         "vernacular_names": 1100000,
         "enrichment_progress": "500/160000 (0.3%)",
+        "history_count": 42,
+        "favorites_count": 10,
     }
 
 
@@ -182,6 +186,8 @@ class TestStatsViewLoadStats:
             "enriched_count": 10,
             "vernacular_names": 200,
             "enrichment_progress": "10/80 (12.5%)",
+            "history_count": 5,
+            "favorites_count": 2,
         }
 
         await view.load_stats()
@@ -206,12 +212,13 @@ class TestStatsViewLoadStats:
 
         await view.load_stats()
 
-        # stats_container should have exactly 4 cards
-        assert len(view.stats_container.controls) == 4
+        # stats_container: 3 DB cards + Divider + 2 user cards = 6
+        assert len(view.stats_container.controls) == 6
 
-        # All controls should be ft.Card instances
-        for card in view.stats_container.controls:
-            assert isinstance(card, ft.Card)
+        # Cards at positions 0-2 and 4-5, Divider at position 3
+        for i in [0, 1, 2, 4, 5]:
+            assert isinstance(view.stats_container.controls[i], ft.Card)
+        assert isinstance(view.stats_container.controls[3], ft.Divider)
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.stats_view.asyncio.sleep", new_callable=AsyncMock)
@@ -396,7 +403,7 @@ class TestDisplayStats:
         view._display_stats(sample_stats)
 
         # First card is total_taxa
-        assert len(view.stats_container.controls) == 4
+        assert len(view.stats_container.controls) == 6
         first_card = view.stats_container.controls[0]
         assert isinstance(first_card, ft.Card)
 
@@ -440,11 +447,8 @@ class TestDisplayStats:
         icon = icon_circle.content
         assert icon.icon == ft.Icons.FAVORITE
 
-    def test_displays_enriched_with_progress(
-        self, mock_page, mock_app_state, sample_stats
-    ):
-        """Verifie que le card 'enriched' affiche le nombre d'animaux enrichis
-        avec un sous-titre montrant le pourcentage (ex: '0.3% des especes')."""
+    def test_displays_vernacular_names(self, mock_page, mock_app_state, sample_stats):
+        """Verifie que le troisieme card affiche le nombre de noms vernaculaires."""
         view = _make_view(mock_page, mock_app_state)
 
         view._display_stats(sample_stats)
@@ -453,37 +457,6 @@ class TestDisplayStats:
         assert isinstance(third_card, ft.Card)
 
         row = third_card.content.content
-        text_column = row.controls[1]
-
-        # Value: 500
-        value_text = text_column.controls[0]
-        assert "500" in value_text.value
-
-        # Label: Animaux enrichis
-        label_text = text_column.controls[1]
-        assert label_text.value == "Animaux enrichis"
-
-        # Subtitle: enrichment_progress (e.g. "500/160000 (0.3%)")
-        assert len(text_column.controls) == 3
-        subtitle_text = text_column.controls[2]
-        assert "0.3%" in subtitle_text.value
-
-        # Check icon is INFO with GREEN color
-        icon_circle = row.controls[0]
-        assert icon_circle.bgcolor == ft.Colors.GREEN_500
-        icon = icon_circle.content
-        assert icon.icon == ft.Icons.INFO
-
-    def test_displays_vernacular_names(self, mock_page, mock_app_state, sample_stats):
-        """Verifie que le dernier card affiche le nombre de noms vernaculaires."""
-        view = _make_view(mock_page, mock_app_state)
-
-        view._display_stats(sample_stats)
-
-        fourth_card = view.stats_container.controls[3]
-        assert isinstance(fourth_card, ft.Card)
-
-        row = fourth_card.content.content
         text_column = row.controls[1]
 
         value_text = text_column.controls[0]

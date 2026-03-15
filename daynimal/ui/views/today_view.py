@@ -58,13 +58,13 @@ class TodayView(BaseView):
         if self.current_animal is not None:
             self._display_animal(self.current_animal)
         else:
-            # Show welcome message
+            # Show welcome screen with prominent CTA
             self.today_animal_container.controls = [
                 ft.Container(
                     content=ft.Column(
                         controls=[
                             ft.Icon(
-                                ft.Icons.FAVORITE, size=80, color=ft.Colors.PRIMARY
+                                ft.Icons.PETS, size=80, color=ft.Colors.PRIMARY
                             ),
                             ft.Text(
                                 "Bienvenue sur Daynimal !",
@@ -76,12 +76,19 @@ class TodayView(BaseView):
                                 "Découvrez un animal chaque jour",
                                 size=16,
                                 text_align=ft.TextAlign.CENTER,
+                                color=ft.Colors.GREY_600,
                             ),
-                            ft.Text(
-                                "Cliquez sur le bouton 🔀 pour découvrir",
-                                size=14,
-                                color=ft.Colors.BLUE,
-                                text_align=ft.TextAlign.CENTER,
+                            ft.Container(height=10),
+                            ft.FilledButton(
+                                "Découvrir un animal",
+                                icon=ft.Icons.SHUFFLE,
+                                on_click=self._load_random_animal,
+                                style=ft.ButtonStyle(
+                                    text_style=ft.TextStyle(size=18),
+                                    padding=ft.Padding(
+                                        left=30, right=30, top=15, bottom=15
+                                    ),
+                                ),
                             ),
                         ],
                         horizontal_alignment=ft.CrossAxisAlignment.CENTER,

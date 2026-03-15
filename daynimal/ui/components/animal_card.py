@@ -168,11 +168,14 @@ def create_favorite_card(
     Returns:
         AnimalCard configured for Favorites view.
     """
+    metadata_text = (
+        animal.added_at.strftime("%d/%m/%Y %H:%M") if animal.added_at else "Favori"
+    )
     return AnimalCard(
         animal=animal,
         on_click=on_click,
         metadata_icon=ft.Icons.FAVORITE,
-        metadata_text="Favori",
+        metadata_text=metadata_text,
         metadata_icon_color=ft.Colors.RED,
     )
 
@@ -181,7 +184,7 @@ def create_history_card_with_delete(
     animal: AnimalInfo,
     on_click: Callable[[int], None],
     viewed_at_str: str,
-    on_delete: Callable[[int, str], None],
+    on_delete: Callable,
 ) -> ft.Row:
     """Create a history card with a delete button.
 
@@ -189,21 +192,19 @@ def create_history_card_with_delete(
         animal: The animal to display.
         on_click: Callback when card is clicked. Receives taxon_id.
         viewed_at_str: Formatted timestamp string.
-        on_delete: Callback when delete is clicked. Receives (history_id, display_name).
+        on_delete: Callback when delete is clicked. Receives the AnimalInfo.
 
     Returns:
         ft.Row containing the AnimalCard (expand) and a delete IconButton.
     """
     card = create_history_card(animal, on_click, viewed_at_str)
     card.expand = True
-    history_id = animal.history_id
-    display_name = _get_display_name(animal.taxon)
 
     delete_btn = ft.IconButton(
         icon=ft.Icons.DELETE_OUTLINE,
         icon_color=ft.Colors.GREY_500,
         tooltip="Supprimer de l'historique",
-        on_click=lambda e: on_delete(history_id, display_name),
+        on_click=lambda e: on_delete(animal),
     )
 
     return ft.Row(
@@ -216,28 +217,26 @@ def create_history_card_with_delete(
 def create_favorite_card_with_delete(
     animal: AnimalInfo,
     on_click: Callable[[int], None],
-    on_delete: Callable[[int, str], None],
+    on_delete: Callable,
 ) -> ft.Row:
     """Create a favorite card with a delete button.
 
     Args:
         animal: The animal to display.
         on_click: Callback when card is clicked. Receives taxon_id.
-        on_delete: Callback when delete is clicked. Receives (taxon_id, display_name).
+        on_delete: Callback when delete is clicked. Receives the AnimalInfo.
 
     Returns:
         ft.Row containing the AnimalCard (expand) and a delete IconButton.
     """
     card = create_favorite_card(animal, on_click)
     card.expand = True
-    taxon_id = animal.taxon.taxon_id
-    display_name = _get_display_name(animal.taxon)
 
     delete_btn = ft.IconButton(
         icon=ft.Icons.DELETE_OUTLINE,
         icon_color=ft.Colors.GREY_500,
         tooltip="Retirer des favoris",
-        on_click=lambda e: on_delete(taxon_id, display_name),
+        on_click=lambda e: on_delete(animal),
     )
 
     return ft.Row(

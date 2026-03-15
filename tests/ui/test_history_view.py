@@ -409,8 +409,10 @@ class TestHistoryViewDelete:
         from daynimal.ui.views.history_view import HistoryView
 
         view = HistoryView(page=mock_page, app_state=mock_app_state)
+        animal = _make_animal(42, "Canis lupus")
+        animal.history_id = 42
 
-        view._on_delete_history(42, "Canis lupus")
+        view._on_delete_history(animal)
 
         mock_create_task.assert_called_once()
 
@@ -420,7 +422,7 @@ class TestHistoryViewDelete:
         self, mock_to_thread, mock_page, mock_app_state
     ):
         """Vérifie que _delete_history_async appelle remove_from_history,
-        recharge la liste et affiche un SnackBar avec le nom de l'animal."""
+        recharge la liste et affiche un SnackBar avec action Annuler."""
         from daynimal.ui.views.history_view import HistoryView
 
         # First call: remove_from_history returns True
@@ -428,18 +430,21 @@ class TestHistoryViewDelete:
         mock_to_thread.side_effect = [True, ([], 0)]
 
         view = HistoryView(page=mock_page, app_state=mock_app_state)
+        animal = _make_animal(42, "Canis lupus")
+        animal.history_id = 42
 
-        await view._delete_history_async(42, "Canis lupus")
+        await view._delete_history_async(animal)
 
         # remove_from_history was called
         assert mock_to_thread.call_count >= 1
         first_call_args = mock_to_thread.call_args_list[0]
         assert first_call_args[0][1] == 42  # history_id
 
-        # SnackBar was shown with animal name
+        # SnackBar was shown with animal name and undo action
         mock_page.show_dialog.assert_called_once()
         snackbar = mock_page.show_dialog.call_args[0][0]
         assert "Canis lupus" in snackbar.content.value
+        assert snackbar.action == "Annuler"
 
     @pytest.mark.asyncio
     @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
@@ -452,7 +457,61 @@ class TestHistoryViewDelete:
         mock_to_thread.return_value = False
 
         view = HistoryView(page=mock_page, app_state=mock_app_state)
+        animal = _make_animal(999, "Unknown")
+        animal.history_id = 999
 
-        await view._delete_history_async(999, "Unknown")
+        await view._delete_history_async(animal)
 
         mock_page.show_dialog.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
+    async def test_undo_delete_history_restores_entry(
+        self, mock_to_thread, mock_page, mock_app_state
+    ):
+        """Vérifie que _undo_delete_history_async appelle add_to_history
+        avec le taxon_id, command et viewed_at originaux, puis recharge la liste."""
+        from datetime import datetime, UTC
+        from daynimal.ui.views.history_view import HistoryView
+
+        # First call: add_to_history, second call: load_history
+        mock_to_thread.side_effect = [None, ([], 0)]
+
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
+        viewed = datetime(2026, 2, 20, 14, 30, tzinfo=UTC)
+        animal = _make_animal(42, "Canis lupus", viewed_at=viewed)
+        animal.history_id = 7
+        animal.command = "random"
+
+        await view._undo_delete_history_async(animal)
+
+        # add_to_history was called with original data
+        first_call = mock_to_thread.call_args_list[0]
+        assert first_call[0][1] == 42  # taxon_id
+        assert first_call[0][2] == "random"  # command
+        assert first_call[0][3] == viewed  # viewed_at
+
+        # SnackBar "Restauré" was shown
+        mock_page.show_dialog.assert_called_once()
+        snackbar = mock_page.show_dialog.call_args[0][0]
+        assert "Restauré" in snackbar.content.value
+
+    @pytest.mark.asyncio
+    @patch("daynimal.ui.views.history_view.asyncio.to_thread", new_callable=AsyncMock)
+    async def test_undo_delete_history_error(
+        self, mock_to_thread, mock_page, mock_app_state
+    ):
+        """Vérifie que si la restauration échoue, un SnackBar d'erreur est affiché."""
+        from daynimal.ui.views.history_view import HistoryView
+
+        mock_to_thread.side_effect = RuntimeError("DB error")
+
+        view = HistoryView(page=mock_page, app_state=mock_app_state)
+        animal = _make_animal(42, "Canis lupus")
+        animal.history_id = 7
+
+        await view._undo_delete_history_async(animal)
+
+        mock_page.show_dialog.assert_called_once()
+        snackbar = mock_page.show_dialog.call_args[0][0]
+        assert snackbar.bgcolor == ft.Colors.ERROR

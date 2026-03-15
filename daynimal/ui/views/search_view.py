@@ -50,7 +50,7 @@ class SearchView(BaseView):
         )
 
         self.search_button = ft.IconButton(
-            icon=ft.Icons.SEARCH, on_click=self._on_search_click, tooltip="Rechercher"
+            icon=ft.Icons.ARROW_FORWARD, on_click=self._on_search_click, tooltip="Rechercher"
         )
 
         self.results_container = ft.Column(controls=[], spacing=10)

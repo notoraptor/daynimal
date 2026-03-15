@@ -301,6 +301,9 @@ class AnimalInfo:
     command: str | None = None
     history_id: int | None = None
 
+    # Favorites metadata (populated when retrieved from favorites)
+    added_at: datetime | None = None
+
     @property
     def display_name(self) -> str:
         """Best name to display to users."""
