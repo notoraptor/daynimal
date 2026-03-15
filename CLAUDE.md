@@ -78,9 +78,12 @@ uv run pytest tests/test_commons.py::test_get_images_for_wikidata
 
 ### UI Screenshots (automated)
 ```bash
-# Take screenshots of all 6 tabs (Playwright + Flet web mode, headless)
+# Full audit: 14 screenshots (empty states, interactions, dark theme)
 uv run python scripts/screenshot_ui.py
-# Output: tmp/screenshots/01_decouverte.png ... 06_parametres.png
+# Output: tmp/screenshots/01_accueil_bienvenue.png ... 14_recherche_sombre.png
+
+# Quick mode: 6 main tabs only (real DB, faster)
+uv run python scripts/screenshot_ui.py --quick
 ```
 
 ### Code Quality
@@ -306,7 +309,7 @@ Tests must be **fully isolated** (no shared state) because `pytest-xdist` runs t
 - `daynimal/main.py` — CLI entry point, `daynimal/app.py` — Flet GUI entry point
 - `scripts/` — Build and release scripts
 - `docs/` — `FLET_API_GUIDE.md`, `MOBILE_DESKTOP_ROADMAP.md`, `ANDROID_DEV_GUIDE.md`, `TAXREF.md`, `PHYLOPIC.md`, `UI_AUDIT.md`
-- `scripts/screenshot_ui.py` — Automated UI screenshots (Playwright + Flet web mode)
+- `scripts/screenshot_ui.py` — Automated UI screenshots: full audit (14 captures) or `--quick` (6 tabs)
 - `tests/` — Unit tests (`conftest.py` for mocks, `fixtures/` for API responses, `ui/` for async UI tests)
 
 ## When Modifying Code
@@ -321,5 +324,5 @@ Tests must be **fully isolated** (no shared state) because `pytest-xdist` runs t
 - **GUI changes**: New views and components go in `daynimal/ui/` (extend `BaseView` for views, add components in `components/`). Legacy code remains in `app.py` until fully migrated. Use async/await patterns for UI responsiveness
   - **Deletions in lists**: Use SnackBar with `action="Annuler"` + `show_close_icon=True` (undo pattern). See `history_view.py` and `favorites_view.py`.
   - **Page headers**: `view_header()` in `widgets.py` centers titles; with actions, uses 3-column layout `[spacer | title | actions]`
-  - **UI quality review**: Run `uv run python scripts/screenshot_ui.py` to capture all 6 tabs automatically (Playwright headless + Flet web mode), then analyze the screenshots for ergonomics, visual hierarchy, consistency, spacing, and accessibility. Track issues in `docs/UI_AUDIT.md`.
+  - **UI quality review**: Run `uv run python scripts/screenshot_ui.py` for a comprehensive audit (14 screenshots: empty states, search, animal display, dark theme) or `--quick` for 6 tabs only. Analyze screenshots for ergonomics, visual hierarchy, consistency, spacing, and accessibility. Track issues in `docs/UI_AUDIT.md`.
 - **Logging**: Uses standard Python `logging` module (`logging.getLogger("daynimal")`)
